@@ -8,5 +8,4 @@ publish = false
 
 [dependencies]
 threerender = { path = "../../threerender" }
-glam = "0.22.0"
 examples_common = { path = "../common" }

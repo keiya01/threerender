@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use glam::{Mat4, Vec4};
+use threerender::math::{self, Mat4, Vec4};
 use threerender::entity::{Entity, EntityDescriptor};
 use threerender::mesh::Square;
 use threerender::renderer::Updater;
@@ -41,12 +41,12 @@ fn main() {
     renderer_builder.push(EntityDescriptor {
         mesh: square.clone(),
         fill_color: RGBA::new(0, 255, 0, 255),
-        coordinates: Mat4::from_translation(glam::Vec3::new(0., 0., -3.)),
+        coordinates: Mat4::from_translation(math::Vec3::new(0., 0., -3.)),
     });
     renderer_builder.push(EntityDescriptor {
         mesh: square,
         fill_color: RGBA::new(255, 0, 0, 255),
-        coordinates: Mat4::from_translation(glam::Vec3::new(-3., 0., -1.)),
+        coordinates: Mat4::from_translation(math::Vec3::new(-3., 0., -1.)),
     });
 
     examples_common::start(renderer_builder, Box::new(App::new()));

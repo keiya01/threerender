@@ -7,3 +7,4 @@ pub mod unit;
 
 pub use renderer_builder::*;
 pub use scene::*;
+pub use glam as math;
