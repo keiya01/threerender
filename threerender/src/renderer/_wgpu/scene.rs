@@ -43,7 +43,7 @@ impl LightUniform {
         let light_uniform_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Light Uniform Buffer"),
             contents: bytemuck::bytes_of(&light),
-            usage: wgpu::BufferUsages::UNIFORM,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
         let light_bind_group_layout =
@@ -96,7 +96,7 @@ impl ModelUniform {
         let model_uniform_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Transform Uniform Buffer"),
             contents: bytemuck::bytes_of(model.as_ref()),
-            usage: wgpu::BufferUsages::UNIFORM,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
         let model_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {

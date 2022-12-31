@@ -142,7 +142,7 @@ impl Renderer {
         let entity_uniform_buf = self.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Transform Uniform Buffer"),
             size: entities_length * entity_uniform_alignment,
-            usage: wgpu::BufferUsages::UNIFORM,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
 
