@@ -360,7 +360,7 @@ impl Renderer {
         match &self.rendered_entity {
             Some(renderer_entity) => {
                 let buf = EntityUniformBuffer {
-                    transform: entity.coordinates.to_cols_array_2d(),
+                    transform: entity.coordinates.inner().to_cols_array_2d(),
                     color: rgba_to_array(&entity.fill_color),
                 };
                 self.queue.write_buffer(

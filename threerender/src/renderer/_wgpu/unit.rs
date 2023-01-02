@@ -20,5 +20,5 @@ pub(super) fn rgba_to_array(rgba: &RGBA) -> [f32; 4] {
 }
 
 pub(super) fn position_to_array(pos: &Position) -> [f32; 3] {
-    [pos.x, pos.y, pos.z]
+    pos.to_array3()
 }

@@ -5,6 +5,6 @@ mod renderer_builder;
 mod scene;
 pub mod unit;
 
+pub use glam as math;
 pub use renderer_builder::*;
 pub use scene::*;
-pub use glam as math;
