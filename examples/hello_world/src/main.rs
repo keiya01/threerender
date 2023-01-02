@@ -1,5 +1,6 @@
 use std::rc::Rc;
 
+use examples_common::CustomEvent;
 use threerender::entity::{Entity, EntityDescriptor};
 use threerender::math::{Mat4, Vec3};
 use threerender::mesh::{Sphere, Square};
@@ -27,7 +28,9 @@ impl App {
 }
 
 impl Updater for App {
-    fn update(&mut self, entities: &mut [Entity], scene: &mut SceneStyle) {
+    type Event = CustomEvent;
+
+    fn update(&mut self, entities: &mut [Entity], scene: &mut SceneStyle, _event: Self::Event) {
         // Rotate light
         *(scene.light.position.inner_mut()) *= Mat4::from_rotation_y(-0.01);
 
@@ -40,9 +43,9 @@ impl Updater for App {
                     self.state.should_scale_sphere = true;
                 };
                 let scale = if self.state.should_scale_sphere {
-                    1.001
+                    1.005
                 } else {
-                    0.999
+                    0.995
                 };
                 *(entity.coordinates.inner_mut()) *=
                     Mat4::from_scale(Vec3::new(scale, scale, scale));

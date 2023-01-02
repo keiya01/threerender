@@ -9,7 +9,12 @@ use threerender::{
     RendererBuilder,
 };
 
-type StaticUpdater = Box<dyn Updater>;
+pub enum CustomEvent {
+    ReDraw,
+    MouseMove,
+}
+
+type StaticUpdater = Box<dyn Updater<Event = CustomEvent>>;
 
 fn run(
     event_loop: EventLoop<()>,
@@ -32,17 +37,18 @@ fn run(
                 window.request_redraw();
             }
             Event::RedrawRequested(_) => {
+                renderer.update(&mut *updater, CustomEvent::ReDraw);
+
+                // For macos
+                window.request_redraw();
+
                 renderer.draw();
             }
             Event::WindowEvent {
                 event: WindowEvent::CloseRequested,
                 ..
             } => *control_flow = ControlFlow::Exit,
-            _ => {
-                renderer.update(&mut *updater);
-                // For macos
-                window.request_redraw();
-            }
+            _ => {}
         }
     });
 }

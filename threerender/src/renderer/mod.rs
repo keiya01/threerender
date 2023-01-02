@@ -6,5 +6,6 @@ pub use _wgpu::*;
 use crate::{entity::Entity, SceneStyle};
 
 pub trait Updater {
-    fn update(&mut self, entities: &mut [Entity], scene: &mut SceneStyle);
+    type Event;
+    fn update(&mut self, entities: &mut [Entity], scene: &mut SceneStyle, event: Self::Event);
 }

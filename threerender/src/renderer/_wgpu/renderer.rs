@@ -1,4 +1,4 @@
-use std::{borrow::Cow, mem};
+use std::{borrow::Cow, marker::PhantomData, mem};
 
 use wgpu::{
     util::{align_to, DeviceExt},
@@ -36,7 +36,7 @@ pub struct RenderedEntity {
 }
 
 // The struct is immutable basically.
-pub struct Renderer {
+pub struct Renderer<Event> {
     pub(super) rendered_entity: Option<RenderedEntity>,
     pub(super) device: Device,
     pub(super) config: SurfaceConfiguration,
@@ -44,9 +44,11 @@ pub struct Renderer {
     pub(super) surface: Surface,
     pub(super) queue: Queue,
     pub(super) scene: Scene,
+
+    phantom_event: PhantomData<Event>,
 }
 
-impl Renderer {
+impl<Event> Renderer<Event> {
     const DEPTH_FORMAT: TextureFormat = TextureFormat::Depth32Float;
 
     pub fn new<
@@ -93,6 +95,7 @@ impl Renderer {
             queue,
             adapter,
             scene,
+            phantom_event: PhantomData,
         };
 
         if renderer_builder.enable_forward_depth {
@@ -284,9 +287,9 @@ impl Renderer {
         self.set_depth_texture();
     }
 
-    pub fn update(&mut self, updater: &mut dyn Updater) {
+    pub fn update(&mut self, updater: &mut dyn Updater<Event = Event>, ev: Event) {
         match &mut self.rendered_entity {
-            Some(entity) => updater.update(&mut entity.entities, &mut self.scene.style),
+            Some(entity) => updater.update(&mut entity.entities, &mut self.scene.style, ev),
             None => {}
         }
 
