@@ -6,6 +6,7 @@ use crate::{
 };
 
 pub struct EntityDescriptor {
+    pub id: String,
     pub mesh: Rc<dyn Primitive>,
     pub fill_color: RGBA,
     // TODO: use human readable unit
@@ -14,6 +15,7 @@ pub struct EntityDescriptor {
 
 #[derive(Debug)]
 pub struct Entity {
+    pub id: String,
     pub fill_color: RGBA,
     pub coordinates: Position,
 }

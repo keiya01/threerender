@@ -151,6 +151,7 @@ impl Renderer {
         for (
             i,
             EntityDescriptor {
+                id,
                 mesh,
                 fill_color,
                 coordinates,
@@ -173,6 +174,7 @@ impl Renderer {
                     })
             });
             entities.push(Entity {
+                id,
                 fill_color,
                 coordinates,
             });
