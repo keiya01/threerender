@@ -19,10 +19,10 @@ type StaticUpdater = Box<dyn Updater<Event = CustomEvent>>;
 fn run(
     event_loop: EventLoop<()>,
     window: Window,
-    entity_builder: RendererBuilder,
+    renderer_builder: RendererBuilder,
     mut updater: StaticUpdater,
 ) {
-    let mut renderer = Renderer::new(&window, entity_builder);
+    let mut renderer = Renderer::new(&window, renderer_builder);
 
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
