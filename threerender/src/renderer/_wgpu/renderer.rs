@@ -141,7 +141,9 @@ impl<Event> Renderer<Event> {
                 self.device.limits().min_uniform_buffer_offset_alignment as wgpu::BufferAddress;
             align_to(entity_uniform_size, alignment)
         };
-        let entities_length = renderer_builder.entities.len() as u64;
+        let entities_length = renderer_builder
+            .renderer_specific_attributes
+            .maximum_entity_length;
         let entity_uniform_buf = self.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Transform Uniform Buffer"),
             size: entities_length * entity_uniform_alignment,

@@ -1,4 +1,4 @@
-use crate::entity::EntityDescriptor;
+use crate::{entity::EntityDescriptor, renderer::RendererSpecificAttributes};
 
 use super::scene::{LightStyle, SceneStyle};
 
@@ -8,6 +8,7 @@ pub struct RendererBuilder {
     pub(super) scene: Option<SceneStyle>,
     pub(super) width: u32,
     pub(super) height: u32,
+    pub(super) renderer_specific_attributes: RendererSpecificAttributes,
 }
 
 impl Default for RendererBuilder {
@@ -18,6 +19,7 @@ impl Default for RendererBuilder {
             scene: Some(Default::default()),
             width: 0,
             height: 0,
+            renderer_specific_attributes: Default::default(),
         }
     }
 }
