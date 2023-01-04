@@ -19,3 +19,9 @@ pub struct Entity {
     pub fill_color: RGBA,
     pub coordinates: Position,
 }
+
+pub trait EntityList {
+    fn push(&mut self, descriptor: EntityDescriptor);
+    fn items(&self) -> &[Entity];
+    fn items_mut(&mut self) -> &mut [Entity];
+}

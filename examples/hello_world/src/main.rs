@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use examples_common::CustomEvent;
-use threerender::entity::{Entity, EntityDescriptor};
+use threerender::entity::{EntityDescriptor, EntityList};
 use threerender::math::{Mat4, Vec3};
 use threerender::mesh::{Sphere, Square};
 use threerender::renderer::Updater;
@@ -30,11 +30,16 @@ impl App {
 impl Updater for App {
     type Event = CustomEvent;
 
-    fn update(&mut self, entities: &mut [Entity], scene: &mut SceneStyle, _event: Self::Event) {
+    fn update(
+        &mut self,
+        entity_list: &mut dyn EntityList,
+        scene: &mut SceneStyle,
+        _event: Self::Event,
+    ) {
         // Rotate light
         *(scene.light.position.inner_mut()) *= Mat4::from_rotation_y(-0.01);
 
-        for entity in entities {
+        for entity in entity_list.items_mut() {
             // Scale sphere
             if entity.id == "sphere" {
                 if entity.coordinates.inner().determinant() >= 2. {
