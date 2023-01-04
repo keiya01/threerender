@@ -1,9 +1,10 @@
-use std::{borrow::Cow, marker::PhantomData, mem, collections::HashMap};
+use std::{borrow::Cow, collections::HashMap, marker::PhantomData, mem};
 
 use wgpu::{
     util::{align_to, DeviceExt},
-    vertex_attr_array, BindGroup, BindGroupLayout, Buffer, BufferAddress, Device, Queue,
-    RenderPipeline, Surface, SurfaceConfiguration, TextureFormat, VertexBufferLayout, PrimitiveTopology,
+    vertex_attr_array, BindGroup, BindGroupLayout, Buffer, BufferAddress, Device,
+    PrimitiveTopology, Queue, RenderPipeline, Surface, SurfaceConfiguration, TextureFormat,
+    VertexBufferLayout,
 };
 
 use crate::{
@@ -308,7 +309,10 @@ impl<Event> Renderer<Event> {
                         multisample: wgpu::MultisampleState::default(),
                         multiview: None,
                     });
-            render_pipelines.insert(EntityRendererState::from_renderer_state(state), render_pipeline);
+            render_pipelines.insert(
+                EntityRendererState::from_renderer_state(state),
+                render_pipeline,
+            );
         }
 
         let mut renderer = Self {
@@ -408,7 +412,12 @@ impl<Event> Renderer<Event> {
             rpass.set_bind_group(1, &self.scene.light_uniform.bind_group, &[]);
 
             for (i, entity) in rendered_entity.entities.iter().enumerate() {
-                rpass.set_pipeline(&self.render_pipelines.get(&entity.state).expect("Specified renderer state is not found"));
+                rpass.set_pipeline(
+                    &self
+                        .render_pipelines
+                        .get(&entity.state)
+                        .expect("Specified renderer state is not found"),
+                );
                 let meta = rendered_entity
                     .meta_list
                     .get(i)

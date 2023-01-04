@@ -2,7 +2,8 @@ use std::rc::Rc;
 
 use crate::{
     mesh::{primitive::Primitive, MeshType},
-    unit::{Position, RGBA}, RendererState,
+    unit::{Position, RGBA},
+    RendererState,
 };
 
 pub struct EntityDescriptor {
@@ -36,7 +37,7 @@ pub struct EntityRendererState {
 impl EntityRendererState {
     pub fn from_renderer_state(state: RendererState) -> Self {
         Self {
-            mesh_type: state.mesh_type
+            mesh_type: state.mesh_type,
         }
     }
 }

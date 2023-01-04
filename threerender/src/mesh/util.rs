@@ -12,7 +12,7 @@ impl Vertex {
     pub fn from_vec3(pos: Vec3, normal: Vec3) -> Vertex {
         Vertex {
             pos: [pos.x, pos.y, pos.z, 1.],
-            normal: [normal.x, normal.y, normal.z]
+            normal: [normal.x, normal.y, normal.z],
         }
     }
 }

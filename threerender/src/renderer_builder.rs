@@ -1,4 +1,4 @@
-use crate::{entity::EntityDescriptor, renderer::{RendererSpecificAttributes}, mesh::MeshType};
+use crate::{entity::EntityDescriptor, mesh::MeshType, renderer::RendererSpecificAttributes};
 
 use super::scene::{LightStyle, SceneStyle};
 
@@ -67,7 +67,6 @@ impl RendererBuilder {
         self.states.push(state);
     }
 }
-
 
 #[derive(Default)]
 pub struct RendererState {

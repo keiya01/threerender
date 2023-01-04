@@ -7,15 +7,13 @@ use threerender::mesh::primitive::Primitive;
 use threerender::mesh::{MeshType, PointList, PointMeshType};
 use threerender::renderer::Updater;
 use threerender::unit::{Position, RGBA};
-use threerender::{RendererBuilder, SceneStyle, RendererState};
+use threerender::{RendererBuilder, RendererState, SceneStyle};
 
-struct App {
-}
+struct App {}
 
 impl App {
     fn new() -> Self {
-        Self {
-        }
+        Self {}
     }
 }
 
@@ -46,9 +44,12 @@ fn main() {
     });
 
     let points = vec![
-        Vec3::new(0., 0., 1.), Vec3::new(1., 0., 1.),
-        Vec3::new(-1., 1., 1.), Vec3::new(1., -1., 1.),
-        Vec3::new(-2., 2., 1.), Vec3::new(-2., -2., 1.),
+        Vec3::new(0., 0., 1.),
+        Vec3::new(1., 0., 1.),
+        Vec3::new(-1., 1., 1.),
+        Vec3::new(1., -1., 1.),
+        Vec3::new(-2., 2., 1.),
+        Vec3::new(-2., -2., 1.),
     ];
     let lines = Rc::new(PointList::new(points, PointMeshType::Line));
     renderer_builder.push(EntityDescriptor {

@@ -15,7 +15,11 @@ impl TriangleList {
     pub fn new(a: Vec3, b: Vec3, c: Vec3) -> Self {
         let normal = Vec3::new(0., 0., 1.0);
         Self {
-            vertex: vec![Vertex::from_vec3(a, normal), Vertex::from_vec3(b, normal), Vertex::from_vec3(c, normal)],
+            vertex: vec![
+                Vertex::from_vec3(a, normal),
+                Vertex::from_vec3(b, normal),
+                Vertex::from_vec3(c, normal),
+            ],
             index: None,
         }
     }
@@ -66,7 +70,8 @@ impl PointList {
     }
 
     pub fn push_vertex(&mut self, points: Vec<Vec3>) {
-        self.vertex.extend_from_slice(&Self::points_to_vertex(points));
+        self.vertex
+            .extend_from_slice(&Self::points_to_vertex(points));
     }
 
     pub fn push_index(&mut self, v: [u16; 3]) {
@@ -78,7 +83,10 @@ impl PointList {
 
     fn points_to_vertex(points: Vec<Vec3>) -> Vec<Vertex> {
         let normal = Vec3::new(0., 0., 1.0);
-        points.into_iter().map(|p| Vertex::from_vec3(p, normal)).collect()
+        points
+            .into_iter()
+            .map(|p| Vertex::from_vec3(p, normal))
+            .collect()
     }
 }
 
