@@ -1,5 +1,9 @@
-pub mod mesh;
+mod mesh2d;
+mod mesh3d;
+mod types;
 pub mod primitive;
-pub mod util;
+pub(super) mod util;
 
-pub use mesh::*;
+pub use mesh2d::*;
+pub use mesh3d::*;
+pub use types::*;

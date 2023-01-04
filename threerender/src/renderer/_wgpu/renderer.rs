@@ -1,14 +1,14 @@
-use std::{borrow::Cow, marker::PhantomData, mem};
+use std::{borrow::Cow, marker::PhantomData, mem, collections::HashMap};
 
 use wgpu::{
     util::{align_to, DeviceExt},
     vertex_attr_array, BindGroup, BindGroupLayout, Buffer, BufferAddress, Device, Queue,
-    RenderPipeline, Surface, SurfaceConfiguration, TextureFormat, VertexBufferLayout,
+    RenderPipeline, Surface, SurfaceConfiguration, TextureFormat, VertexBufferLayout, PrimitiveTopology,
 };
 
 use crate::{
-    entity::{Entity, EntityDescriptor, EntityList},
-    mesh::util::Vertex,
+    entity::{Entity, EntityDescriptor, EntityList, EntityRendererState},
+    mesh::{util::Vertex, MeshType},
     renderer::Updater,
     RendererBuilder,
 };
@@ -65,6 +65,7 @@ impl DynamicRenderer {
             mesh,
             fill_color,
             coordinates,
+            state,
         }) = renderer_builder.entities.pop()
         {
             let vertex_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -83,6 +84,7 @@ impl DynamicRenderer {
                 id,
                 fill_color,
                 coordinates,
+                state,
             });
             meta_list.push(RenderedEntityMeta {
                 uniform_offset: (i as u64) * entity_uniform_alignment,
@@ -154,6 +156,7 @@ impl EntityList for DynamicRenderer {
             fill_color,
             coordinates,
             mesh,
+            state,
         } = descriptor;
 
         let vertex_buf = self
@@ -175,6 +178,7 @@ impl EntityList for DynamicRenderer {
             id,
             fill_color,
             coordinates,
+            state,
         });
         rendered_entity.meta_list.push(RenderedEntityMeta {
             uniform_offset: (rendered_entity.meta_list.len() as u64)
@@ -194,7 +198,7 @@ pub struct Renderer<Event> {
     pub(super) surface: Surface,
     pub(super) queue: Queue,
     pub(super) scene: Scene,
-    render_pipeline: RenderPipeline,
+    render_pipelines: HashMap<EntityRendererState, RenderPipeline>,
 
     phantom_event: PhantomData<Event>,
 }
@@ -262,41 +266,50 @@ impl<Event> Renderer<Event> {
                     push_constant_ranges: &[],
                 });
 
-        let render_pipeline =
-            dynamic_renderer
-                .device
-                .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                    label: None,
-                    layout: Some(&pipeline_layout),
-                    vertex: wgpu::VertexState {
-                        module: &shader,
-                        entry_point: "vs_main",
-                        buffers: &[VertexBufferLayout {
-                            array_stride: mem::size_of::<Vertex>() as wgpu::BufferAddress,
-                            step_mode: wgpu::VertexStepMode::Vertex,
-                            attributes: &vertex_attr_array![0 => Float32x4, 1 => Float32x3],
-                        }],
-                    },
-                    fragment: Some(wgpu::FragmentState {
-                        module: &shader,
-                        entry_point: "fs_main",
-                        targets: &[Some(config.format.into())],
-                    }),
-                    primitive: wgpu::PrimitiveState {
-                        front_face: wgpu::FrontFace::Ccw,
-                        cull_mode: Some(wgpu::Face::Back),
-                        ..Default::default()
-                    },
-                    depth_stencil: Some(wgpu::DepthStencilState {
-                        format: Self::DEPTH_FORMAT,
-                        depth_write_enabled: true,
-                        depth_compare: wgpu::CompareFunction::Less,
-                        stencil: wgpu::StencilState::default(),
-                        bias: wgpu::DepthBiasState::default(),
-                    }),
-                    multisample: wgpu::MultisampleState::default(),
-                    multiview: None,
-                });
+        let mut render_pipelines = HashMap::new();
+        for state in renderer_builder.states {
+            let render_pipeline =
+                dynamic_renderer
+                    .device
+                    .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                        label: None,
+                        layout: Some(&pipeline_layout),
+                        vertex: wgpu::VertexState {
+                            module: &shader,
+                            entry_point: "vs_main",
+                            buffers: &[VertexBufferLayout {
+                                array_stride: mem::size_of::<Vertex>() as wgpu::BufferAddress,
+                                step_mode: wgpu::VertexStepMode::Vertex,
+                                attributes: &vertex_attr_array![0 => Float32x4, 1 => Float32x3],
+                            }],
+                        },
+                        fragment: Some(wgpu::FragmentState {
+                            module: &shader,
+                            entry_point: "fs_main",
+                            targets: &[Some(config.format.into())],
+                        }),
+                        primitive: wgpu::PrimitiveState {
+                            topology: match state.mesh_type {
+                                MeshType::PointList => PrimitiveTopology::PointList,
+                                MeshType::LineList => PrimitiveTopology::LineList,
+                                MeshType::TriangleList => PrimitiveTopology::TriangleList,
+                            },
+                            front_face: wgpu::FrontFace::Ccw,
+                            cull_mode: Some(wgpu::Face::Back),
+                            ..Default::default()
+                        },
+                        depth_stencil: Some(wgpu::DepthStencilState {
+                            format: Self::DEPTH_FORMAT,
+                            depth_write_enabled: true,
+                            depth_compare: wgpu::CompareFunction::Less,
+                            stencil: wgpu::StencilState::default(),
+                            bias: wgpu::DepthBiasState::default(),
+                        }),
+                        multisample: wgpu::MultisampleState::default(),
+                        multiview: None,
+                    });
+            render_pipelines.insert(EntityRendererState::from_renderer_state(state), render_pipeline);
+        }
 
         let mut renderer = Self {
             dynamic_renderer,
@@ -304,7 +317,7 @@ impl<Event> Renderer<Event> {
             surface,
             queue,
             scene,
-            render_pipeline,
+            render_pipelines,
             phantom_event: PhantomData,
         };
 
@@ -391,11 +404,11 @@ impl<Event> Renderer<Event> {
                     }
                 }),
             });
-            rpass.set_pipeline(&self.render_pipeline);
             rpass.set_bind_group(0, &self.scene.model_uniform.bind_group, &[]);
             rpass.set_bind_group(1, &self.scene.light_uniform.bind_group, &[]);
 
             for (i, entity) in rendered_entity.entities.iter().enumerate() {
+                rpass.set_pipeline(&self.render_pipelines.get(&entity.state).expect("Specified renderer state is not found"));
                 let meta = rendered_entity
                     .meta_list
                     .get(i)

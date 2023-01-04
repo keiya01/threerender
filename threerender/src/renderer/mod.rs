@@ -1,11 +1,12 @@
 #[cfg(feature = "wgpu")]
 mod _wgpu;
+
 #[cfg(feature = "wgpu")]
 pub use _wgpu::*;
 
-use crate::{entity::Entity, SceneStyle};
+use crate::{entity::EntityList, SceneStyle};
 
 pub trait Updater {
     type Event;
-    fn update(&mut self, entities: &mut [Entity], scene: &mut SceneStyle, event: Self::Event);
+    fn update(&mut self, entities: &mut dyn EntityList, scene: &mut SceneStyle, event: Self::Event);
 }

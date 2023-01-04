@@ -5,63 +5,6 @@ use super::{
     util::{vertex, Vertex},
 };
 
-pub struct Triangle {
-    vertex: Vec<Vertex>,
-}
-
-impl Triangle {
-    pub fn new() -> Self {
-        Self {
-            vertex: vec![
-                vertex([-1., -1., 1., 1.], [0., 0., 1.]),
-                vertex([1., -1., 1., 1.], [0., 0., 1.]),
-                vertex([0., 1., 1., 1.], [0., 0., 1.]),
-            ],
-        }
-    }
-}
-
-impl Primitive for Triangle {
-    fn vertex(&self) -> &[Vertex] {
-        &self.vertex
-    }
-
-    fn index(&self) -> Option<&[u16]> {
-        None
-    }
-}
-
-pub struct Quadrangle {
-    vertex: Vec<Vertex>,
-}
-
-impl Quadrangle {
-    pub fn new() -> Self {
-        Self {
-            vertex: vec![
-                // Half triangle
-                vertex([-1., -1., 1., 1.], [0., 0., 1.]),
-                vertex([1., -1., 1., 1.], [0., 0., 1.]),
-                vertex([1., 1., 1., 1.], [0., 0., 1.]),
-                // Half triangle
-                vertex([-1., -1., 1., 1.], [0., 0., 1.]),
-                vertex([1., 1., 1., 1.], [0., 0., 1.]),
-                vertex([-1., 1., 1., 1.], [0., 0., 1.]),
-            ],
-        }
-    }
-}
-
-impl Primitive for Quadrangle {
-    fn vertex(&self) -> &[Vertex] {
-        &self.vertex
-    }
-
-    fn index(&self) -> Option<&[u16]> {
-        None
-    }
-}
-
 pub struct Square {
     vertex: Vec<Vertex>,
     index: Vec<u16>,
@@ -133,8 +76,6 @@ impl Primitive for Square {
 
 #[derive(Default)]
 pub struct Sphere {
-    slices: u16,
-    stacks: u16,
     vertex: Vec<Vertex>,
     index: Vec<u16>,
 }
@@ -142,12 +83,7 @@ pub struct Sphere {
 impl Sphere {
     pub fn new(slices: u16, stacks: u16) -> Self {
         let (vertex, index) = Self::make_data(slices, stacks);
-        Self {
-            slices,
-            stacks,
-            vertex,
-            index,
-        }
+        Self { vertex, index }
     }
 
     fn make_data(slices: u16, stacks: u16) -> (Vec<Vertex>, Vec<u16>) {

@@ -76,6 +76,7 @@ fn main() {
         mesh: sphere,
         fill_color: RGBA::new(255, 255, 255, 255),
         coordinates: Position::IDENTITY,
+        state: Default::default(),
     });
     let square = Rc::new(Square::new());
     renderer_builder.push(EntityDescriptor {
@@ -83,12 +84,14 @@ fn main() {
         mesh: square.clone(),
         fill_color: RGBA::new(0, 255, 0, 255),
         coordinates: Position::new(0., 0., -3.),
+        state: Default::default(),
     });
     renderer_builder.push(EntityDescriptor {
         id: "square2".to_owned(),
         mesh: square,
         fill_color: RGBA::new(255, 0, 0, 255),
         coordinates: Position::new(-3., 0., -1.),
+        state: Default::default(),
     });
 
     examples_common::start(renderer_builder, Box::new(App::new()));

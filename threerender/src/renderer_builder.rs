@@ -1,4 +1,4 @@
-use crate::{entity::EntityDescriptor, renderer::RendererSpecificAttributes};
+use crate::{entity::EntityDescriptor, renderer::{RendererSpecificAttributes}, mesh::MeshType};
 
 use super::scene::{LightStyle, SceneStyle};
 
@@ -9,6 +9,7 @@ pub struct RendererBuilder {
     pub(super) width: u32,
     pub(super) height: u32,
     pub(super) renderer_specific_attributes: RendererSpecificAttributes,
+    pub(super) states: Vec<RendererState>,
 }
 
 impl Default for RendererBuilder {
@@ -20,6 +21,7 @@ impl Default for RendererBuilder {
             width: 0,
             height: 0,
             renderer_specific_attributes: Default::default(),
+            states: vec![Default::default()],
         }
     }
 }
@@ -60,4 +62,14 @@ impl RendererBuilder {
     pub fn set_height(&mut self, height: u32) {
         self.height = height;
     }
+
+    pub fn push_state(&mut self, state: RendererState) {
+        self.states.push(state);
+    }
+}
+
+
+#[derive(Default)]
+pub struct RendererState {
+    pub mesh_type: MeshType,
 }
