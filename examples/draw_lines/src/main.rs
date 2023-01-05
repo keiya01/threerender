@@ -6,7 +6,7 @@ use threerender::math::Vec3;
 use threerender::mesh::primitive::Primitive;
 use threerender::mesh::{MeshType, PointList, PointMeshType};
 use threerender::renderer::Updater;
-use threerender::unit::{HeadingPitchRoll, RGBA};
+use threerender::unit::RGBA;
 use threerender::{RendererBuilder, RendererState, SceneStyle};
 
 struct App {}
@@ -29,7 +29,7 @@ impl Updater for App {
         for entity in entity_list.items_mut() {
             // Rotate lines
             if entity.id == "lines" {
-                entity.heading_pitch_roll.pitch += 0.01;
+                entity.rotation.y += 0.01;
             }
         }
     }
@@ -59,7 +59,7 @@ fn main() {
         fill_color: RGBA::new(255, 0, 0, 255),
         position: Vec3::new(0., 0., 0.),
         dimension: Vec3::ONE,
-        heading_pitch_roll: HeadingPitchRoll::ZERO,
+        rotation: Vec3::ZERO,
         state: EntityRendererState {
             mesh_type: lines.mesh_type(),
             ..Default::default()

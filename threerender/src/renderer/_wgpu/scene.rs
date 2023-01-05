@@ -30,9 +30,9 @@ impl Light {
         Self {
             color: [arr3[0], arr3[1], arr3[2], 1.],
             position: Mat4::from_translation(style.position)
-                .mul_mat4(&Mat4::from_rotation_x(style.heading_pitch_roll.heading))
-                .mul_mat4(&Mat4::from_rotation_y(style.heading_pitch_roll.roll))
-                .mul_mat4(&Mat4::from_rotation_z(style.heading_pitch_roll.pitch))
+                .mul_mat4(&Mat4::from_rotation_x(style.rotation.x))
+                .mul_mat4(&Mat4::from_rotation_y(style.rotation.y))
+                .mul_mat4(&Mat4::from_rotation_z(style.rotation.z))
                 .transform_vector3(Vec3::ONE)
                 .to_array(),
             brightness: style.brightness,

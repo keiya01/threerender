@@ -4,7 +4,7 @@ use glam::Vec3;
 
 use crate::{
     mesh::{primitive::Primitive, MeshType, PolygonMode},
-    unit::{HeadingPitchRoll, RGBA},
+    unit::RGBA,
     RendererState,
 };
 
@@ -14,7 +14,7 @@ pub struct EntityDescriptor {
     pub fill_color: RGBA,
     pub position: Vec3,
     pub dimension: Vec3,
-    pub heading_pitch_roll: HeadingPitchRoll,
+    pub rotation: Vec3,
     pub state: EntityRendererState,
 }
 
@@ -24,7 +24,7 @@ pub struct Entity {
     pub fill_color: RGBA,
     pub position: Vec3,
     pub dimension: Vec3,
-    pub heading_pitch_roll: HeadingPitchRoll,
+    pub rotation: Vec3,
     pub(super) state: EntityRendererState,
 }
 

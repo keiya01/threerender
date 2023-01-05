@@ -68,7 +68,7 @@ impl DynamicRenderer {
             fill_color,
             position,
             dimension,
-            heading_pitch_roll,
+            rotation,
             state,
         }) = renderer_builder.entities.pop()
         {
@@ -89,7 +89,7 @@ impl DynamicRenderer {
                 fill_color,
                 position,
                 dimension,
-                heading_pitch_roll,
+                rotation,
                 state,
             });
             meta_list.push(RenderedEntityMeta {
@@ -162,7 +162,7 @@ impl EntityList for DynamicRenderer {
             fill_color,
             position,
             dimension,
-            heading_pitch_roll,
+            rotation,
             mesh,
             state,
         } = descriptor;
@@ -187,7 +187,7 @@ impl EntityList for DynamicRenderer {
             fill_color,
             position,
             dimension,
-            heading_pitch_roll,
+            rotation,
             state,
         });
         rendered_entity.meta_list.push(RenderedEntityMeta {
@@ -471,9 +471,9 @@ impl<Event> Renderer<Event> {
         let buf = EntityUniformBuffer {
             transform: Mat4::from_translation(entity.position)
                 .mul_mat4(&Mat4::from_scale(entity.dimension))
-                .mul_mat4(&Mat4::from_rotation_x(entity.heading_pitch_roll.heading))
-                .mul_mat4(&Mat4::from_rotation_y(entity.heading_pitch_roll.roll))
-                .mul_mat4(&Mat4::from_rotation_z(entity.heading_pitch_roll.pitch))
+                .mul_mat4(&Mat4::from_rotation_x(entity.rotation.x))
+                .mul_mat4(&Mat4::from_rotation_y(entity.rotation.y))
+                .mul_mat4(&Mat4::from_rotation_z(entity.rotation.z))
                 .to_cols_array_2d(),
             color: rgba_to_array(&entity.fill_color),
         };

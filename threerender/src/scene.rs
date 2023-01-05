@@ -1,6 +1,6 @@
 use glam::Vec3;
 
-use crate::unit::{HeadingPitchRoll, RGB};
+use crate::unit::RGB;
 
 #[derive(Default)]
 pub struct SceneStyle {
@@ -18,7 +18,7 @@ pub struct LightStyle {
     // The alpha chanel is always ignored. This is to align buffer for wgsl.
     pub color: RGB,
     pub position: Vec3,
-    pub heading_pitch_roll: HeadingPitchRoll,
+    pub rotation: Vec3,
     pub brightness: f32,
     pub model: LightModel,
 }
@@ -28,7 +28,7 @@ impl Default for LightStyle {
         Self {
             color: RGB::new(255, 255, 255),
             position: Vec3::new(0.0, 0.5, -1.0),
-            heading_pitch_roll: HeadingPitchRoll::ZERO,
+            rotation: Vec3::ZERO,
             brightness: 2.,
             model: Default::default(),
         }

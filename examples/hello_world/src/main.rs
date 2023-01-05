@@ -5,7 +5,7 @@ use threerender::entity::{EntityDescriptor, EntityList};
 use threerender::math::Vec3;
 use threerender::mesh::{Sphere, Square};
 use threerender::renderer::Updater;
-use threerender::unit::{HeadingPitchRoll, RGBA};
+use threerender::unit::RGBA;
 use threerender::{LightModel, LightStyle, RendererBuilder, SceneStyle};
 
 #[derive(Default)]
@@ -38,7 +38,7 @@ impl Updater for App {
     ) {
         // TODO: improve this without Mat4
         // Rotate light
-        scene.light.heading_pitch_roll.roll -= 0.05;
+        scene.light.rotation.y -= 0.05;
 
         for entity in entity_list.items_mut() {
             // Scale sphere
@@ -58,10 +58,10 @@ impl Updater for App {
 
             // Rotate square
             if entity.id == "square1" {
-                entity.heading_pitch_roll.pitch += 0.01;
+                entity.rotation.z += 0.01;
             }
             if entity.id == "square2" {
-                entity.heading_pitch_roll.roll += 0.01;
+                entity.rotation.y += 0.01;
             }
         }
     }
@@ -82,7 +82,7 @@ fn main() {
         fill_color: RGBA::new(255, 255, 255, 255),
         position: Vec3::ZERO,
         dimension: Vec3::ONE,
-        heading_pitch_roll: HeadingPitchRoll::ZERO,
+        rotation: Vec3::ZERO,
         state: Default::default(),
     });
     let square = Rc::new(Square::new());
@@ -92,7 +92,7 @@ fn main() {
         fill_color: RGBA::new(0, 255, 0, 255),
         position: Vec3::new(0., 0., -3.),
         dimension: Vec3::ONE,
-        heading_pitch_roll: HeadingPitchRoll::ZERO,
+        rotation: Vec3::ZERO,
         state: Default::default(),
     });
     renderer_builder.push(EntityDescriptor {
@@ -101,7 +101,7 @@ fn main() {
         fill_color: RGBA::new(255, 0, 0, 255),
         position: Vec3::new(-3., 0., -1.),
         dimension: Vec3::ONE,
-        heading_pitch_roll: HeadingPitchRoll::ZERO,
+        rotation: Vec3::ZERO,
         state: Default::default(),
     });
 
