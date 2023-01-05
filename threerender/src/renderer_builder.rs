@@ -1,6 +1,9 @@
-use crate::{entity::EntityDescriptor, mesh::{MeshType, PolygonMode}};
 #[cfg(feature = "wgpu")]
 use crate::renderer::wgpu_builder::RendererSpecificAttributes;
+use crate::{
+    entity::EntityDescriptor,
+    mesh::{MeshType, PolygonMode},
+};
 
 use super::scene::{LightStyle, SceneStyle};
 

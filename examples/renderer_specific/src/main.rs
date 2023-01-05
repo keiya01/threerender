@@ -2,13 +2,13 @@ use std::rc::Rc;
 
 use examples_common::CustomEvent;
 use threerender::entity::{EntityDescriptor, EntityList, EntityRendererState};
-use threerender::math::{Vec3};
-use threerender::mesh::{Sphere, Square, PolygonMode};
-use threerender::renderer::{Updater};
-use threerender::unit::{HeadingPitchRoll, RGBA};
-use threerender::{RendererBuilder, SceneStyle, LightStyle, LightModel, RendererState};
+use threerender::math::Vec3;
+use threerender::mesh::{PolygonMode, Sphere, Square};
 #[cfg(feature = "wgpu")]
 use threerender::renderer::wgpu_builder::WGPURendererBuilder;
+use threerender::renderer::Updater;
+use threerender::unit::{HeadingPitchRoll, RGBA};
+use threerender::{LightModel, LightStyle, RendererBuilder, RendererState, SceneStyle};
 #[cfg(feature = "wgpu")]
 use wgpu::Features;
 

@@ -1,0 +1,27 @@
+name: Test for wgpu
+
+on:
+  push:
+    paths:
+      - "**/*.rs"
+      - ".github/**"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - run: rustup update stable && rustup default stable
+      - name: Setup rustfmt
+        run: rustup component add rustfmt
+      - name: Run fmt
+        run: cargo fmt --all -- --check
+      - name: Setup clippy
+        run: rustup component add clippy
+      - name: Run clippy
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Run tests
+        run: cargo test --verbose
+      - name: Build
+        run: cargo build --verbose

@@ -7,7 +7,7 @@ use wgpu::{
     TextureView,
 };
 
-use crate::{LightStyle, SceneStyle, LightModel};
+use crate::{LightModel, LightStyle, SceneStyle};
 
 use super::unit::rgb_to_array;
 
@@ -41,7 +41,7 @@ impl Light {
                 LightModel::DiffuseReflection => 1,
             },
 
-            _padding: [0.,0.,0.,0.,],
+            _padding: [0., 0., 0., 0.],
         }
     }
 }
@@ -176,7 +176,7 @@ impl Scene {
     }
 
     pub(super) fn update_model(&self, queue: &Queue, config: &SurfaceConfiguration) {
-        self.model_uniform.update(queue, &config);
+        self.model_uniform.update(queue, config);
     }
 
     pub(super) fn update_light(&mut self, queue: &Queue) {

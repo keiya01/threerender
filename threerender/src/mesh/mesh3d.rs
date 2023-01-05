@@ -12,6 +12,12 @@ pub struct Square {
 
 impl Square {
     pub fn new() -> Self {
+        Default::default()
+    }
+}
+
+impl Default for Square {
+    fn default() -> Self {
         Self {
             vertex: vec![
                 // Left

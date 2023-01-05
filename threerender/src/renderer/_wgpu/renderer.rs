@@ -1,11 +1,11 @@
 use std::{borrow::Cow, collections::HashMap, marker::PhantomData, mem};
 
-use glam::{Mat4};
+use glam::Mat4;
 use wgpu::{
     util::{align_to, DeviceExt},
-    vertex_attr_array, BindGroup, BindGroupLayout, Buffer, BufferAddress, Device,
+    vertex_attr_array, BindGroup, BindGroupLayout, Buffer, BufferAddress, Device, Features,
     PrimitiveTopology, Queue, RenderPipeline, Surface, SurfaceConfiguration, TextureFormat,
-    VertexBufferLayout, Features,
+    VertexBufferLayout,
 };
 
 use crate::{
@@ -232,7 +232,10 @@ impl<Event> Renderer<Event> {
         }))
         .expect("Failed to find an appropriate adapter");
 
-        let adapter_features = if renderer_builder.renderer_specific_attributes.adapter_features {
+        let adapter_features = if renderer_builder
+            .renderer_specific_attributes
+            .adapter_features
+        {
             adapter.features()
         } else {
             Features::empty()
@@ -265,7 +268,9 @@ impl<Event> Renderer<Event> {
             .device
             .create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: None,
-                source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!("shaders/shared.wgsl"))),
+                source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!(
+                    "shaders/shared.wgsl"
+                ))),
             });
 
         let pipeline_layout =
@@ -432,8 +437,7 @@ impl<Event> Renderer<Event> {
 
             for (i, entity) in rendered_entity.entities.iter().enumerate() {
                 rpass.set_pipeline(
-                    &self
-                        .render_pipelines
+                    self.render_pipelines
                         .get(&entity.state)
                         .expect("Specified renderer state is not found"),
                 );
@@ -441,7 +445,7 @@ impl<Event> Renderer<Event> {
                     .meta_list
                     .get(i)
                     .expect("The length of meta_list must match with entities");
-                self.prepare_entity(entity, &meta);
+                self.prepare_entity(entity, meta);
                 rpass.set_bind_group(
                     2,
                     &rendered_entity.entity_bind_group,

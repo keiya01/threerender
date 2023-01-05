@@ -43,7 +43,7 @@ impl Primitive for TriangleList {
 
     fn index(&self) -> Option<&[u16]> {
         match &self.index {
-            Some(idx) => Some(&idx),
+            Some(idx) => Some(idx),
             None => None,
         }
     }
@@ -97,7 +97,7 @@ impl Primitive for PointList {
 
     fn index(&self) -> Option<&[u16]> {
         match &self.index {
-            Some(idx) => Some(&idx),
+            Some(idx) => Some(idx),
             None => None,
         }
     }
@@ -117,6 +117,12 @@ pub struct Quadrangle {
 
 impl Quadrangle {
     pub fn new() -> Self {
+        Default::default()
+    }
+}
+
+impl Default for Quadrangle {
+    fn default() -> Self {
         Self {
             vertex: vec![
                 // Half triangle

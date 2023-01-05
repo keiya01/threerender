@@ -1,4 +1,4 @@
-#[derive(Default, Hash, PartialEq, Debug)]
+#[derive(Default, Hash, PartialEq, Eq, Debug)]
 pub enum MeshType {
     PointList,
     LineList,
@@ -6,7 +6,7 @@ pub enum MeshType {
     TriangleList,
 }
 
-#[derive(Default, Hash, PartialEq, Debug)]
+#[derive(Default, Hash, PartialEq, Eq, Debug)]
 pub enum PolygonMode {
     #[default]
     Fill,

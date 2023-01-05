@@ -2,11 +2,11 @@ use std::rc::Rc;
 
 use examples_common::CustomEvent;
 use threerender::entity::{EntityDescriptor, EntityList};
-use threerender::math::{Vec3};
+use threerender::math::Vec3;
 use threerender::mesh::{Sphere, Square};
-use threerender::renderer::{Updater};
+use threerender::renderer::Updater;
 use threerender::unit::{HeadingPitchRoll, RGBA};
-use threerender::{RendererBuilder, SceneStyle, LightStyle, LightModel};
+use threerender::{LightModel, LightStyle, RendererBuilder, SceneStyle};
 
 #[derive(Default)]
 struct State {

@@ -81,6 +81,6 @@ pub fn start(mut renderer_builder: RendererBuilder, updater: StaticUpdater) {
                     .ok()
             })
             .expect("couldn't append canvas to document body");
-        wasm_bindgen_futures::spawn_local(run(event_loop, window));
+        wasm_bindgen_futures::spawn_local(run(event_loop, window, renderer_builder, updater));
     }
 }
