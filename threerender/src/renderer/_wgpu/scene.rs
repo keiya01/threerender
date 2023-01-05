@@ -1,15 +1,15 @@
 use std::{f32::consts, mem};
 
 use bytemuck::{Pod, Zeroable};
-use glam::Mat4;
+use glam::{Mat4, Vec3};
 use wgpu::{
     util::DeviceExt, BindGroup, BindGroupLayout, Buffer, Device, Queue, SurfaceConfiguration,
     TextureView,
 };
 
-use crate::{LightStyle, SceneStyle};
+use crate::{LightStyle, SceneStyle, LightModel};
 
-use super::unit::{position_to_array, rgb_to_array};
+use super::unit::rgb_to_array;
 
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
@@ -18,14 +18,30 @@ pub struct Light {
     color: [f32; 4],
     position: [f32; 3],
     brightness: f32,
+    model: i32,
+
+    // TODO: I don't know why the padding is needed. I will investigate the reason and remove this.
+    _padding: [f32; 4],
 }
 
 impl Light {
     fn from_light_style(style: &LightStyle) -> Self {
+        let arr3 = rgb_to_array(&style.color);
         Self {
-            color: rgb_to_array(&style.color),
-            position: position_to_array(&style.position),
+            color: [arr3[0], arr3[1], arr3[2], 1.],
+            position: Mat4::from_translation(style.position)
+                .mul_mat4(&Mat4::from_rotation_x(style.heading_pitch_roll.heading))
+                .mul_mat4(&Mat4::from_rotation_y(style.heading_pitch_roll.roll))
+                .mul_mat4(&Mat4::from_rotation_z(style.heading_pitch_roll.pitch))
+                .transform_vector3(Vec3::ONE)
+                .to_array(),
             brightness: style.brightness,
+            model: match style.model {
+                LightModel::OFF => 0,
+                LightModel::DiffuseReflection => 1,
+            },
+
+            _padding: [0.,0.,0.,0.,],
         }
     }
 }

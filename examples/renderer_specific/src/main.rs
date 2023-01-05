@@ -1,12 +1,16 @@
 use std::rc::Rc;
 
 use examples_common::CustomEvent;
-use threerender::entity::{EntityDescriptor, EntityList};
+use threerender::entity::{EntityDescriptor, EntityList, EntityRendererState};
 use threerender::math::{Vec3};
-use threerender::mesh::{Sphere, Square};
+use threerender::mesh::{Sphere, Square, PolygonMode};
 use threerender::renderer::{Updater};
 use threerender::unit::{HeadingPitchRoll, RGBA};
-use threerender::{RendererBuilder, SceneStyle, LightStyle, LightModel};
+use threerender::{RendererBuilder, SceneStyle, LightStyle, LightModel, RendererState};
+#[cfg(feature = "wgpu")]
+use threerender::renderer::wgpu_builder::WGPURendererBuilder;
+#[cfg(feature = "wgpu")]
+use wgpu::Features;
 
 #[derive(Default)]
 struct State {
@@ -70,6 +74,14 @@ impl Updater for App {
 fn main() {
     let mut renderer_builder = RendererBuilder::new();
 
+    #[cfg(feature = "wgpu")]
+    renderer_builder.set_features(Features::POLYGON_MODE_LINE);
+
+    renderer_builder.push_state(RendererState {
+        polygon_mode: PolygonMode::Line,
+        ..Default::default()
+    });
+
     renderer_builder.set_light(LightStyle {
         model: LightModel::DiffuseReflection,
         ..Default::default()
@@ -83,7 +95,10 @@ fn main() {
         position: Vec3::ZERO,
         dimension: Vec3::ONE,
         heading_pitch_roll: HeadingPitchRoll::ZERO,
-        state: Default::default(),
+        state: EntityRendererState {
+            polygon_mode: PolygonMode::Line,
+            ..Default::default()
+        },
     });
     let square = Rc::new(Square::new());
     renderer_builder.push(EntityDescriptor {

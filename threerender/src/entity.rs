@@ -1,8 +1,10 @@
 use std::rc::Rc;
 
+use glam::Vec3;
+
 use crate::{
-    mesh::{primitive::Primitive, MeshType},
-    unit::{Position, RGBA},
+    mesh::{primitive::Primitive, MeshType, PolygonMode},
+    unit::{HeadingPitchRoll, RGBA},
     RendererState,
 };
 
@@ -10,8 +12,9 @@ pub struct EntityDescriptor {
     pub id: String,
     pub mesh: Rc<dyn Primitive>,
     pub fill_color: RGBA,
-    // TODO: use human readable unit
-    pub coordinates: Position,
+    pub position: Vec3,
+    pub dimension: Vec3,
+    pub heading_pitch_roll: HeadingPitchRoll,
     pub state: EntityRendererState,
 }
 
@@ -19,7 +22,9 @@ pub struct EntityDescriptor {
 pub struct Entity {
     pub id: String,
     pub fill_color: RGBA,
-    pub coordinates: Position,
+    pub position: Vec3,
+    pub dimension: Vec3,
+    pub heading_pitch_roll: HeadingPitchRoll,
     pub(super) state: EntityRendererState,
 }
 
@@ -32,12 +37,14 @@ pub trait EntityList {
 #[derive(Hash, Default, PartialEq, Debug)]
 pub struct EntityRendererState {
     pub mesh_type: MeshType,
+    pub polygon_mode: PolygonMode,
 }
 
 impl EntityRendererState {
     pub fn from_renderer_state(state: RendererState) -> Self {
         Self {
             mesh_type: state.mesh_type,
+            polygon_mode: state.polygon_mode,
         }
     }
 }

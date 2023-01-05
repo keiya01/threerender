@@ -1,15 +1,16 @@
 use std::{borrow::Cow, collections::HashMap, marker::PhantomData, mem};
 
+use glam::{Mat4};
 use wgpu::{
     util::{align_to, DeviceExt},
     vertex_attr_array, BindGroup, BindGroupLayout, Buffer, BufferAddress, Device,
     PrimitiveTopology, Queue, RenderPipeline, Surface, SurfaceConfiguration, TextureFormat,
-    VertexBufferLayout,
+    VertexBufferLayout, Features,
 };
 
 use crate::{
     entity::{Entity, EntityDescriptor, EntityList, EntityRendererState},
-    mesh::{util::Vertex, MeshType},
+    mesh::{util::Vertex, MeshType, PolygonMode},
     renderer::Updater,
     RendererBuilder,
 };
@@ -65,7 +66,9 @@ impl DynamicRenderer {
             id,
             mesh,
             fill_color,
-            coordinates,
+            position,
+            dimension,
+            heading_pitch_roll,
             state,
         }) = renderer_builder.entities.pop()
         {
@@ -84,7 +87,9 @@ impl DynamicRenderer {
             entities.push(Entity {
                 id,
                 fill_color,
-                coordinates,
+                position,
+                dimension,
+                heading_pitch_roll,
                 state,
             });
             meta_list.push(RenderedEntityMeta {
@@ -155,7 +160,9 @@ impl EntityList for DynamicRenderer {
         let EntityDescriptor {
             id,
             fill_color,
-            coordinates,
+            position,
+            dimension,
+            heading_pitch_roll,
             mesh,
             state,
         } = descriptor;
@@ -178,7 +185,9 @@ impl EntityList for DynamicRenderer {
         rendered_entity.entities.push(Entity {
             id,
             fill_color,
-            coordinates,
+            position,
+            dimension,
+            heading_pitch_roll,
             state,
         });
         rendered_entity.meta_list.push(RenderedEntityMeta {
@@ -223,11 +232,16 @@ impl<Event> Renderer<Event> {
         }))
         .expect("Failed to find an appropriate adapter");
 
+        let adapter_features = if renderer_builder.renderer_specific_attributes.adapter_features {
+            adapter.features()
+        } else {
+            Features::empty()
+        };
         // Create the logical device and command queue
         let (device, queue) = pollster::block_on(adapter.request_device(
             &wgpu::DeviceDescriptor {
                 label: None,
-                features: wgpu::Features::empty(),
+                features: adapter_features | renderer_builder.renderer_specific_attributes.features,
                 // Make sure we use the texture resolution limits from the adapter, so we can support images the size of the swapchain.
                 limits:
                     wgpu::Limits::downlevel_webgl2_defaults().using_resolution(adapter.limits()),
@@ -251,7 +265,7 @@ impl<Event> Renderer<Event> {
             .device
             .create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: None,
-                source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!("shaders/3d.wgsl"))),
+                source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!("shaders/shared.wgsl"))),
             });
 
         let pipeline_layout =
@@ -297,6 +311,11 @@ impl<Event> Renderer<Event> {
                             },
                             front_face: wgpu::FrontFace::Ccw,
                             cull_mode: Some(wgpu::Face::Back),
+                            polygon_mode: match &state.polygon_mode {
+                                PolygonMode::Fill => wgpu::PolygonMode::Fill,
+                                PolygonMode::Line => wgpu::PolygonMode::Line,
+                                PolygonMode::Point => wgpu::PolygonMode::Point,
+                            },
                             ..Default::default()
                         },
                         depth_stencil: Some(wgpu::DepthStencilState {
@@ -446,7 +465,12 @@ impl<Event> Renderer<Event> {
     fn prepare_entity(&self, entity: &Entity, meta: &RenderedEntityMeta) {
         let renderer_entity = &self.dynamic_renderer.rendered_entity;
         let buf = EntityUniformBuffer {
-            transform: entity.coordinates.inner().to_cols_array_2d(),
+            transform: Mat4::from_translation(entity.position)
+                .mul_mat4(&Mat4::from_scale(entity.dimension))
+                .mul_mat4(&Mat4::from_rotation_x(entity.heading_pitch_roll.heading))
+                .mul_mat4(&Mat4::from_rotation_y(entity.heading_pitch_roll.roll))
+                .mul_mat4(&Mat4::from_rotation_z(entity.heading_pitch_roll.pitch))
+                .to_cols_array_2d(),
             color: rgba_to_array(&entity.fill_color),
         };
         self.queue.write_buffer(

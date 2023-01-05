@@ -1,4 +1,6 @@
-use crate::{entity::EntityDescriptor, mesh::MeshType, renderer::RendererSpecificAttributes};
+use crate::{entity::EntityDescriptor, mesh::{MeshType, PolygonMode}};
+#[cfg(feature = "wgpu")]
+use crate::renderer::wgpu_builder::RendererSpecificAttributes;
 
 use super::scene::{LightStyle, SceneStyle};
 
@@ -8,6 +10,7 @@ pub struct RendererBuilder {
     pub(super) scene: Option<SceneStyle>,
     pub(super) width: u32,
     pub(super) height: u32,
+    #[cfg(feature = "wgpu")]
     pub(super) renderer_specific_attributes: RendererSpecificAttributes,
     pub(super) states: Vec<RendererState>,
 }
@@ -20,6 +23,7 @@ impl Default for RendererBuilder {
             scene: Some(Default::default()),
             width: 0,
             height: 0,
+            #[cfg(feature = "wgpu")]
             renderer_specific_attributes: Default::default(),
             states: vec![Default::default()],
         }
@@ -71,4 +75,5 @@ impl RendererBuilder {
 #[derive(Default)]
 pub struct RendererState {
     pub mesh_type: MeshType,
+    pub polygon_mode: PolygonMode,
 }

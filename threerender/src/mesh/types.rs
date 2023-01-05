@@ -5,3 +5,11 @@ pub enum MeshType {
     #[default]
     TriangleList,
 }
+
+#[derive(Default, Hash, PartialEq, Debug)]
+pub enum PolygonMode {
+    #[default]
+    Fill,
+    Line,
+    Point,
+}

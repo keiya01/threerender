@@ -1,5 +1,5 @@
 [package]
-name = "examples_hello_world"
+name = "examples_renderer_specific"
 version = "0.1.0"
 edition = "2021"
 publish = false

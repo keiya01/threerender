@@ -2,11 +2,11 @@ use std::rc::Rc;
 
 use examples_common::CustomEvent;
 use threerender::entity::{EntityDescriptor, EntityList, EntityRendererState};
-use threerender::math::{Mat4, Vec3};
+use threerender::math::Vec3;
 use threerender::mesh::primitive::Primitive;
 use threerender::mesh::{MeshType, PointList, PointMeshType};
 use threerender::renderer::Updater;
-use threerender::unit::{Position, RGBA};
+use threerender::unit::{HeadingPitchRoll, RGBA};
 use threerender::{RendererBuilder, RendererState, SceneStyle};
 
 struct App {}
@@ -29,7 +29,7 @@ impl Updater for App {
         for entity in entity_list.items_mut() {
             // Rotate lines
             if entity.id == "lines" {
-                *(entity.coordinates.inner_mut()) *= Mat4::from_rotation_y(0.01);
+                entity.heading_pitch_roll.pitch += 0.01;
             }
         }
     }
@@ -41,6 +41,7 @@ fn main() {
     // Create line list renderer
     renderer_builder.push_state(RendererState {
         mesh_type: MeshType::LineList,
+        ..Default::default()
     });
 
     let points = vec![
@@ -56,9 +57,12 @@ fn main() {
         id: "lines".to_owned(),
         mesh: lines.clone(),
         fill_color: RGBA::new(255, 0, 0, 255),
-        coordinates: Position::new(0., 0., 0.),
+        position: Vec3::new(0., 0., 0.),
+        dimension: Vec3::ONE,
+        heading_pitch_roll: HeadingPitchRoll::ZERO,
         state: EntityRendererState {
             mesh_type: lines.mesh_type(),
+            ..Default::default()
         },
     });
 
