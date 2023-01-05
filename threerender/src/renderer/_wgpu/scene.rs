@@ -1,7 +1,7 @@
 use std::{f32::consts, mem};
 
 use bytemuck::{Pod, Zeroable};
-use glam::{Mat4, Vec3};
+use glam::{Mat4, Quat, Vec3, Affine3A};
 use wgpu::{
     util::DeviceExt, BindGroup, BindGroupLayout, Buffer, Device, Queue, SurfaceConfiguration,
     TextureView,
@@ -29,12 +29,14 @@ impl Light {
         let arr3 = rgb_to_array(&style.color);
         Self {
             color: [arr3[0], arr3[1], arr3[2], 1.],
-            position: Mat4::from_translation(style.position)
-                .mul_mat4(&Mat4::from_rotation_x(style.rotation.x))
-                .mul_mat4(&Mat4::from_rotation_y(style.rotation.y))
-                .mul_mat4(&Mat4::from_rotation_z(style.rotation.z))
-                .transform_vector3(Vec3::ONE)
-                .to_array(),
+            position: Affine3A::from_rotation_translation(
+                Quat::from_rotation_x(style.rotation.x)
+                    .mul_quat(Quat::from_rotation_y(style.rotation.y))
+                    .mul_quat(Quat::from_rotation_z(style.rotation.z)),
+                style.position,
+            )
+            .transform_vector3(Vec3::ONE)
+            .to_array(),
             brightness: style.brightness,
             model: match style.model {
                 LightModel::OFF => 0,

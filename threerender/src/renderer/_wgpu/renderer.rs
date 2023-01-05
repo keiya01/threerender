@@ -1,6 +1,6 @@
 use std::{borrow::Cow, collections::HashMap, marker::PhantomData, mem};
 
-use glam::Mat4;
+use glam::{Mat4, Quat};
 use wgpu::{
     util::{align_to, DeviceExt},
     vertex_attr_array, BindGroup, BindGroupLayout, Buffer, BufferAddress, Device, Features,
@@ -469,12 +469,14 @@ impl<Event> Renderer<Event> {
     fn prepare_entity(&self, entity: &Entity, meta: &RenderedEntityMeta) {
         let renderer_entity = &self.dynamic_renderer.rendered_entity;
         let buf = EntityUniformBuffer {
-            transform: Mat4::from_translation(entity.position)
-                .mul_mat4(&Mat4::from_scale(entity.dimension))
-                .mul_mat4(&Mat4::from_rotation_x(entity.rotation.x))
-                .mul_mat4(&Mat4::from_rotation_y(entity.rotation.y))
-                .mul_mat4(&Mat4::from_rotation_z(entity.rotation.z))
-                .to_cols_array_2d(),
+            transform: Mat4::from_scale_rotation_translation(
+                entity.dimension,
+                Quat::from_rotation_x(entity.rotation.x)
+                    .mul_quat(Quat::from_rotation_y(entity.rotation.y))
+                    .mul_quat(Quat::from_rotation_z(entity.rotation.z)),
+                entity.position,
+            )
+            .to_cols_array_2d(),
             color: rgba_to_array(&entity.fill_color),
         };
         self.queue.write_buffer(
