@@ -1,5 +1,5 @@
 pub mod builder;
-mod entity;
+mod uniform;
 mod renderer;
 mod scene;
 mod unit;

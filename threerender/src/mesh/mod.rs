@@ -1,9 +1,9 @@
-mod mesh2d;
-mod mesh3d;
-pub mod primitive;
+mod entity2d;
+mod entity3d;
+pub mod mesh;
 mod types;
 pub(super) mod util;
 
-pub use mesh2d::*;
-pub use mesh3d::*;
+pub use entity2d::*;
+pub use entity3d::*;
 pub use types::*;

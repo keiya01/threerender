@@ -2,7 +2,7 @@
 use crate::renderer::wgpu_builder::RendererSpecificAttributes;
 use crate::{
     entity::EntityDescriptor,
-    mesh::{MeshType, PolygonMode},
+    mesh::{MeshType, PolygonMode, Topology},
 };
 
 use super::scene::{LightStyle, SceneStyle};
@@ -78,5 +78,6 @@ impl RendererBuilder {
 #[derive(Default)]
 pub struct RendererState {
     pub mesh_type: MeshType,
+    pub topology: Topology,
     pub polygon_mode: PolygonMode,
 }

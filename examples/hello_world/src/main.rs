@@ -3,6 +3,7 @@ use std::rc::Rc;
 use examples_common::CustomEvent;
 use threerender::entity::{EntityDescriptor, EntityList};
 use threerender::math::Vec3;
+use threerender::mesh::mesh::EntityMesh;
 use threerender::mesh::{Sphere, Square};
 use threerender::renderer::Updater;
 use threerender::unit::RGBA;
@@ -85,7 +86,8 @@ fn main() {
         rotation: Vec3::ZERO,
         state: Default::default(),
     });
-    let square = Rc::new(Square::new());
+    let square = Square::new();
+    let square = Rc::new(square.use_entity());
     renderer_builder.push(EntityDescriptor {
         id: "square1".to_owned(),
         mesh: square.clone(),

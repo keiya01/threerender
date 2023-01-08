@@ -1,7 +1,7 @@
 use std::{f32::consts, mem};
 
 use bytemuck::{Pod, Zeroable};
-use glam::{Mat4, Quat, Vec3, Affine3A};
+use glam::{Affine3A, Mat4, Quat, Vec3};
 use wgpu::{
     util::DeviceExt, BindGroup, BindGroupLayout, Buffer, Device, Queue, SurfaceConfiguration,
     TextureView,
@@ -20,7 +20,6 @@ pub struct Light {
     brightness: f32,
     model: i32,
 
-    // TODO: I don't know why the padding is needed. I will investigate the reason and remove this.
     _padding: [f32; 4],
 }
 

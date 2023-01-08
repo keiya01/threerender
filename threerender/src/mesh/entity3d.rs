@@ -1,18 +1,22 @@
 use std::f32::consts::PI;
 
 use super::{
-    primitive::Primitive,
-    util::{vertex, Vertex},
+    mesh::{EntityMesh, Mesh, Texture2DMesh},
+    util::{texture_2d, texture_2d_vertex, vertex, Texture2DVertex, Vertex},
+    Texture2DDescriptor, Texture2DFormat,
 };
 
 pub struct Square {
     vertex: Vec<Vertex>,
     index: Vec<u16>,
+
+    texture_descriptor: Option<Texture2DDescriptor>,
+    texture: Option<Vec<Texture2DVertex>>,
 }
 
 impl Square {
     pub fn new() -> Self {
-        Default::default()
+        Self::default()
     }
 }
 
@@ -66,17 +70,66 @@ impl Default for Square {
                 // Front
                 20, 21, 22, 20, 22, 23,
             ],
+            texture: None,
+            texture_descriptor: None,
         }
     }
 }
 
-impl Primitive for Square {
+impl EntityMesh for Square {
     fn vertex(&self) -> &[Vertex] {
         &self.vertex
     }
 
     fn index(&self) -> Option<&[u16]> {
         Some(&self.index)
+    }
+
+    fn use_entity(self) -> Mesh {
+        Mesh::Entity(Box::new(self))
+    }
+}
+
+impl Texture2DMesh for Square {
+    fn texture(&self) -> Option<&[Texture2DVertex]> {
+        self.texture.as_ref().map(|t| &t[..])
+    }
+    fn width(&self) -> u32 {
+        self.texture_descriptor.as_ref().unwrap().width
+    }
+    fn height(&self) -> u32 {
+        self.texture_descriptor.as_ref().unwrap().height
+    }
+    fn format(&self) -> &Texture2DFormat {
+        &self.texture_descriptor.as_ref().unwrap().format
+    }
+    fn data(&self) -> &[u8] {
+        &self.texture_descriptor.as_ref().unwrap().data
+    }
+
+    fn use_texture2d(mut self, descriptor: Texture2DDescriptor) -> Mesh {
+        let texs = vec![
+            texture_2d([0., 1.]),
+            texture_2d([1., 1.]),
+            texture_2d([1., 0.]),
+            texture_2d([0., 0.]),
+        ];
+
+        let mut idx = 0;
+        let mut tex_vert = vec![];
+
+        // TODO: use VecDequeue
+        self.vertex.reverse();
+        while let Some(vert) = self.vertex.pop() {
+            let tex = texs.get(idx % 4).expect("`texs` length is incorrect").clone();
+            tex_vert.push(texture_2d_vertex(vert, tex));
+            idx += 1;
+        }
+
+        self.texture = Some(tex_vert);
+        self.texture_descriptor = Some(descriptor);
+
+        Mesh::Texture2D(Box::new(self))
     }
 }
 
@@ -87,9 +140,9 @@ pub struct Sphere {
 }
 
 impl Sphere {
-    pub fn new(slices: u16, stacks: u16) -> Self {
+    pub fn new(slices: u16, stacks: u16) -> Mesh {
         let (vertex, index) = Self::make_data(slices, stacks);
-        Self { vertex, index }
+        Mesh::Entity(Box::new(Self { vertex, index }))
     }
 
     fn make_data(slices: u16, stacks: u16) -> (Vec<Vertex>, Vec<u16>) {
@@ -131,12 +184,16 @@ impl Sphere {
     }
 }
 
-impl Primitive for Sphere {
+impl EntityMesh for Sphere {
     fn vertex(&self) -> &[Vertex] {
         &self.vertex
     }
 
     fn index(&self) -> Option<&[u16]> {
         Some(&self.index)
+    }
+
+    fn use_entity(self) -> Mesh {
+        Mesh::Entity(Box::new(self))
     }
 }

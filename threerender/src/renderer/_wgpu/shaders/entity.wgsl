@@ -1,3 +1,5 @@
+// TODO: Create shared shader to share moules like light module, camera module, entity module, etc.
+
 @group(0)
 @binding(0)
 var<uniform> umodel: mat4x4<f32>;

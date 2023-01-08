@@ -3,14 +3,14 @@ use std::rc::Rc;
 use glam::Vec3;
 
 use crate::{
-    mesh::{primitive::Primitive, MeshType, PolygonMode},
+    mesh::{mesh::Mesh, PolygonMode, Topology, MeshType},
     unit::RGBA,
     RendererState,
 };
 
 pub struct EntityDescriptor {
     pub id: String,
-    pub mesh: Rc<dyn Primitive>,
+    pub mesh: Rc<Mesh>,
     pub fill_color: RGBA,
     pub position: Vec3,
     pub dimension: Vec3,
@@ -36,15 +36,17 @@ pub trait EntityList {
 
 #[derive(Hash, Default, PartialEq, Debug)]
 pub struct EntityRendererState {
-    pub mesh_type: MeshType,
+    pub topology: Topology,
     pub polygon_mode: PolygonMode,
+    pub mesh_type: MeshType,
 }
 
 impl EntityRendererState {
     pub fn from_renderer_state(state: RendererState) -> Self {
         Self {
-            mesh_type: state.mesh_type,
+            topology: state.topology,
             polygon_mode: state.polygon_mode,
+            mesh_type: state.mesh_type,
         }
     }
 }

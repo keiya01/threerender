@@ -1,8 +1,8 @@
 use glam::Vec3;
 
 use super::{
-    primitive::Primitive,
-    types::MeshType,
+    mesh::{EntityMesh, Mesh},
+    types::Topology,
     util::{vertex, Vertex},
 };
 
@@ -36,7 +36,7 @@ impl TriangleList {
     }
 }
 
-impl Primitive for TriangleList {
+impl EntityMesh for TriangleList {
     fn vertex(&self) -> &[Vertex] {
         &self.vertex
     }
@@ -47,9 +47,13 @@ impl Primitive for TriangleList {
             None => None,
         }
     }
+
+    fn use_entity(self) -> Mesh {
+        Mesh::Entity(Box::new(self))
+    }
 }
 
-pub enum PointMeshType {
+pub enum PointTopology {
     Point,
     Line,
 }
@@ -57,11 +61,11 @@ pub enum PointMeshType {
 pub struct PointList {
     vertex: Vec<Vertex>,
     index: Option<Vec<u16>>,
-    mesh_type: PointMeshType,
+    mesh_type: PointTopology,
 }
 
 impl PointList {
-    pub fn new(points: Vec<Vec3>, mesh_type: PointMeshType) -> Self {
+    pub fn new(points: Vec<Vec3>, mesh_type: PointTopology) -> Self {
         Self {
             vertex: Self::points_to_vertex(points),
             index: None,
@@ -90,7 +94,7 @@ impl PointList {
     }
 }
 
-impl Primitive for PointList {
+impl EntityMesh for PointList {
     fn vertex(&self) -> &[Vertex] {
         &self.vertex
     }
@@ -102,11 +106,15 @@ impl Primitive for PointList {
         }
     }
 
-    fn mesh_type(&self) -> MeshType {
+    fn topology(&self) -> Topology {
         match &self.mesh_type {
-            PointMeshType::Point => MeshType::PointList,
-            PointMeshType::Line => MeshType::LineList,
+            PointTopology::Point => Topology::PointList,
+            PointTopology::Line => Topology::LineList,
         }
+    }
+
+    fn use_entity(self) -> Mesh {
+        Mesh::Entity(Box::new(self))
     }
 }
 
@@ -138,12 +146,16 @@ impl Default for Quadrangle {
     }
 }
 
-impl Primitive for Quadrangle {
+impl EntityMesh for Quadrangle {
     fn vertex(&self) -> &[Vertex] {
         &self.vertex
     }
 
     fn index(&self) -> Option<&[u16]> {
         None
+    }
+
+    fn use_entity(self) -> Mesh {
+        Mesh::Entity(Box::new(self))
     }
 }

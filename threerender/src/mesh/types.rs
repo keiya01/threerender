@@ -1,5 +1,5 @@
 #[derive(Default, Hash, PartialEq, Eq, Debug)]
-pub enum MeshType {
+pub enum Topology {
     PointList,
     LineList,
     #[default]
@@ -12,4 +12,22 @@ pub enum PolygonMode {
     Fill,
     Line,
     Point,
+}
+
+#[derive(Hash, Default, PartialEq, Debug)]
+pub enum MeshType {
+    #[default]
+    Entity,
+    Texture2D,
+}
+
+pub enum Texture2DFormat {
+    RGBA,
+}
+
+pub struct Texture2DDescriptor {
+    pub width: u32,
+    pub height: u32,
+    pub format: Texture2DFormat,
+    pub data: Vec<u8>,
 }

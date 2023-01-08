@@ -1,10 +1,10 @@
 use std::rc::Rc;
 
 use examples_common::CustomEvent;
-use threerender::entity::{EntityDescriptor, EntityList, EntityRendererState};
 use threerender::math::Vec3;
-use threerender::mesh::primitive::Primitive;
-use threerender::mesh::{MeshType, PointList, PointMeshType};
+use threerender::mesh::mesh::EntityMesh;
+use threerender::mesh::{PointList, PointTopology, Topology};
+use threerender::entity::{EntityDescriptor, EntityList, EntityRendererState};
 use threerender::renderer::Updater;
 use threerender::unit::RGBA;
 use threerender::{RendererBuilder, RendererState, SceneStyle};
@@ -40,7 +40,7 @@ fn main() {
 
     // Create line list renderer
     renderer_builder.push_state(RendererState {
-        mesh_type: MeshType::LineList,
+        topology: Topology::LineList,
         ..Default::default()
     });
 
@@ -52,7 +52,8 @@ fn main() {
         Vec3::new(-2., 2., 1.),
         Vec3::new(-2., -2., 1.),
     ];
-    let lines = Rc::new(PointList::new(points, PointMeshType::Line));
+    let lines = PointList::new(points, PointTopology::Line);
+    let lines = Rc::new(lines.use_entity());
     renderer_builder.push(EntityDescriptor {
         id: "lines".to_owned(),
         mesh: lines.clone(),
@@ -61,7 +62,7 @@ fn main() {
         dimension: Vec3::ONE,
         rotation: Vec3::ZERO,
         state: EntityRendererState {
-            mesh_type: lines.mesh_type(),
+            topology: lines.topology(),
             ..Default::default()
         },
     });
