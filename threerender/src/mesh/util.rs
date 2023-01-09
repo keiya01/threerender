@@ -23,18 +23,18 @@ pub fn vertex(pos: [f32; 4], normal: [f32; 3]) -> Vertex {
 
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
-pub struct Texture2DVertex {
+pub struct TextureVertex {
     pos: [f32; 4],
     normal: [f32; 3],
     tex: [f32; 2],
 }
 
-pub fn texture_2d(tex: [f32; 2]) -> [f32; 2] {
+pub fn texture(tex: [f32; 2]) -> [f32; 2] {
     tex
 }
 
-pub fn texture_2d_vertex(vertex: Vertex, tex: [f32; 2]) -> Texture2DVertex {
-    Texture2DVertex {
+pub fn texture_vertex(vertex: Vertex, tex: [f32; 2]) -> TextureVertex {
+    TextureVertex {
         pos: vertex.pos,
         normal: vertex.normal,
         tex,

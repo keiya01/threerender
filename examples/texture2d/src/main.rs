@@ -4,8 +4,8 @@ use examples_common::CustomEvent;
 use image::EncodableLayout;
 use threerender::entity::{EntityDescriptor, EntityList, EntityRendererState};
 use threerender::math::Vec3;
-use threerender::mesh::traits::Texture2DMesh;
-use threerender::mesh::{MeshType, Square, Texture2DDescriptor, Texture2DFormat, Quadrangle};
+use threerender::mesh::traits::TextureMesh;
+use threerender::mesh::{MeshType, Quadrangle, Square, TextureDescriptor, TextureFormat};
 #[cfg(feature = "wgpu")]
 use threerender::renderer::builder::WGPURendererBuilder;
 use threerender::renderer::Updater;
@@ -50,7 +50,7 @@ fn main() {
     renderer_builder.set_features(Features::TEXTURE_BINDING_ARRAY);
 
     renderer_builder.push_state(RendererState {
-        mesh_type: MeshType::Texture2D,
+        mesh_type: MeshType::Texture,
         ..Default::default()
     });
 
@@ -59,10 +59,10 @@ fn main() {
     let (width, height) = im.dimensions();
 
     let square = Square::new();
-    let square = Rc::new(square.use_texture2d(Texture2DDescriptor {
+    let square = Rc::new(square.use_texture(TextureDescriptor {
         width,
         height,
-        format: Texture2DFormat::RGBA,
+        format: TextureFormat::RGBA,
         data: im.as_bytes().to_vec(),
     }));
     renderer_builder.push(EntityDescriptor {
@@ -73,16 +73,16 @@ fn main() {
         dimension: Vec3::ONE,
         rotation: Vec3::ZERO,
         state: EntityRendererState {
-            mesh_type: MeshType::Texture2D,
+            mesh_type: MeshType::Texture,
             ..Default::default()
         },
     });
 
     let quadrangle = Quadrangle::new();
-    let quadrangle = Rc::new(quadrangle.use_texture2d(Texture2DDescriptor {
+    let quadrangle = Rc::new(quadrangle.use_texture(TextureDescriptor {
         width,
         height,
-        format: Texture2DFormat::RGBA,
+        format: TextureFormat::RGBA,
         data: im.as_bytes().to_vec(),
     }));
     renderer_builder.push(EntityDescriptor {
@@ -93,7 +93,7 @@ fn main() {
         dimension: Vec3::ONE,
         rotation: Vec3::new(0., 0.5, 0.),
         state: EntityRendererState {
-            mesh_type: MeshType::Texture2D,
+            mesh_type: MeshType::Texture,
             ..Default::default()
         },
     });

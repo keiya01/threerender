@@ -1,32 +1,32 @@
 use super::{
     types::Topology,
-    util::{Texture2DVertex, Vertex},
-    MeshType, Texture2DDescriptor, Texture2DFormat,
+    util::{TextureVertex, Vertex},
+    MeshType, TextureDescriptor, TextureFormat,
 };
 
 pub enum Mesh {
     Entity(Box<dyn EntityMesh>),
-    Texture2D(Box<dyn Texture2DMesh>),
+    Texture(Box<dyn TextureMesh>),
 }
 
 impl Mesh {
     pub fn vertex(&self) -> &[Vertex] {
         match self {
             Mesh::Entity(m) => m.vertex(),
-            Mesh::Texture2D(_) => unreachable!(),
+            Mesh::Texture(_) => unreachable!(),
         }
     }
 
     pub fn index(&self) -> Option<&[u16]> {
         match self {
             Mesh::Entity(m) => m.index(),
-            Mesh::Texture2D(m) => m.index(),
+            Mesh::Texture(m) => m.index(),
         }
     }
 
-    pub fn texture(&self) -> Option<&[Texture2DVertex]> {
+    pub fn texture(&self) -> Option<&[TextureVertex]> {
         match self {
-            Mesh::Texture2D(m) => m.texture(),
+            Mesh::Texture(m) => m.texture(),
             Mesh::Entity(_) => unreachable!(),
         }
     }
@@ -34,14 +34,14 @@ impl Mesh {
     pub fn mesh_type(&self) -> MeshType {
         match self {
             Mesh::Entity(_) => MeshType::Entity,
-            Mesh::Texture2D(_) => MeshType::Texture2D,
+            Mesh::Texture(_) => MeshType::Texture,
         }
     }
 
     pub fn topology(&self) -> Topology {
         match self {
             Mesh::Entity(m) => m.topology(),
-            Mesh::Texture2D(m) => m.topology(),
+            Mesh::Texture(m) => m.topology(),
         }
     }
 }
@@ -55,14 +55,14 @@ pub trait EntityMesh {
     fn use_entity(self) -> Mesh;
 }
 
-pub trait Texture2DMesh: EntityMesh {
-    fn texture(&self) -> Option<&[Texture2DVertex]>;
+pub trait TextureMesh: EntityMesh {
+    fn texture(&self) -> Option<&[TextureVertex]>;
     fn width(&self) -> u32;
     fn height(&self) -> u32;
     fn bytes_per_pixel(&self) -> u32 {
         4
     }
-    fn format(&self) -> &Texture2DFormat;
+    fn format(&self) -> &TextureFormat;
     fn data(&self) -> &[u8];
-    fn use_texture2d(self, descriptor: Texture2DDescriptor) -> Mesh;
+    fn use_texture(self, descriptor: TextureDescriptor) -> Mesh;
 }

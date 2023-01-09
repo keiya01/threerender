@@ -18,16 +18,16 @@ pub enum PolygonMode {
 pub enum MeshType {
     #[default]
     Entity,
-    Texture2D,
+    Texture,
 }
 
-pub enum Texture2DFormat {
+pub enum TextureFormat {
     RGBA,
 }
 
-pub struct Texture2DDescriptor {
+pub struct TextureDescriptor {
     pub width: u32,
     pub height: u32,
-    pub format: Texture2DFormat,
+    pub format: TextureFormat,
     pub data: Vec<u8>,
 }

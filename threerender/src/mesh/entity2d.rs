@@ -1,9 +1,10 @@
 use glam::Vec3;
 
 use super::{
-    traits::{EntityMesh, Mesh, Texture2DMesh},
+    traits::{EntityMesh, Mesh, TextureMesh},
     types::Topology,
-    util::{vertex, Vertex, Texture2DVertex, texture_2d, texture_2d_vertex}, Texture2DDescriptor, Texture2DFormat,
+    util::{texture, texture_vertex, vertex, TextureVertex, Vertex},
+    TextureDescriptor, TextureFormat,
 };
 
 pub struct TriangleList {
@@ -122,8 +123,8 @@ impl EntityMesh for PointList {
 pub struct Quadrangle {
     vertex: Vec<Vertex>,
 
-    texture_descriptor: Option<Texture2DDescriptor>,
-    texture: Option<Vec<Texture2DVertex>>,
+    texture_descriptor: Option<TextureDescriptor>,
+    texture: Option<Vec<TextureVertex>>,
 }
 
 impl Quadrangle {
@@ -166,8 +167,8 @@ impl EntityMesh for Quadrangle {
     }
 }
 
-impl Texture2DMesh for Quadrangle {
-    fn texture(&self) -> Option<&[Texture2DVertex]> {
+impl TextureMesh for Quadrangle {
+    fn texture(&self) -> Option<&[TextureVertex]> {
         self.texture.as_ref().map(|t| &t[..])
     }
     fn width(&self) -> u32 {
@@ -176,22 +177,21 @@ impl Texture2DMesh for Quadrangle {
     fn height(&self) -> u32 {
         self.texture_descriptor.as_ref().unwrap().height
     }
-    fn format(&self) -> &Texture2DFormat {
+    fn format(&self) -> &TextureFormat {
         &self.texture_descriptor.as_ref().unwrap().format
     }
     fn data(&self) -> &[u8] {
         &self.texture_descriptor.as_ref().unwrap().data
     }
 
-    fn use_texture2d(mut self, descriptor: Texture2DDescriptor) -> Mesh {
+    fn use_texture(mut self, descriptor: TextureDescriptor) -> Mesh {
         let texs = vec![
-            texture_2d([0., 1.]),
-            texture_2d([1., 1.]),
-            texture_2d([1., 0.]),
-
-            texture_2d([0., 1.]),
-            texture_2d([1., 0.]),
-            texture_2d([0., 0.]),
+            texture([0., 1.]),
+            texture([1., 1.]),
+            texture([1., 0.]),
+            texture([0., 1.]),
+            texture([1., 0.]),
+            texture([0., 0.]),
         ];
 
         let mut idx = 0;
@@ -201,13 +201,13 @@ impl Texture2DMesh for Quadrangle {
         self.vertex.reverse();
         while let Some(vert) = self.vertex.pop() {
             let tex = *texs.get(idx).expect("`texs` length is incorrect");
-            tex_vert.push(texture_2d_vertex(vert, tex));
+            tex_vert.push(texture_vertex(vert, tex));
             idx += 1;
         }
 
         self.texture = Some(tex_vert);
         self.texture_descriptor = Some(descriptor);
 
-        Mesh::Texture2D(Box::new(self))
+        Mesh::Texture(Box::new(self))
     }
 }

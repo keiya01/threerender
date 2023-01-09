@@ -1,5 +1,5 @@
 [package]
-name = "examples_texture2d"
+name = "examples_texture"
 version = "0.1.0"
 edition = "2021"
 publish = false

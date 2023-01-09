@@ -5,15 +5,15 @@ use wgpu::{
     util::{align_to, DeviceExt},
     vertex_attr_array, BindGroup, BindGroupLayout, Buffer, BufferAddress, Device, Features,
     PrimitiveTopology, Queue, RenderPipeline, Sampler, ShaderModule, Surface, SurfaceConfiguration,
-    TextureFormat, TextureView, VertexBufferLayout,
+    TextureView, VertexBufferLayout,
 };
 
 use crate::{
     entity::{Entity, EntityDescriptor, EntityList, EntityRendererState},
     mesh::{
-        traits::{Mesh, Texture2DMesh},
-        util::{Texture2DVertex, Vertex},
-        MeshType, PolygonMode, Texture2DFormat, Topology,
+        traits::{Mesh, TextureMesh},
+        util::{TextureVertex, Vertex},
+        MeshType, PolygonMode, TextureFormat, Topology,
     },
     renderer::Updater,
     RendererBuilder,
@@ -42,7 +42,7 @@ impl RenderedEntity {
     fn make_entity(mesh: &Mesh, device: &Device) -> (Buffer, Option<Buffer>, u32) {
         let vertex = match mesh.mesh_type() {
             MeshType::Entity => (Some(mesh.vertex()), None),
-            MeshType::Texture2D => (None, Some(mesh.texture().expect("Texture is not found"))),
+            MeshType::Texture => (None, Some(mesh.texture().expect("Texture is not found"))),
         };
         let vertex_buf = match vertex {
             (Some(vertex), None) => device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -137,23 +137,23 @@ impl RenderedEntity {
 }
 
 // The struct will be depend on texture.
-pub struct RenderedTexture2D {
-    pub(super) texture2d_view_array: Vec<TextureView>,
+pub struct RenderedTexture {
+    pub(super) texture_view_array: Vec<TextureView>,
     pub(super) sampler_array: Vec<Sampler>,
-    texture2d_bind_group: BindGroup,
-    texture2d_bind_group_layout: BindGroupLayout,
+    texture_bind_group: BindGroup,
+    texture_bind_group_layout: BindGroupLayout,
 }
 
-impl RenderedTexture2D {
+impl RenderedTexture {
     fn make_texture(
-        texture2d_mesh: &dyn Texture2DMesh,
+        texture_mesh: &dyn TextureMesh,
         device: &Device,
         queue: &Queue,
     ) -> (Sampler, TextureView) {
         let texture = {
-            let buf = texture2d_mesh.data();
-            let width = texture2d_mesh.width();
-            let height = texture2d_mesh.height();
+            let buf = texture_mesh.data();
+            let width = texture_mesh.width();
+            let height = texture_mesh.height();
 
             let size = wgpu::Extent3d {
                 width,
@@ -166,8 +166,8 @@ impl RenderedTexture2D {
                 mip_level_count: 1,
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
-                format: match texture2d_mesh.format() {
-                    Texture2DFormat::RGBA => wgpu::TextureFormat::Rgba8Unorm,
+                format: match texture_mesh.format() {
+                    TextureFormat::RGBA => wgpu::TextureFormat::Rgba8Unorm,
                 },
                 usage: wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::TEXTURE_BINDING,
             });
@@ -177,7 +177,7 @@ impl RenderedTexture2D {
                 wgpu::ImageDataLayout {
                     offset: 0,
                     bytes_per_row: std::num::NonZeroU32::new(
-                        width * texture2d_mesh.bytes_per_pixel(),
+                        width * texture_mesh.bytes_per_pixel(),
                     ),
                     rows_per_image: None,
                 },
@@ -204,10 +204,10 @@ impl RenderedTexture2D {
 
     fn make_bind_group(
         device: &Device,
-        texture2d_view_array: &[TextureView],
+        texture_view_array: &[TextureView],
         sampler_array: &[Sampler],
     ) -> (BindGroupLayout, BindGroup) {
-        let texture2d_bind_group_layout =
+        let texture_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: None,
                 entries: &[
@@ -219,7 +219,7 @@ impl RenderedTexture2D {
                             view_dimension: wgpu::TextureViewDimension::D2,
                             multisampled: false,
                         },
-                        count: NonZeroU32::new(texture2d_view_array.len() as u32),
+                        count: NonZeroU32::new(texture_view_array.len() as u32),
                     },
                     wgpu::BindGroupLayoutEntry {
                         binding: 1,
@@ -230,13 +230,13 @@ impl RenderedTexture2D {
                 ],
             });
 
-        let texture2d_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &texture2d_bind_group_layout,
+        let texture_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &texture_bind_group_layout,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
                     resource: wgpu::BindingResource::TextureViewArray(
-                        &texture2d_view_array.iter().collect::<Vec<_>>(),
+                        &texture_view_array.iter().collect::<Vec<_>>(),
                     ),
                 },
                 wgpu::BindGroupEntry {
@@ -249,41 +249,41 @@ impl RenderedTexture2D {
             label: None,
         });
 
-        (texture2d_bind_group_layout, texture2d_bind_group)
+        (texture_bind_group_layout, texture_bind_group)
     }
 
     fn create_or_update(
-        texture2d_mesh: &dyn Texture2DMesh,
+        texture_mesh: &dyn TextureMesh,
         device: &Device,
         queue: &Queue,
-        rendered_texture2d: &mut Option<RenderedTexture2D>,
+        rendered_texture: &mut Option<RenderedTexture>,
     ) {
-        let (sampler, view) = Self::make_texture(texture2d_mesh, device, queue);
+        let (sampler, view) = Self::make_texture(texture_mesh, device, queue);
 
-        let (mut texture2d_view_array, mut sampler_array) = (vec![view], vec![sampler]);
+        let (mut texture_view_array, mut sampler_array) = (vec![view], vec![sampler]);
 
-        if let Some(rt) = rendered_texture2d {
-            texture2d_view_array.append(&mut rt.texture2d_view_array);
+        if let Some(rt) = rendered_texture {
+            texture_view_array.append(&mut rt.texture_view_array);
             sampler_array.append(&mut rt.sampler_array);
         }
 
-        let (texture2d_bind_group_layout, texture2d_bind_group) =
-            Self::make_bind_group(device, &texture2d_view_array, &sampler_array);
+        let (texture_bind_group_layout, texture_bind_group) =
+            Self::make_bind_group(device, &texture_view_array, &sampler_array);
 
-        match rendered_texture2d {
+        match rendered_texture {
             Some(rt) => {
-                rt.texture2d_view_array = texture2d_view_array;
+                rt.texture_view_array = texture_view_array;
                 rt.sampler_array = sampler_array;
 
-                rt.texture2d_bind_group_layout = texture2d_bind_group_layout;
-                rt.texture2d_bind_group = texture2d_bind_group;
+                rt.texture_bind_group_layout = texture_bind_group_layout;
+                rt.texture_bind_group = texture_bind_group;
             }
             None => {
-                *rendered_texture2d = Some(RenderedTexture2D {
-                    texture2d_view_array,
+                *rendered_texture = Some(RenderedTexture {
+                    texture_view_array,
                     sampler_array,
-                    texture2d_bind_group,
-                    texture2d_bind_group_layout,
+                    texture_bind_group,
+                    texture_bind_group_layout,
                 });
             }
         }
@@ -293,7 +293,7 @@ impl RenderedTexture2D {
 // This has a role to update the entity in render process dynamically.
 pub(super) struct DynamicRenderer {
     pub(super) rendered_entity: RenderedEntity,
-    pub(super) rendered_texture2d: Option<RenderedTexture2D>,
+    pub(super) rendered_texture: Option<RenderedTexture>,
     pub(super) device: Device,
     pub(super) queue: Queue,
 }
@@ -305,7 +305,7 @@ impl DynamicRenderer {
 
         let mut entities = vec![];
         let mut meta_list = vec![];
-        let mut texture2d_view_array = vec![];
+        let mut texture_view_array = vec![];
         let mut sampler_array = vec![];
         let mut i = 0;
         while let Some(EntityDescriptor {
@@ -321,11 +321,11 @@ impl DynamicRenderer {
             let (vertex_buf, index_buf, vertex_length) =
                 RenderedEntity::make_entity(&mesh, &device);
 
-            if let Mesh::Texture2D(texture2d_mesh) = mesh.as_ref() {
+            if let Mesh::Texture(texture_mesh) = mesh.as_ref() {
                 let (sampler, view) =
-                    RenderedTexture2D::make_texture(texture2d_mesh.as_ref(), &device, &queue);
+                    RenderedTexture::make_texture(texture_mesh.as_ref(), &device, &queue);
 
-                texture2d_view_array.push(view);
+                texture_view_array.push(view);
                 sampler_array.push(sampler);
             }
 
@@ -351,15 +351,15 @@ impl DynamicRenderer {
         let (entity_bind_group_layout, entity_bind_group) =
             RenderedEntity::make_bind_group(&device, entity_uniform_size, &entity_uniform_buf);
 
-        let rendered_texture2d = if !texture2d_view_array.is_empty() && !sampler_array.is_empty() {
-            let (texture2d_bind_group_layout, texture2d_bind_group) =
-                RenderedTexture2D::make_bind_group(&device, &texture2d_view_array, &sampler_array);
+        let rendered_texture = if !texture_view_array.is_empty() && !sampler_array.is_empty() {
+            let (texture_bind_group_layout, texture_bind_group) =
+                RenderedTexture::make_bind_group(&device, &texture_view_array, &sampler_array);
 
-            Some(RenderedTexture2D {
-                texture2d_view_array,
+            Some(RenderedTexture {
+                texture_view_array,
                 sampler_array,
-                texture2d_bind_group_layout,
-                texture2d_bind_group,
+                texture_bind_group_layout,
+                texture_bind_group,
             })
         } else {
             None
@@ -375,7 +375,7 @@ impl DynamicRenderer {
                 entity_bind_group,
                 entity_bind_group_layout,
             },
-            rendered_texture2d,
+            rendered_texture,
         }
     }
 }
@@ -430,12 +430,12 @@ impl EntityList for DynamicRenderer {
             index_length: mesh.index().map_or(0, |i| i.len()) as u32,
         });
 
-        if let Mesh::Texture2D(texture2d_mesh) = mesh.as_ref() {
-            RenderedTexture2D::create_or_update(
-                texture2d_mesh.as_ref(),
+        if let Mesh::Texture(texture_mesh) = mesh.as_ref() {
+            RenderedTexture::create_or_update(
+                texture_mesh.as_ref(),
                 &self.device,
                 &self.queue,
-                &mut self.rendered_texture2d,
+                &mut self.rendered_texture,
             );
         }
     }
@@ -453,7 +453,7 @@ pub struct Renderer<Event> {
 }
 
 impl<Event> Renderer<Event> {
-    const DEPTH_FORMAT: TextureFormat = TextureFormat::Depth32Float;
+    const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 
     pub fn new<
         W: raw_window_handle::HasRawWindowHandle + raw_window_handle::HasRawDisplayHandle,
@@ -526,8 +526,8 @@ impl<Event> Renderer<Event> {
             &dynamic_renderer.rendered_entity.entity_bind_group_layout,
         ];
 
-        if let Some(rt) = &dynamic_renderer.rendered_texture2d {
-            bind_group_layouts.push(&rt.texture2d_bind_group_layout);
+        if let Some(rt) = &dynamic_renderer.rendered_texture {
+            bind_group_layouts.push(&rt.texture_bind_group_layout);
         }
 
         let pipeline_layout =
@@ -547,9 +547,9 @@ impl<Event> Renderer<Event> {
                     mem::size_of::<Vertex>() as wgpu::BufferAddress,
                     vertex_attr_array![0 => Float32x4, 1 => Float32x3].to_vec(),
                 ),
-                MeshType::Texture2D => (
-                    lazy_load_shader(&mut texture_shader, include_str!("shaders/texture2d.wgsl")),
-                    mem::size_of::<Texture2DVertex>() as wgpu::BufferAddress,
+                MeshType::Texture => (
+                    lazy_load_shader(&mut texture_shader, include_str!("shaders/texture.wgsl")),
+                    mem::size_of::<TextureVertex>() as wgpu::BufferAddress,
                     vertex_attr_array![0 => Float32x4, 1 => Float32x3, 2 => Float32x2].to_vec(),
                 ),
             };
@@ -704,8 +704,8 @@ impl<Event> Renderer<Event> {
             rpass.set_bind_group(0, &self.scene.camera_uniform.bind_group, &[]);
             rpass.set_bind_group(1, &self.scene.light_uniform.bind_group, &[]);
 
-            if let Some(rt) = &self.dynamic_renderer.rendered_texture2d {
-                rpass.set_bind_group(3, &rt.texture2d_bind_group, &[]);
+            if let Some(rt) = &self.dynamic_renderer.rendered_texture {
+                rpass.set_bind_group(3, &rt.texture_bind_group, &[]);
             }
 
             for (i, entity) in rendered_entity.entities.iter().enumerate() {
