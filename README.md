@@ -12,12 +12,15 @@ This is similar to Three.js, but this will provide more low level API.
 
 ## Status
 
-- [x] 3D entities
+- [ ] 3D entities
   - [x] Square
+    - [x] 2D texture rendering
   - [x] Sphere
-- [x] 2D entities
+    - [ ] 2D texture rendering
+- [ ] 2D entities
   - [x] Lines
   - [x] Quadrangle
+    - [x] 2D texture rendering
   - [x] Triangle
 - [x] Camera
 - [x] Light

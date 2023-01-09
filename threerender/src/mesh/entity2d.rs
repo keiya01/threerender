@@ -1,9 +1,9 @@
 use glam::Vec3;
 
 use super::{
-    traits::{EntityMesh, Mesh},
+    traits::{EntityMesh, Mesh, Texture2DMesh},
     types::Topology,
-    util::{vertex, Vertex},
+    util::{vertex, Vertex, Texture2DVertex, texture_2d, texture_2d_vertex}, Texture2DDescriptor, Texture2DFormat,
 };
 
 pub struct TriangleList {
@@ -121,6 +121,9 @@ impl EntityMesh for PointList {
 // TODO: use index
 pub struct Quadrangle {
     vertex: Vec<Vertex>,
+
+    texture_descriptor: Option<Texture2DDescriptor>,
+    texture: Option<Vec<Texture2DVertex>>,
 }
 
 impl Quadrangle {
@@ -142,6 +145,9 @@ impl Default for Quadrangle {
                 vertex([1., 1., 1., 1.], [0., 0., 1.]),
                 vertex([-1., 1., 1., 1.], [0., 0., 1.]),
             ],
+
+            texture_descriptor: None,
+            texture: None,
         }
     }
 }
@@ -157,5 +163,51 @@ impl EntityMesh for Quadrangle {
 
     fn use_entity(self) -> Mesh {
         Mesh::Entity(Box::new(self))
+    }
+}
+
+impl Texture2DMesh for Quadrangle {
+    fn texture(&self) -> Option<&[Texture2DVertex]> {
+        self.texture.as_ref().map(|t| &t[..])
+    }
+    fn width(&self) -> u32 {
+        self.texture_descriptor.as_ref().unwrap().width
+    }
+    fn height(&self) -> u32 {
+        self.texture_descriptor.as_ref().unwrap().height
+    }
+    fn format(&self) -> &Texture2DFormat {
+        &self.texture_descriptor.as_ref().unwrap().format
+    }
+    fn data(&self) -> &[u8] {
+        &self.texture_descriptor.as_ref().unwrap().data
+    }
+
+    fn use_texture2d(mut self, descriptor: Texture2DDescriptor) -> Mesh {
+        let texs = vec![
+            texture_2d([0., 1.]),
+            texture_2d([1., 1.]),
+            texture_2d([1., 0.]),
+
+            texture_2d([0., 1.]),
+            texture_2d([1., 0.]),
+            texture_2d([0., 0.]),
+        ];
+
+        let mut idx = 0;
+        let mut tex_vert = vec![];
+
+        // TODO: use VecDequeue
+        self.vertex.reverse();
+        while let Some(vert) = self.vertex.pop() {
+            let tex = *texs.get(idx).expect("`texs` length is incorrect");
+            tex_vert.push(texture_2d_vertex(vert, tex));
+            idx += 1;
+        }
+
+        self.texture = Some(tex_vert);
+        self.texture_descriptor = Some(descriptor);
+
+        Mesh::Texture2D(Box::new(self))
     }
 }

@@ -5,7 +5,7 @@ use image::EncodableLayout;
 use threerender::entity::{EntityDescriptor, EntityList, EntityRendererState};
 use threerender::math::Vec3;
 use threerender::mesh::traits::Texture2DMesh;
-use threerender::mesh::{MeshType, Square, Texture2DDescriptor, Texture2DFormat};
+use threerender::mesh::{MeshType, Square, Texture2DDescriptor, Texture2DFormat, Quadrangle};
 #[cfg(feature = "wgpu")]
 use threerender::renderer::builder::WGPURendererBuilder;
 use threerender::renderer::Updater;
@@ -72,6 +72,26 @@ fn main() {
         position: Vec3::ZERO,
         dimension: Vec3::ONE,
         rotation: Vec3::ZERO,
+        state: EntityRendererState {
+            mesh_type: MeshType::Texture2D,
+            ..Default::default()
+        },
+    });
+
+    let quadrangle = Quadrangle::new();
+    let quadrangle = Rc::new(quadrangle.use_texture2d(Texture2DDescriptor {
+        width,
+        height,
+        format: Texture2DFormat::RGBA,
+        data: im.as_bytes().to_vec(),
+    }));
+    renderer_builder.push(EntityDescriptor {
+        id: "quadrangle".to_owned(),
+        mesh: quadrangle,
+        fill_color: RGBA::new(0, 255, 0, 255),
+        position: Vec3::new(-1., 0., 1.),
+        dimension: Vec3::ONE,
+        rotation: Vec3::new(0., 0.5, 0.),
         state: EntityRendererState {
             mesh_type: MeshType::Texture2D,
             ..Default::default()
