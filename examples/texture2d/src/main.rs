@@ -5,7 +5,7 @@ use image::EncodableLayout;
 use threerender::entity::{EntityDescriptor, EntityList, EntityRendererState};
 use threerender::math::Vec3;
 use threerender::mesh::traits::TextureMesh;
-use threerender::mesh::{MeshType, Quadrangle, Square, TextureDescriptor, TextureFormat};
+use threerender::mesh::{MeshType, Quadrangle, Sphere, Square, TextureDescriptor, TextureFormat};
 #[cfg(feature = "wgpu")]
 use threerender::renderer::builder::WGPURendererBuilder;
 use threerender::renderer::Updater;
@@ -28,6 +28,9 @@ impl Updater for App {
         for entity in entity_list.items_mut() {
             // Rotate square
             if entity.id == "square" {
+                entity.rotation.y += 0.01;
+            }
+            if entity.id == "sphere" {
                 entity.rotation.y += 0.01;
             }
         }
@@ -69,7 +72,7 @@ fn main() {
         id: "square".to_owned(),
         mesh: square,
         fill_color: RGBA::new(0, 255, 0, 255),
-        position: Vec3::ZERO,
+        position: Vec3::new(-1., 0., -2.),
         dimension: Vec3::ONE,
         rotation: Vec3::ZERO,
         state: EntityRendererState {
@@ -90,6 +93,30 @@ fn main() {
         mesh: quadrangle,
         fill_color: RGBA::new(0, 255, 0, 255),
         position: Vec3::new(-1., 0., 1.),
+        dimension: Vec3::ONE,
+        rotation: Vec3::new(0., 0.5, 0.),
+        state: EntityRendererState {
+            mesh_type: MeshType::Texture,
+            ..Default::default()
+        },
+    });
+
+    let globe_im = image::load_from_memory(include_bytes!("../globe.jpg")).unwrap();
+    let globe_im = globe_im.to_rgba8();
+    let (globe_width, globe_height) = globe_im.dimensions();
+
+    let sphere = Sphere::new(50, 50);
+    let sphere = Rc::new(sphere.use_texture(TextureDescriptor {
+        width: globe_width,
+        height: globe_height,
+        format: TextureFormat::RGBA,
+        data: globe_im.as_bytes().to_vec(),
+    }));
+    renderer_builder.push(EntityDescriptor {
+        id: "sphere".to_owned(),
+        mesh: sphere,
+        fill_color: RGBA::new(0, 255, 0, 255),
+        position: Vec3::new(2., 0., 1.),
         dimension: Vec3::ONE,
         rotation: Vec3::new(0., 0.5, 0.),
         state: EntityRendererState {
