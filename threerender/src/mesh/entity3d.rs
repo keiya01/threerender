@@ -1,7 +1,7 @@
 use std::f32::consts::PI;
 
 use super::{
-    mesh::{EntityMesh, Mesh, Texture2DMesh},
+    traits::{EntityMesh, Mesh, Texture2DMesh},
     util::{texture_2d, texture_2d_vertex, vertex, Texture2DVertex, Vertex},
     Texture2DDescriptor, Texture2DFormat,
 };
@@ -121,7 +121,7 @@ impl Texture2DMesh for Square {
         // TODO: use VecDequeue
         self.vertex.reverse();
         while let Some(vert) = self.vertex.pop() {
-            let tex = texs.get(idx % 4).expect("`texs` length is incorrect").clone();
+            let tex = *texs.get(idx % 4).expect("`texs` length is incorrect");
             tex_vert.push(texture_2d_vertex(vert, tex));
             idx += 1;
         }
@@ -140,9 +140,9 @@ pub struct Sphere {
 }
 
 impl Sphere {
-    pub fn new(slices: u16, stacks: u16) -> Mesh {
+    pub fn new(slices: u16, stacks: u16) -> Self {
         let (vertex, index) = Self::make_data(slices, stacks);
-        Mesh::Entity(Box::new(Self { vertex, index }))
+        Self { vertex, index }
     }
 
     fn make_data(slices: u16, stacks: u16) -> (Vec<Vertex>, Vec<u16>) {

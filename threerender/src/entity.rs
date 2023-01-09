@@ -3,7 +3,7 @@ use std::rc::Rc;
 use glam::Vec3;
 
 use crate::{
-    mesh::{mesh::Mesh, PolygonMode, Topology, MeshType},
+    mesh::{traits::Mesh, MeshType, PolygonMode, Topology},
     unit::RGBA,
     RendererState,
 };

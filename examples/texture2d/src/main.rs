@@ -4,7 +4,7 @@ use examples_common::CustomEvent;
 use image::EncodableLayout;
 use threerender::entity::{EntityDescriptor, EntityList, EntityRendererState};
 use threerender::math::Vec3;
-use threerender::mesh::mesh::Texture2DMesh;
+use threerender::mesh::traits::Texture2DMesh;
 use threerender::mesh::{MeshType, Square, Texture2DDescriptor, Texture2DFormat};
 #[cfg(feature = "wgpu")]
 use threerender::renderer::builder::WGPURendererBuilder;

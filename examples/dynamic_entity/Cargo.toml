@@ -1,0 +1,17 @@
+[package]
+name = "examples_dynamic_entity"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = ["wgpu"]
+
+[dependencies]
+threerender = { path = "../../threerender" }
+examples_common = { path = "../common" }
+wgpu = { git = "https://github.com/gfx-rs/wgpu", optional = true }
+image = "0.24.5"
+rand = "0.8.5"

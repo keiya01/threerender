@@ -1,7 +1,7 @@
 use glam::Vec3;
 
 use super::{
-    mesh::{EntityMesh, Mesh},
+    traits::{EntityMesh, Mesh},
     types::Topology,
     util::{vertex, Vertex},
 };

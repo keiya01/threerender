@@ -1,5 +1,5 @@
 use winit::{
-    event::{Event, WindowEvent},
+    event::{ElementState, Event, MouseButton, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::Window,
 };
@@ -9,9 +9,11 @@ use threerender::{
     RendererBuilder,
 };
 
+#[derive(Copy, Clone)]
 pub enum CustomEvent {
     ReDraw,
     MouseMove,
+    MouseDown,
 }
 
 type StaticUpdater = Box<dyn Updater<Event = CustomEvent>>;
@@ -23,6 +25,7 @@ fn run(
     mut updater: StaticUpdater,
 ) {
     let mut renderer = Renderer::new(&window, renderer_builder);
+    let mut cur_event = CustomEvent::ReDraw;
 
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
@@ -36,18 +39,33 @@ fn run(
                 // For macos
                 window.request_redraw();
             }
+            Event::WindowEvent {
+                window_id: _,
+                event,
+            } => match event {
+                WindowEvent::MouseInput {
+                    device_id: _,
+                    state: ElementState::Pressed,
+                    button: MouseButton::Left,
+                    ..
+                } => {
+                    cur_event = CustomEvent::MouseDown;
+                    window.request_redraw();
+                }
+                WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
+                _ => {}
+            },
             Event::RedrawRequested(_) => {
-                renderer.update(&mut *updater, CustomEvent::ReDraw);
+                renderer.update(&mut *updater, cur_event);
 
                 // For macos
                 window.request_redraw();
 
                 renderer.draw();
             }
-            Event::WindowEvent {
-                event: WindowEvent::CloseRequested,
-                ..
-            } => *control_flow = ControlFlow::Exit,
+            Event::RedrawEventsCleared => {
+                cur_event = CustomEvent::ReDraw;
+            }
             _ => {}
         }
     });

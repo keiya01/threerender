@@ -1,7 +1,7 @@
 pub mod builder;
-mod uniform;
 mod renderer;
 mod scene;
+mod uniform;
 mod unit;
 
 pub use builder as wgpu_builder;

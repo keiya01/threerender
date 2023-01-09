@@ -1,6 +1,6 @@
 mod entity2d;
 mod entity3d;
-pub mod mesh;
+pub mod traits;
 mod types;
 pub(super) mod util;
 

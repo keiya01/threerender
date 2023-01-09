@@ -11,15 +11,15 @@ use wgpu::{
 use crate::{
     entity::{Entity, EntityDescriptor, EntityList, EntityRendererState},
     mesh::{
-        mesh::{Mesh, Texture2DMesh},
+        traits::{Mesh, Texture2DMesh},
         util::{Texture2DVertex, Vertex},
-        MeshType, PolygonMode, Topology, Texture2DFormat,
+        MeshType, PolygonMode, Texture2DFormat, Topology,
     },
     renderer::Updater,
     RendererBuilder,
 };
 
-use super::{uniform::EntityUniformBuffer, scene::Scene, unit::rgba_to_array};
+use super::{scene::Scene, uniform::EntityUniformBuffer, unit::rgba_to_array};
 
 struct RenderedEntityMeta {
     uniform_offset: BufferAddress,
@@ -36,7 +36,104 @@ pub struct RenderedEntity {
     entity_uniform_buf: Buffer,
     entity_bind_group: BindGroup,
     entity_bind_group_layout: BindGroupLayout,
-    entity_uniform_alignment: u64,
+}
+
+impl RenderedEntity {
+    fn make_entity(mesh: &Mesh, device: &Device) -> (Buffer, Option<Buffer>, u32) {
+        let vertex = match mesh.mesh_type() {
+            MeshType::Entity => (Some(mesh.vertex()), None),
+            MeshType::Texture2D => (None, Some(mesh.texture().expect("Texture is not found"))),
+        };
+        let vertex_buf = match vertex {
+            (Some(vertex), None) => device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Vertex Buffer"),
+                contents: bytemuck::cast_slice(vertex),
+                usage: wgpu::BufferUsages::VERTEX,
+            }),
+            (None, Some(texture)) => device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Texture Vertex Buffer"),
+                contents: bytemuck::cast_slice(texture),
+                usage: wgpu::BufferUsages::VERTEX,
+            }),
+            _ => unreachable!(),
+        };
+        let index_buf = mesh.index().map(|index| {
+            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Index Buffer"),
+                contents: bytemuck::cast_slice(index),
+                usage: wgpu::BufferUsages::INDEX,
+            })
+        });
+
+        let vertex_length = match vertex {
+            (Some(v), None) => v.len(),
+            (None, Some(v)) => v.len(),
+            _ => unreachable!(),
+        } as u32;
+
+        (vertex_buf, index_buf, vertex_length)
+    }
+
+    fn make_uniform(
+        device: &Device,
+        length: usize,
+    ) -> (wgpu::BufferAddress, Buffer, wgpu::BufferAddress) {
+        let entity_uniform_size = mem::size_of::<EntityUniformBuffer>() as wgpu::BufferAddress;
+        let entity_uniform_alignment = {
+            let alignment =
+                device.limits().min_uniform_buffer_offset_alignment as wgpu::BufferAddress;
+            align_to(entity_uniform_size, alignment)
+        };
+        let entities_length = length as wgpu::BufferAddress;
+        let entity_uniform_buf = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Transform Uniform Buffer"),
+            size: entities_length * entity_uniform_alignment,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        (
+            entity_uniform_size,
+            entity_uniform_buf,
+            entity_uniform_alignment,
+        )
+    }
+
+    fn make_bind_group(
+        device: &Device,
+        entity_uniform_size: wgpu::BufferAddress,
+        entity_uniform_buf: &Buffer,
+    ) -> (BindGroupLayout, BindGroup) {
+        let entity_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: None,
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0, // transform
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: true,
+                        min_binding_size: wgpu::BufferSize::new(entity_uniform_size),
+                    },
+                    count: None,
+                }],
+            });
+
+        let entity_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &entity_bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                    buffer: entity_uniform_buf,
+                    offset: 0,
+                    size: wgpu::BufferSize::new(entity_uniform_size),
+                }),
+            }],
+            label: None,
+        });
+
+        (entity_bind_group_layout, entity_bind_group)
+    }
 }
 
 // The struct will be depend on texture.
@@ -76,10 +173,12 @@ impl RenderedTexture2D {
             });
             queue.write_texture(
                 texture.as_image_copy(),
-                &buf,
+                buf,
                 wgpu::ImageDataLayout {
                     offset: 0,
-                    bytes_per_row: std::num::NonZeroU32::new(width * texture2d_mesh.bytes_per_pixel()),
+                    bytes_per_row: std::num::NonZeroU32::new(
+                        width * texture2d_mesh.bytes_per_pixel(),
+                    ),
                     rows_per_image: None,
                 },
                 size,
@@ -201,21 +300,8 @@ pub(super) struct DynamicRenderer {
 
 impl DynamicRenderer {
     pub fn new(device: Device, queue: Queue, renderer_builder: &mut RendererBuilder) -> Self {
-        let entity_uniform_size = mem::size_of::<EntityUniformBuffer>() as wgpu::BufferAddress;
-        let entity_uniform_alignment = {
-            let alignment =
-                device.limits().min_uniform_buffer_offset_alignment as wgpu::BufferAddress;
-            align_to(entity_uniform_size, alignment)
-        };
-        let entities_length = renderer_builder
-            .renderer_specific_attributes
-            .maximum_entity_length;
-        let entity_uniform_buf = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("Transform Uniform Buffer"),
-            size: entities_length * entity_uniform_alignment,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let (entity_uniform_size, entity_uniform_buf, entity_uniform_alignment) =
+            RenderedEntity::make_uniform(&device, renderer_builder.entities.len());
 
         let mut entities = vec![];
         let mut meta_list = vec![];
@@ -232,30 +318,8 @@ impl DynamicRenderer {
             state,
         }) = renderer_builder.entities.pop()
         {
-            let vertex = match mesh.mesh_type() {
-                MeshType::Entity => (Some(mesh.vertex()), None),
-                MeshType::Texture2D => (None, Some(mesh.texture().expect("Texture is not found"))),
-            };
-            let vertex_buf = match vertex {
-                (Some(vertex), None) => device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Vertex Buffer"),
-                    contents: bytemuck::cast_slice(vertex),
-                    usage: wgpu::BufferUsages::VERTEX,
-                }),
-                (None, Some(texture)) => device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Texture Vertex Buffer"),
-                    contents: bytemuck::cast_slice(texture),
-                    usage: wgpu::BufferUsages::VERTEX,
-                }),
-                _ => unreachable!(),
-            };
-            let index_buf = mesh.index().map(|index| {
-                device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Index Buffer"),
-                    contents: bytemuck::cast_slice(index),
-                    usage: wgpu::BufferUsages::INDEX,
-                })
-            });
+            let (vertex_buf, index_buf, vertex_length) =
+                RenderedEntity::make_entity(&mesh, &device);
 
             if let Mesh::Texture2D(texture2d_mesh) = mesh.as_ref() {
                 let (sampler, view) =
@@ -277,46 +341,17 @@ impl DynamicRenderer {
                 uniform_offset: (i as u64) * entity_uniform_alignment,
                 vertex_buf,
                 index_buf,
-                vertex_length: match vertex {
-                    (Some(v), None) => v.len(),
-                    (None, Some(v)) => v.len(),
-                    _ => unreachable!()
-                } as u32,
+                vertex_length,
                 index_length: mesh.index().map_or(0, |i| i.len()) as u32,
             });
 
             i += 1;
         }
 
-        let entity_bind_group_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: None,
-                entries: &[wgpu::BindGroupLayoutEntry {
-                    binding: 0, // transform
-                    visibility: wgpu::ShaderStages::VERTEX,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: true,
-                        min_binding_size: wgpu::BufferSize::new(entity_uniform_size),
-                    },
-                    count: None,
-                }],
-            });
+        let (entity_bind_group_layout, entity_bind_group) =
+            RenderedEntity::make_bind_group(&device, entity_uniform_size, &entity_uniform_buf);
 
-        let entity_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &entity_bind_group_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
-                    buffer: &entity_uniform_buf,
-                    offset: 0,
-                    size: wgpu::BufferSize::new(entity_uniform_size),
-                }),
-            }],
-            label: None,
-        });
-
-        let rendered_texture2d = if texture2d_view_array.len() > 0 && sampler_array.len() > 0 {
+        let rendered_texture2d = if !texture2d_view_array.is_empty() && !sampler_array.is_empty() {
             let (texture2d_bind_group_layout, texture2d_bind_group) =
                 RenderedTexture2D::make_bind_group(&device, &texture2d_view_array, &sampler_array);
 
@@ -339,7 +374,6 @@ impl DynamicRenderer {
                 entity_uniform_buf,
                 entity_bind_group,
                 entity_bind_group_layout,
-                entity_uniform_alignment,
             },
             rendered_texture2d,
         }
@@ -368,32 +402,14 @@ impl EntityList for DynamicRenderer {
             state,
         } = descriptor;
 
-        let vertex = match mesh.mesh_type() {
-            MeshType::Entity => (Some(mesh.vertex()), None),
-            MeshType::Texture2D => (None, Some(mesh.texture().expect("Texture is not found"))),
-        };
+        let (entity_uniform_size, entity_uniform_buf, entity_uniform_alignment) =
+            RenderedEntity::make_uniform(&self.device, rendered_entity.entities.len() + 1);
 
-        let vertex_buf = match vertex {
-            (Some(vertex), None) => self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Vertex Buffer"),
-                contents: bytemuck::cast_slice(vertex),
-                usage: wgpu::BufferUsages::VERTEX,
-            }),
-            (None, Some(texture)) => self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Texture Vertex Buffer"),
-                contents: bytemuck::cast_slice(texture),
-                usage: wgpu::BufferUsages::VERTEX,
-            }),
-            _ => unreachable!(),
-        };
-        let index_buf = mesh.index().map(|index| {
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Index Buffer"),
-                    contents: bytemuck::cast_slice(index),
-                    usage: wgpu::BufferUsages::INDEX,
-                })
-        });
+        let (vertex_buf, index_buf, vertex_length) =
+            RenderedEntity::make_entity(&mesh, &self.device);
+
+        let (entity_bind_group_layout, entity_bind_group) =
+            RenderedEntity::make_bind_group(&self.device, entity_uniform_size, &entity_uniform_buf);
 
         rendered_entity.entities.push(Entity {
             id,
@@ -403,16 +419,14 @@ impl EntityList for DynamicRenderer {
             rotation,
             state,
         });
+        rendered_entity.entity_uniform_buf = entity_uniform_buf;
+        rendered_entity.entity_bind_group_layout = entity_bind_group_layout;
+        rendered_entity.entity_bind_group = entity_bind_group;
         rendered_entity.meta_list.push(RenderedEntityMeta {
-            uniform_offset: (rendered_entity.meta_list.len() as u64)
-                * rendered_entity.entity_uniform_alignment,
+            uniform_offset: (rendered_entity.meta_list.len() as u64) * entity_uniform_alignment,
             vertex_buf,
             index_buf,
-            vertex_length: match vertex {
-                (Some(v), None) => v.len(),
-                (None, Some(v)) => v.len(),
-                _ => unreachable!()
-            } as u32,
+            vertex_length,
             index_length: mesh.index().map_or(0, |i| i.len()) as u32,
         });
 
@@ -521,7 +535,7 @@ impl<Event> Renderer<Event> {
                 .device
                 .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: None,
-                    bind_group_layouts: &&bind_group_layouts,
+                    bind_group_layouts: &bind_group_layouts,
                     push_constant_ranges: &[],
                 });
 

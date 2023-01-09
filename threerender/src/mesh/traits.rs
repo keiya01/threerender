@@ -1,7 +1,7 @@
 use super::{
     types::Topology,
     util::{Texture2DVertex, Vertex},
-    MeshType, Texture2DFormat, Texture2DDescriptor,
+    MeshType, Texture2DDescriptor, Texture2DFormat,
 };
 
 pub enum Mesh {

@@ -14,7 +14,7 @@ pub enum PolygonMode {
     Point,
 }
 
-#[derive(Hash, Default, PartialEq, Debug)]
+#[derive(Hash, Default, PartialEq, Eq, Debug)]
 pub enum MeshType {
     #[default]
     Entity,

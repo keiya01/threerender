@@ -3,7 +3,7 @@ use std::rc::Rc;
 use examples_common::CustomEvent;
 use threerender::entity::{EntityDescriptor, EntityList};
 use threerender::math::Vec3;
-use threerender::mesh::mesh::EntityMesh;
+use threerender::mesh::traits::EntityMesh;
 use threerender::mesh::{Sphere, Square};
 use threerender::renderer::Updater;
 use threerender::unit::RGBA;
@@ -76,7 +76,8 @@ fn main() {
         ..Default::default()
     });
 
-    let sphere = Rc::new(Sphere::new(50, 50));
+    let sphere = Sphere::new(50, 50);
+    let sphere = Rc::new(sphere.use_entity());
     renderer_builder.push(EntityDescriptor {
         id: "sphere".to_owned(),
         mesh: sphere,

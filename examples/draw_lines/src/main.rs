@@ -1,10 +1,10 @@
 use std::rc::Rc;
 
 use examples_common::CustomEvent;
-use threerender::math::Vec3;
-use threerender::mesh::mesh::EntityMesh;
-use threerender::mesh::{PointList, PointTopology, Topology};
 use threerender::entity::{EntityDescriptor, EntityList, EntityRendererState};
+use threerender::math::Vec3;
+use threerender::mesh::traits::EntityMesh;
+use threerender::mesh::{PointList, PointTopology, Topology};
 use threerender::renderer::Updater;
 use threerender::unit::RGBA;
 use threerender::{RendererBuilder, RendererState, SceneStyle};
