@@ -9,22 +9,14 @@ use threerender::renderer::Updater;
 use threerender::unit::RGBA;
 use threerender::{CameraStyle, LightModel, LightStyle, RendererBuilder, SceneStyle};
 
-#[derive(Default)]
-struct State {
-    should_scale_sphere: bool,
-}
-
 struct App {
-    state: State,
+    width: f64,
+    height: f64,
 }
 
 impl App {
-    fn new() -> Self {
-        Self {
-            state: State {
-                should_scale_sphere: true,
-            },
-        }
+    fn new(width: f64, height: f64) -> Self {
+        Self { width, height }
     }
 }
 
@@ -35,28 +27,30 @@ impl Updater for App {
         &mut self,
         entity_list: &mut dyn EntityList,
         scene: &mut SceneStyle,
-        _event: Self::Event,
+        event: Self::Event,
     ) {
         // TODO: improve this without Mat4
         // Rotate light
         scene.light.rotation.y -= 0.05;
 
-        for entity in entity_list.items_mut() {
-            // Scale sphere
-            if entity.id == "sphere" {
-                if entity.dimension.cmpgt(Vec3::new(2., 2., 2.)).all() {
-                    self.state.should_scale_sphere = false;
-                } else if entity.dimension.cmple(Vec3::new(1., 1., 1.)).all() {
-                    self.state.should_scale_sphere = true;
-                };
-                let scale = if self.state.should_scale_sphere {
-                    0.01
-                } else {
-                    -0.01
-                };
-                entity.dimension += Vec3::new(scale, scale, scale);
+        match event {
+            CustomEvent::MouseMove(pos) => {
+                let distance_x = (pos.x / self.width * 10.) as f32;
+                let distance_y = (pos.y / self.height * 10.) as f32;
+                scene.camera.position.x = distance_x;
+                scene.camera.position.y = distance_y;
             }
+            CustomEvent::MouseWheel(pos) => {
+                scene.camera.position.z += if pos.y > 0. { 0.1 } else { -0.1 };
+            }
+            CustomEvent::Resize(w, h) => {
+                self.width = w as f64;
+                self.height = h as f64;
+            }
+            _ => {}
+        }
 
+        for entity in entity_list.items_mut() {
             // Rotate square
             if entity.id == "square1" {
                 entity.rotation.z += 0.01;
@@ -77,6 +71,7 @@ fn main() {
     renderer_builder.set_camera(CameraStyle {
         width: width as f32,
         height: height as f32,
+        far: 1000.,
         ..Default::default()
     });
 
@@ -117,5 +112,8 @@ fn main() {
         state: Default::default(),
     });
 
-    examples_common::start(renderer_builder, Box::new(App::new()));
+    examples_common::start(
+        renderer_builder,
+        Box::new(App::new(width as f64, height as f64)),
+    );
 }

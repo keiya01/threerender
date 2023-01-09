@@ -1,0 +1,15 @@
+[package]
+name = "examples_camera"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = ["wgpu"]
+
+[dependencies]
+threerender = { path = "../../threerender" }
+examples_common = { path = "../common" }
+wgpu = { git = "https://github.com/gfx-rs/wgpu", optional = true }

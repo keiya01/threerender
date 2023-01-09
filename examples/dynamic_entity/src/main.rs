@@ -9,7 +9,7 @@ use threerender::mesh::traits::{EntityMesh, Mesh};
 use threerender::mesh::Sphere;
 use threerender::renderer::Updater;
 use threerender::unit::RGBA;
-use threerender::{LightModel, LightStyle, RendererBuilder, SceneStyle};
+use threerender::{CameraStyle, LightModel, LightStyle, RendererBuilder, SceneStyle};
 
 struct App {
     sphere: Rc<Mesh>,
@@ -46,7 +46,16 @@ impl Updater for App {
 }
 
 fn main() {
+    let (width, height) = (2000, 1500);
     let mut renderer_builder = RendererBuilder::new();
+    renderer_builder.set_width(width);
+    renderer_builder.set_height(height);
+
+    renderer_builder.set_camera(CameraStyle {
+        width: width as f32,
+        height: height as f32,
+        ..Default::default()
+    });
 
     renderer_builder.set_light(LightStyle {
         model: LightModel::DiffuseReflection,

@@ -9,7 +9,9 @@ use threerender::mesh::{PolygonMode, Sphere, Square};
 use threerender::renderer::wgpu_builder::WGPURendererBuilder;
 use threerender::renderer::Updater;
 use threerender::unit::RGBA;
-use threerender::{LightModel, LightStyle, RendererBuilder, RendererState, SceneStyle};
+use threerender::{
+    CameraStyle, LightModel, LightStyle, RendererBuilder, RendererState, SceneStyle,
+};
 #[cfg(feature = "wgpu")]
 use wgpu::Features;
 
@@ -73,7 +75,16 @@ impl Updater for App {
 }
 
 fn main() {
+    let (width, height) = (2000, 1500);
     let mut renderer_builder = RendererBuilder::new();
+    renderer_builder.set_width(width);
+    renderer_builder.set_height(height);
+
+    renderer_builder.set_camera(CameraStyle {
+        width: width as f32,
+        height: height as f32,
+        ..Default::default()
+    });
 
     #[cfg(feature = "wgpu")]
     renderer_builder.set_features(Features::POLYGON_MODE_LINE);

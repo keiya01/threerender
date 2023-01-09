@@ -498,7 +498,7 @@ impl<Event> Renderer<Event> {
 
         surface.configure(&device, &config);
 
-        let scene = Scene::new(&device, &config, renderer_builder.scene.take().unwrap());
+        let scene = Scene::new(&device, renderer_builder.scene.take().unwrap());
 
         let dynamic_renderer = DynamicRenderer::new(device, queue, &mut renderer_builder);
 
@@ -521,7 +521,7 @@ impl<Event> Renderer<Event> {
         };
 
         let mut bind_group_layouts = vec![
-            &scene.model_uniform.bind_group_layout,
+            &scene.camera_uniform.bind_group_layout,
             &scene.light_uniform.bind_group_layout,
             &dynamic_renderer.rendered_entity.entity_bind_group_layout,
         ];
@@ -649,8 +649,9 @@ impl<Event> Renderer<Event> {
         self.config.height = height;
         self.surface
             .configure(&self.dynamic_renderer.device, &self.config);
-        self.scene
-            .update_model(&self.dynamic_renderer.queue, &self.config);
+        self.scene.style.camera.width = width as f32;
+        self.scene.style.camera.height = height as f32;
+        self.scene.update_camera(&self.dynamic_renderer.queue);
 
         self.set_depth_texture();
     }
@@ -658,6 +659,8 @@ impl<Event> Renderer<Event> {
     pub fn update(&mut self, updater: &mut dyn Updater<Event = Event>, ev: Event) {
         updater.update(&mut self.dynamic_renderer, &mut self.scene.style, ev);
 
+        // TODO: Invoke it only when camera is changed
+        self.scene.update_camera(&self.dynamic_renderer.queue);
         // TODO: Invoke it only when light is changed
         self.scene.update_light(&self.dynamic_renderer.queue);
     }
@@ -698,7 +701,7 @@ impl<Event> Renderer<Event> {
                     }
                 }),
             });
-            rpass.set_bind_group(0, &self.scene.model_uniform.bind_group, &[]);
+            rpass.set_bind_group(0, &self.scene.camera_uniform.bind_group, &[]);
             rpass.set_bind_group(1, &self.scene.light_uniform.bind_group, &[]);
 
             if let Some(rt) = &self.dynamic_renderer.rendered_texture2d {

@@ -7,7 +7,7 @@ use threerender::mesh::traits::EntityMesh;
 use threerender::mesh::{PointList, PointTopology, Topology};
 use threerender::renderer::Updater;
 use threerender::unit::RGBA;
-use threerender::{RendererBuilder, RendererState, SceneStyle};
+use threerender::{CameraStyle, RendererBuilder, RendererState, SceneStyle};
 
 struct App {}
 
@@ -36,7 +36,16 @@ impl Updater for App {
 }
 
 fn main() {
+    let (width, height) = (2000, 1500);
     let mut renderer_builder = RendererBuilder::new();
+    renderer_builder.set_width(width);
+    renderer_builder.set_height(height);
+
+    renderer_builder.set_camera(CameraStyle {
+        width: width as f32,
+        height: height as f32,
+        ..Default::default()
+    });
 
     // Create line list renderer
     renderer_builder.push_state(RendererState {

@@ -1,5 +1,6 @@
 use winit::{
-    event::{ElementState, Event, MouseButton, WindowEvent},
+    dpi::{PhysicalPosition, PhysicalSize},
+    event::{ElementState, Event, MouseButton, MouseScrollDelta, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::Window,
 };
@@ -12,8 +13,10 @@ use threerender::{
 #[derive(Copy, Clone)]
 pub enum CustomEvent {
     ReDraw,
-    MouseMove,
+    MouseMove(PhysicalPosition<f64>),
+    MouseWheel(PhysicalPosition<f64>),
     MouseDown,
+    Resize(u32, u32),
 }
 
 type StaticUpdater = Box<dyn Updater<Event = CustomEvent>>;
@@ -35,26 +38,46 @@ fn run(
                 ..
             } => {
                 renderer.resize(size.width, size.height);
+                cur_event = CustomEvent::Resize(size.width, size.height);
 
                 // For macos
                 window.request_redraw();
             }
             Event::WindowEvent {
-                window_id: _,
-                event,
-            } => match event {
-                WindowEvent::MouseInput {
-                    device_id: _,
-                    state: ElementState::Pressed,
-                    button: MouseButton::Left,
-                    ..
-                } => {
-                    cur_event = CustomEvent::MouseDown;
-                    window.request_redraw();
-                }
-                WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
-                _ => {}
-            },
+                event:
+                    WindowEvent::MouseInput {
+                        device_id: _,
+                        state: ElementState::Pressed,
+                        button: MouseButton::Left,
+                        ..
+                    },
+                ..
+            } => {
+                cur_event = CustomEvent::MouseDown;
+                window.request_redraw();
+            }
+            Event::WindowEvent {
+                event:
+                    WindowEvent::MouseWheel {
+                        delta: MouseScrollDelta::PixelDelta(pos),
+                        ..
+                    },
+                ..
+            } => {
+                cur_event = CustomEvent::MouseWheel(pos);
+                window.request_redraw();
+            }
+            Event::WindowEvent {
+                event: WindowEvent::CursorMoved { position, .. },
+                ..
+            } => {
+                cur_event = CustomEvent::MouseMove(position);
+                window.request_redraw();
+            }
+            Event::WindowEvent {
+                event: WindowEvent::CloseRequested,
+                ..
+            } => *control_flow = ControlFlow::Exit,
             Event::RedrawRequested(_) => {
                 renderer.update(&mut *updater, cur_event);
 
@@ -71,13 +94,13 @@ fn run(
     });
 }
 
-pub fn start(mut renderer_builder: RendererBuilder, updater: StaticUpdater) {
+pub fn start(renderer_builder: RendererBuilder, updater: StaticUpdater) {
     let event_loop = EventLoop::new();
     let window = winit::window::Window::new(&event_loop).unwrap();
-
-    let size = window.inner_size();
-    renderer_builder.set_height(size.height);
-    renderer_builder.set_width(size.width);
+    window.set_inner_size(PhysicalSize::new(
+        renderer_builder.width(),
+        renderer_builder.height(),
+    ));
 
     #[cfg(not(target_arch = "wasm32"))]
     {

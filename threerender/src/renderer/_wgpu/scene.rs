@@ -1,13 +1,10 @@
-use std::{f32::consts, mem};
+use std::mem;
 
 use bytemuck::{Pod, Zeroable};
 use glam::{Affine3A, Mat4, Quat, Vec3};
-use wgpu::{
-    util::DeviceExt, BindGroup, BindGroupLayout, Buffer, Device, Queue, SurfaceConfiguration,
-    TextureView,
-};
+use wgpu::{util::DeviceExt, BindGroup, BindGroupLayout, Buffer, Device, Queue, TextureView};
 
-use crate::{LightModel, LightStyle, SceneStyle};
+use crate::{CameraStyle, LightModel, LightStyle, SceneStyle};
 
 use super::unit::rgb_to_array;
 
@@ -100,16 +97,16 @@ impl LightUniform {
     }
 }
 
-pub(super) struct ModelUniform {
+pub(super) struct CameraUniform {
     buf: Buffer,
     pub(super) bind_group_layout: BindGroupLayout,
     pub(super) bind_group: BindGroup,
 }
 
-impl ModelUniform {
-    fn new(device: &Device, config: &SurfaceConfiguration) -> Self {
+impl CameraUniform {
+    fn new(device: &Device, camera: &CameraStyle) -> Self {
         // Create model uniform
-        let model = transform((config.width / config.height) as f32);
+        let model = camera.transform();
         let model_uniform_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Transform Uniform Buffer"),
             contents: bytemuck::bytes_of(model.as_ref()),
@@ -145,49 +142,39 @@ impl ModelUniform {
         }
     }
 
-    pub(super) fn update(&self, queue: &Queue, config: &SurfaceConfiguration) {
-        let model = transform(config.width as f32 / config.height as f32);
+    pub(super) fn update(&self, queue: &Queue, camera: &CameraStyle) {
+        let model = camera.transform();
         let mx_ref: &[f32; 16] = model.as_ref();
         queue.write_buffer(&self.buf, 0, bytemuck::cast_slice(mx_ref));
     }
 }
 
 pub struct Scene {
-    pub(super) model_uniform: ModelUniform,
+    pub(super) camera_uniform: CameraUniform,
     pub(super) light_uniform: LightUniform,
     pub(super) forward_depth: Option<TextureView>,
     pub style: SceneStyle,
 }
 
 impl Scene {
-    pub(super) fn new(
-        device: &Device,
-        config: &SurfaceConfiguration,
-        scene_style: SceneStyle,
-    ) -> Self {
-        let model_uniform = ModelUniform::new(device, config);
+    pub(super) fn new(device: &Device, scene_style: SceneStyle) -> Self {
+        let camera_uniform = CameraUniform::new(device, &scene_style.camera);
         let light_uniform = LightUniform::new(device, Light::from_light_style(&scene_style.light));
 
         Scene {
-            model_uniform,
+            camera_uniform,
             light_uniform,
             forward_depth: None,
             style: scene_style,
         }
     }
 
-    pub(super) fn update_model(&self, queue: &Queue, config: &SurfaceConfiguration) {
-        self.model_uniform.update(queue, config);
+    pub(super) fn update_camera(&self, queue: &Queue) {
+        self.camera_uniform.update(queue, &self.style.camera);
     }
 
     pub(super) fn update_light(&mut self, queue: &Queue) {
         self.light_uniform.data = Light::from_light_style(&self.style.light);
         self.light_uniform.update(queue, &self.light_uniform.data);
     }
-}
-
-fn transform(aspect_ratio: f32) -> Mat4 {
-    let projection = glam::Mat4::perspective_rh(consts::FRAC_PI_4, aspect_ratio, 1.0, 10.0);
-    let view = glam::Mat4::look_at_rh(glam::Vec3::new(3., 4., 5.), glam::Vec3::ZERO, glam::Vec3::Y);
-    projection * view
 }

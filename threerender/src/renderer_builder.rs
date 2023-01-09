@@ -5,7 +5,7 @@ use crate::{
     mesh::{MeshType, PolygonMode, Topology},
 };
 
-use super::scene::{LightStyle, SceneStyle};
+use super::scene::{CameraStyle, LightStyle, SceneStyle};
 
 pub struct RendererBuilder {
     pub(super) entities: Vec<EntityDescriptor>,
@@ -62,12 +62,27 @@ impl RendererBuilder {
             .light = light;
     }
 
+    pub fn set_camera(&mut self, camera: CameraStyle) {
+        self.scene
+            .as_mut()
+            .expect("RendererBuilder has been consumed")
+            .camera = camera;
+    }
+
     pub fn set_width(&mut self, width: u32) {
         self.width = width;
     }
 
     pub fn set_height(&mut self, height: u32) {
         self.height = height;
+    }
+
+    pub fn width(&self) -> u32 {
+        self.width
+    }
+
+    pub fn height(&self) -> u32 {
+        self.height
     }
 
     pub fn push_state(&mut self, state: RendererState) {
