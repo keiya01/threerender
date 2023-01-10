@@ -27,6 +27,7 @@ This is similar to Three.js, but this will provide more low level API.
 - [x] 2D texture
 - [ ] 3D texture(3D model)
 - [ ] Font
+- [ ] Integration with 2D library like egui
 - [ ] Convenient Math API for 3D development
 - [ ] Performance improvement
 - [ ] Web support
