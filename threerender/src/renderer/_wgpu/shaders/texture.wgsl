@@ -63,14 +63,21 @@ fn vs_main(
     return result;
 }
 
+struct TextureInfo {
+    idx: u32,
+}
+
 @group(3)
 @binding(0)
-var tex: texture_2d<f32>;
+var texs: binding_array<texture_2d<f32>>;
 @group(3)
 @binding(1)
-var sam: sampler;
+var sams: binding_array<sampler>;
+@group(3)
+@binding(2)
+var<uniform> tex_info: TextureInfo;
 
 @fragment
 fn fs_main(vertex: VertexOutput) -> @location(0) vec4<f32> {
-    return vertex.color * textureSampleLevel(tex, sam, vertex.tex_coords, 0.0);
+    return vertex.color * textureSampleLevel(texs[tex_info.idx], sams[tex_info.idx], vertex.tex_coords, 0.0);
 }
