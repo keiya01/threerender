@@ -44,12 +44,19 @@ fn main() {
     renderer_builder.set_camera(CameraStyle {
         width: width as f32,
         height: height as f32,
+        position: Vec3::new(0., 0., 10.),
         ..Default::default()
     });
 
     // Create line list renderer
     renderer_builder.push_state(RendererState {
         topology: Topology::LineList,
+        ..Default::default()
+    });
+
+    // Create point list renderer
+    renderer_builder.push_state(RendererState {
+        topology: Topology::PointList,
         ..Default::default()
     });
 
@@ -61,6 +68,7 @@ fn main() {
         Vec3::new(-2., 2., 1.),
         Vec3::new(-2., -2., 1.),
     ];
+
     let lines = PointList::new(points, PointTopology::Line);
     let lines = Rc::new(lines.use_entity());
     renderer_builder.push(EntityDescriptor {
@@ -72,6 +80,30 @@ fn main() {
         rotation: Vec3::ZERO,
         state: EntityRendererState {
             topology: lines.topology(),
+            ..Default::default()
+        },
+    });
+
+    let mut circles = vec![];
+    let specificity = 1000;
+    for i in 0..((360 * 5) * specificity) {
+        let i = (i as f32) / (specificity as f32);
+        let radian = i.to_radians();
+        let (x, y) = (i / 500. * radian.cos(), i / 500. * radian.sin());
+        circles.push(Vec3::new(x, y, 1.));
+    }
+
+    let points = PointList::new(circles, PointTopology::Point);
+    let points = Rc::new(points.use_entity());
+    renderer_builder.push(EntityDescriptor {
+        id: "circle".to_owned(),
+        mesh: points.clone(),
+        fill_color: RGBA::new(0, 0, 0, 255),
+        position: Vec3::new(0., 0., 0.),
+        dimension: Vec3::ONE,
+        rotation: Vec3::ZERO,
+        state: EntityRendererState {
+            topology: points.topology(),
             ..Default::default()
         },
     });
