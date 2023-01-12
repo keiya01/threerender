@@ -233,14 +233,13 @@ impl RenderedTexture {
         texture_uniform_alignment: wgpu::BufferAddress,
     ) -> Buffer {
         let texture_length = length as wgpu::BufferAddress;
-        let texture_uniform_buf = device.create_buffer(&wgpu::BufferDescriptor {
+
+        device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Texture Uniform Buffer"),
             size: texture_length * texture_uniform_alignment,
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
-        });
-
-        texture_uniform_buf
+        })
     }
 
     fn make_bind_group(

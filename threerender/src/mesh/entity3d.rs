@@ -222,7 +222,7 @@ impl Sphere {
                 let x = r * (2. * PI * s).sin();
 
                 let ver = vertex([x, y, z, 1.], [x, y, z]);
-                let tex = texture([(i as f32 / slices as f32), ty as f32]);
+                let tex = texture([(i as f32 / slices as f32), ty]);
 
                 vertices.push(texture_vertex(ver, tex));
 
