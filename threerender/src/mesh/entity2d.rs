@@ -120,20 +120,20 @@ impl EntityMesh for PointList {
 }
 
 // TODO: use index
-pub struct Quadrangle {
+pub struct Plane {
     vertex: Vec<Vertex>,
 
     texture_descriptor: Option<TextureDescriptor>,
     texture: Option<Vec<TextureVertex>>,
 }
 
-impl Quadrangle {
+impl Plane {
     pub fn new() -> Self {
         Default::default()
     }
 }
 
-impl Default for Quadrangle {
+impl Default for Plane {
     fn default() -> Self {
         Self {
             vertex: vec![
@@ -153,7 +153,7 @@ impl Default for Quadrangle {
     }
 }
 
-impl EntityMesh for Quadrangle {
+impl EntityMesh for Plane {
     fn vertex(&self) -> &[Vertex] {
         &self.vertex
     }
@@ -167,7 +167,7 @@ impl EntityMesh for Quadrangle {
     }
 }
 
-impl TextureMesh for Quadrangle {
+impl TextureMesh for Plane {
     fn texture(&self) -> Option<&[TextureVertex]> {
         self.texture.as_ref().map(|t| &t[..])
     }

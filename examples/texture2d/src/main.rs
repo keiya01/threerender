@@ -5,7 +5,7 @@ use image::EncodableLayout;
 use threerender::entity::{EntityDescriptor, EntityList, EntityRendererState};
 use threerender::math::Vec3;
 use threerender::mesh::traits::TextureMesh;
-use threerender::mesh::{MeshType, Quadrangle, Sphere, Square, TextureDescriptor, TextureFormat};
+use threerender::mesh::{MeshType, Plane, Sphere, Square, TextureDescriptor, TextureFormat};
 #[cfg(feature = "wgpu")]
 use threerender::renderer::builder::WGPURendererBuilder;
 use threerender::renderer::Updater;
@@ -81,16 +81,16 @@ fn main() {
         },
     });
 
-    let quadrangle = Quadrangle::new();
-    let quadrangle = Rc::new(quadrangle.use_texture(TextureDescriptor {
+    let plane = Plane::new();
+    let plane = Rc::new(plane.use_texture(TextureDescriptor {
         width,
         height,
         format: TextureFormat::RGBA,
         data: im.as_bytes().to_vec(),
     }));
     renderer_builder.push(EntityDescriptor {
-        id: "quadrangle".to_owned(),
-        mesh: quadrangle,
+        id: "plane".to_owned(),
+        mesh: plane,
         fill_color: RGBA::new(0, 255, 0, 255),
         position: Vec3::new(-1., 0., 1.),
         dimension: Vec3::ONE,
