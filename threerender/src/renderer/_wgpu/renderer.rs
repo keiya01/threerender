@@ -22,7 +22,7 @@ use crate::{
 use super::{
     scene::Scene,
     uniform::{EntityUniformBuffer, TextureInfoUniformBuffer},
-    unit::rgba_to_array,
+    unit::{rgba_to_array, rgba_to_array_64},
 };
 
 struct RenderedTextureMeta {
@@ -560,6 +560,7 @@ pub struct Renderer<Event> {
     pub(super) config: SurfaceConfiguration,
     pub(super) surface: Surface,
     pub(super) scene: Scene,
+    background: [f64; 4],
     render_pipelines: HashMap<EntityRendererState, RenderPipeline>,
 
     phantom_event: PhantomData<Event>,
@@ -723,6 +724,7 @@ impl<Event> Renderer<Event> {
             config,
             surface,
             scene,
+            background: rgba_to_array_64(&renderer_builder.background),
             render_pipelines,
             phantom_event: PhantomData,
         };
@@ -799,7 +801,12 @@ impl<Event> Renderer<Event> {
                     view: &view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                        load: wgpu::LoadOp::Clear(wgpu::Color{
+                            r: self.background[0],
+                            g: self.background[1],
+                            b: self.background[2],
+                            a: self.background[3],
+                        }),
                         store: true,
                     },
                 })],

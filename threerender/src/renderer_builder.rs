@@ -2,7 +2,7 @@
 use crate::renderer::wgpu_builder::RendererSpecificAttributes;
 use crate::{
     entity::EntityDescriptor,
-    mesh::{MeshType, PolygonMode, Topology},
+    mesh::{MeshType, PolygonMode, Topology}, unit::RGBA,
 };
 
 use super::scene::{CameraStyle, LightStyle, SceneStyle};
@@ -13,6 +13,7 @@ pub struct RendererBuilder {
     pub(super) scene: Option<SceneStyle>,
     pub(super) width: u32,
     pub(super) height: u32,
+    pub(super) background: RGBA,
     #[cfg(feature = "wgpu")]
     pub(super) renderer_specific_attributes: RendererSpecificAttributes,
     pub(super) states: Vec<RendererState>,
@@ -26,6 +27,7 @@ impl Default for RendererBuilder {
             scene: Some(Default::default()),
             width: 0,
             height: 0,
+            background: RGBA::new(255, 255, 255, 255),
             #[cfg(feature = "wgpu")]
             renderer_specific_attributes: Default::default(),
             states: vec![Default::default()],
@@ -75,6 +77,10 @@ impl RendererBuilder {
 
     pub fn set_height(&mut self, height: u32) {
         self.height = height;
+    }
+
+    pub fn set_background(&mut self, bg: RGBA) {
+        self.background = bg;
     }
 
     pub fn width(&self) -> u32 {
