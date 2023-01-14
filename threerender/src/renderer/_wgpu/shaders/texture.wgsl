@@ -4,6 +4,7 @@ var<uniform> umodel: mat4x4<f32>;
 
 struct Light {
     color: vec4<f32>,
+    ambient: vec4<f32>,
     position: vec3<f32>,
     brightness: f32,
     // 0: off
@@ -57,6 +58,8 @@ fn vs_main(
     if ulight.model == 1 {
         light = calc_directional_light(world_position, entity_position, normal);
     }
+    light += ulight.ambient;
+
     result.color = light;
     result.position = entity_position;
     result.tex_coords = tex_coords;

@@ -13,6 +13,7 @@ use super::unit::rgb_to_array;
 pub struct Light {
     // The alpha chanel is always ignored. This is to align buffer for wgsl.
     color: [f32; 4],
+    ambient: [f32; 4],
     position: [f32; 3],
     brightness: f32,
     model: i32,
@@ -22,9 +23,11 @@ pub struct Light {
 
 impl Light {
     fn from_light_style(style: &LightStyle) -> Self {
-        let arr3 = rgb_to_array(&style.color);
+        let color = rgb_to_array(&style.color);
+        let ambient = rgb_to_array(&style.ambient);
         Self {
-            color: [arr3[0], arr3[1], arr3[2], 1.],
+            color: [color[0], color[1], color[2], 1.],
+            ambient: [ambient[0], ambient[1], ambient[2], 1.],
             position: Affine3A::from_rotation_translation(
                 Quat::from_rotation_x(style.rotation.x)
                     .mul_quat(Quat::from_rotation_y(style.rotation.y))
