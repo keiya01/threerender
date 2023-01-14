@@ -7,7 +7,7 @@ struct Light {
     position: vec3<f32>,
     brightness: f32,
     // 0: off
-    // 1: diffuse reflection
+    // 1: directional light
     model: i32,
 }
 
@@ -26,7 +26,7 @@ struct Entity {
 @binding(0)
 var<uniform> entity: Entity;
 
-fn calc_diffuse_reflection_light(model: mat4x4<f32>, position: vec4<f32>, normal: vec3<f32>) -> vec4<f32> {
+fn calc_directional_light(model: mat4x4<f32>, position: vec4<f32>, normal: vec3<f32>) -> vec4<f32> {
     // Normalizing matrix should always be calculated in shader.
     let world_normal = normalize(model * vec4<f32>(normal, 0.0)).xyz;
     let light_position = vec4<f32>(ulight.position, 1.0);
@@ -55,7 +55,7 @@ fn vs_main(
     var result: VertexOutput;
     var light: vec4<f32> = vec4(1.0);
     if ulight.model == 1 {
-        light = calc_diffuse_reflection_light(world_position, entity_position, normal);
+        light = calc_directional_light(world_position, entity_position, normal);
     }
     result.color = light;
     result.position = entity_position;

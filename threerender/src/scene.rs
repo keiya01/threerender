@@ -14,7 +14,7 @@ pub struct SceneStyle {
 pub enum LightModel {
     #[default]
     OFF,
-    DiffuseReflection,
+    Directional,
 }
 
 pub struct LightStyle {

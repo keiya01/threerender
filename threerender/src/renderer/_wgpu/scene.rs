@@ -36,7 +36,7 @@ impl Light {
             brightness: style.brightness,
             model: match style.model {
                 LightModel::OFF => 0,
-                LightModel::DiffuseReflection => 1,
+                LightModel::Directional => 1,
             },
 
             _padding: [0., 0., 0., 0.],

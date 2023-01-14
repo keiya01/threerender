@@ -76,7 +76,7 @@ fn main() {
     });
 
     renderer_builder.set_light(LightStyle {
-        model: LightModel::DiffuseReflection,
+        model: LightModel::Directional,
         ..Default::default()
     });
 
