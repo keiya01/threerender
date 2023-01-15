@@ -79,6 +79,7 @@ fn main() {
             mesh_type: MeshType::Texture,
             ..Default::default()
         },
+        has_shadow: false,
     });
 
     let plane = Plane::new([0, 1, 0]);
@@ -99,6 +100,7 @@ fn main() {
             mesh_type: MeshType::Texture,
             ..Default::default()
         },
+        has_shadow: false,
     });
 
     let globe_im = image::load_from_memory(include_bytes!("../globe.jpg")).unwrap();
@@ -123,6 +125,7 @@ fn main() {
             mesh_type: MeshType::Texture,
             ..Default::default()
         },
+        has_shadow: false,
     });
     examples_common::start(renderer_builder, Box::new(App));
 }

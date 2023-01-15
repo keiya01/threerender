@@ -4,9 +4,10 @@ use glam::Vec3;
 
 use crate::{
     mesh::{traits::Mesh, MeshType, PolygonMode, Topology},
-    unit::RGBA,
+    unit::{RGBA},
     RendererState,
 };
+
 
 pub struct EntityDescriptor {
     pub id: String,
@@ -15,16 +16,18 @@ pub struct EntityDescriptor {
     pub position: Vec3,
     pub dimension: Vec3,
     pub rotation: Vec3,
+    pub has_shadow: bool,
     pub state: EntityRendererState,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Entity {
     pub id: String,
     pub fill_color: RGBA,
     pub position: Vec3,
     pub dimension: Vec3,
     pub rotation: Vec3,
+    pub has_shadow: bool,
     pub(super) state: EntityRendererState,
 }
 

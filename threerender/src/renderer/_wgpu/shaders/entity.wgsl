@@ -11,7 +11,7 @@ struct Light {
     brightness: f32,
     // 0: off
     // 1: directional light
-    model: i32,
+    model: u32,
 }
 
 // Light style
@@ -28,6 +28,29 @@ struct Entity {
 @binding(0)
 var<uniform> entity: Entity;
 
+struct VertexOutput {
+    @location(0) color: vec4<f32>,
+    @location(1) normal: vec3<f32>,
+    @location(2) local_position: vec4<f32>,
+    @builtin(position) position: vec4<f32>,
+};
+
+@vertex
+fn vs_main(
+    @location(0) position: vec4<f32>,
+    @location(1) normal: vec3<f32>,
+) -> VertexOutput {
+    let local_position = entity.transform * position;
+    let entity_position = umodel * local_position;
+
+    var result: VertexOutput;
+
+    result.color = entity.color;
+    result.position = entity_position;
+    result.local_position = local_position;
+    result.normal = normal;
+    return result;
+}
 
 fn calc_directional_light(model: mat4x4<f32>, position: vec4<f32>, normal: vec3<f32>) -> vec4<f32> {
     // Normalizing matrix should always be calculated in shader.
@@ -40,32 +63,19 @@ fn calc_directional_light(model: mat4x4<f32>, position: vec4<f32>, normal: vec3<
     return light_power;
 }
 
-struct VertexOutput {
-    @location(0) color: vec4<f32>,
-    @builtin(position) position: vec4<f32>,
-};
-
-@vertex
-fn vs_main(
-    @location(0) position: vec4<f32>,
-    @location(1) normal: vec3<f32>,
-) -> VertexOutput {
-    let world_position = umodel * entity.transform;
-    let entity_position = world_position * position;
-
-    var result: VertexOutput;
-    var light: vec4<f32> = vec4(1.0);
-    if ulight.model == 1 {
-        light = calc_directional_light(world_position, entity_position, normal);
-    }
-    light += ulight.ambient;
-
-    result.color = entity.color * light;
-    result.position = entity_position;
-    return result;
-}
-
 @fragment
 fn fs_main(vertex: VertexOutput) -> @location(0) vec4<f32> {
-    return vertex.color;
+    var color: vec4<f32> = vertex.color;
+    var light: vec4<f32> = vec4(1.0);
+    if ulight.model != 0u {
+        let world_position = umodel * entity.transform;
+        let entity_position = umodel * vertex.local_position;
+        if ulight.model == 1u {
+            light = calc_directional_light(world_position, entity_position, vertex.normal);
+            light += ulight.ambient;
+            color *= light;
+        }
+    }
+
+    return color;
 }

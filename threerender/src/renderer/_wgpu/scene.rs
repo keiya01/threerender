@@ -16,7 +16,7 @@ pub struct Light {
     ambient: [f32; 4],
     position: [f32; 3],
     brightness: f32,
-    model: i32,
+    model: u32,
 
     _padding: [f32; 4],
 }
@@ -68,7 +68,7 @@ impl LightUniform {
                 label: None,
                 entries: &[wgpu::BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX,
+                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
@@ -120,7 +120,7 @@ impl CameraUniform {
                 label: None,
                 entries: &[wgpu::BindGroupLayoutEntry {
                     binding: 0, // model
-                    visibility: wgpu::ShaderStages::VERTEX,
+                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,

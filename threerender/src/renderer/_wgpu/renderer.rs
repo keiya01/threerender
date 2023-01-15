@@ -120,7 +120,7 @@ impl RenderedEntity {
                 label: None,
                 entries: &[wgpu::BindGroupLayoutEntry {
                     binding: 0, // transform
-                    visibility: wgpu::ShaderStages::VERTEX,
+                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: true,
@@ -392,6 +392,7 @@ impl DynamicRenderer {
             position,
             dimension,
             rotation,
+            has_shadow,
             state,
         }) = renderer_builder.entities.pop()
         {
@@ -423,6 +424,7 @@ impl DynamicRenderer {
                 position,
                 dimension,
                 rotation,
+                has_shadow,
                 state,
             });
             meta_list.push(RenderedEntityMeta {
@@ -500,6 +502,7 @@ impl EntityList for DynamicRenderer {
             position,
             dimension,
             rotation,
+            has_shadow,
             mesh,
             state,
         } = descriptor;
@@ -538,6 +541,7 @@ impl EntityList for DynamicRenderer {
             position,
             dimension,
             rotation,
+            has_shadow,
             state,
         });
         rendered_entity.entity_uniform_buf = entity_uniform_buf;

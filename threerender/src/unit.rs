@@ -1,3 +1,4 @@
+#[derive(Debug, Default)]
 pub struct RGB {
     pub r: u8,
     pub g: u8,
@@ -10,7 +11,7 @@ impl RGB {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct RGBA {
     pub r: u8,
     pub g: u8,

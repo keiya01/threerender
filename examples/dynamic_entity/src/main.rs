@@ -40,6 +40,7 @@ impl Updater for App {
                 dimension: Vec3::ONE,
                 rotation: Vec3::ZERO,
                 state: Default::default(),
+                has_shadow: false,
             })
         }
     }
@@ -72,6 +73,7 @@ fn main() {
         dimension: Vec3::ONE,
         rotation: Vec3::ZERO,
         state: Default::default(),
+        has_shadow: false,
     });
 
     let rng = thread_rng();
