@@ -2,7 +2,8 @@
 use crate::renderer::wgpu_builder::RendererSpecificAttributes;
 use crate::{
     entity::EntityDescriptor,
-    mesh::{MeshType, PolygonMode, Topology}, unit::RGBA,
+    mesh::{MeshType, PolygonMode, Topology},
+    unit::RGBA,
 };
 
 use super::scene::{CameraStyle, LightStyle, SceneStyle};

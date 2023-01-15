@@ -81,7 +81,7 @@ fn main() {
         },
     });
 
-    let plane = Plane::new();
+    let plane = Plane::new([0, 1, 0]);
     let plane = Rc::new(plane.use_texture(TextureDescriptor {
         width,
         height,

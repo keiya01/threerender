@@ -2,7 +2,7 @@ use bytemuck::{Pod, Zeroable};
 use glam::Vec3;
 
 #[repr(C)]
-#[derive(Clone, Copy, Pod, Zeroable)]
+#[derive(Debug, Clone, Copy, Pod, Zeroable)]
 pub struct Vertex {
     pos: [f32; 4],
     normal: [f32; 3],

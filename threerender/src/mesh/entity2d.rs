@@ -122,30 +122,31 @@ impl EntityMesh for PointList {
 // TODO: use index
 pub struct Plane {
     vertex: Vec<Vertex>,
+    index: [u16; 6],
 
     texture_descriptor: Option<TextureDescriptor>,
     texture: Option<Vec<TextureVertex>>,
 }
 
 impl Plane {
-    pub fn new() -> Self {
-        Default::default()
-    }
-}
+    pub fn new(normal: [i8; 3]) -> Self {
+        let mat: [[i8; 3]; 4] = match &normal {
+            [1, 0, 0] => [[0, -1, 1], [0, -1, -1], [0, 1, -1], [0, 1, 1]],
+            [-1, 0, 0] => [[0, -1, -1], [0, -1, 1], [0, 1, 1], [0, 1, -1]],
+            [0, 1, 0] => [[-1, 0, -1], [-1, 0, 1], [1, 0, 1], [1, 0, -1]],
+            [0, -1, 0] => [[-1, 0, -1], [1, 0, -1], [1, 0, 1], [-1, 0, 1]],
+            [0, 0, 1] => [[-1, -1, 0], [1, -1, 0], [1, 1, 0], [-1, 1, 0]],
+            [0, 0, -1] => [[1, -1, 0], [-1, -1, 0], [-1, 1, 0], [1, 1, 0]],
+            _ => unimplemented!(),
+        };
 
-impl Default for Plane {
-    fn default() -> Self {
+        let normal = normal.map(|v| v as f32);
+
         Self {
-            vertex: vec![
-                // Half triangle
-                vertex([-1., -1., 1., 1.], [0., 0., 1.]),
-                vertex([1., -1., 1., 1.], [0., 0., 1.]),
-                vertex([1., 1., 1., 1.], [0., 0., 1.]),
-                // Half triangle
-                vertex([-1., -1., 1., 1.], [0., 0., 1.]),
-                vertex([1., 1., 1., 1.], [0., 0., 1.]),
-                vertex([-1., 1., 1., 1.], [0., 0., 1.]),
-            ],
+            vertex: mat
+                .map(|v| vertex([v[0] as f32, v[1] as f32, v[2] as f32, 1.], normal))
+                .to_vec(),
+            index: [0, 1, 2, 0, 2, 3],
 
             texture_descriptor: None,
             texture: None,
@@ -159,7 +160,7 @@ impl EntityMesh for Plane {
     }
 
     fn index(&self) -> Option<&[u16]> {
-        None
+        Some(&self.index)
     }
 
     fn use_entity(self) -> Mesh {
@@ -188,8 +189,6 @@ impl TextureMesh for Plane {
         let texs = vec![
             texture([0., 1.]),
             texture([1., 1.]),
-            texture([1., 0.]),
-            texture([0., 1.]),
             texture([1., 0.]),
             texture([0., 0.]),
         ];

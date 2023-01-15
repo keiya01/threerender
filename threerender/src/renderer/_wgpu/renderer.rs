@@ -801,7 +801,7 @@ impl<Event> Renderer<Event> {
                     view: &view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color{
+                        load: wgpu::LoadOp::Clear(wgpu::Color {
                             r: self.background[0],
                             g: self.background[1],
                             b: self.background[2],
@@ -815,7 +815,7 @@ impl<Event> Renderer<Event> {
                         view,
                         depth_ops: Some(wgpu::Operations {
                             load: wgpu::LoadOp::Clear(1.0),
-                            store: true,
+                            store: false,
                         }),
                         stencil_ops: None,
                     }
