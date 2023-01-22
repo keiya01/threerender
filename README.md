@@ -33,6 +33,7 @@ This is similar to Three.js, but this will provide more low level API.
   - [ ] Opacity
   - [ ] Point light shadow
   - [ ] Spot light shadow
+- [ ] Multi light/shadow
 - [x] 2D texture
 - [ ] 3D texture(3D model)
 - [ ] Font
