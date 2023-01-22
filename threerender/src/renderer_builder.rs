@@ -4,6 +4,7 @@ use crate::{
     entity::EntityDescriptor,
     mesh::{MeshType, PolygonMode, Topology},
     unit::RGBA,
+    ShadowStyle,
 };
 
 use super::scene::{CameraStyle, LightStyle, SceneStyle};
@@ -72,6 +73,13 @@ impl RendererBuilder {
             .camera = camera;
     }
 
+    pub fn set_shadow(&mut self, shadow: ShadowStyle) {
+        self.scene
+            .as_mut()
+            .expect("RendererBuilder has been consumed")
+            .shadow = Some(shadow);
+    }
+
     pub fn set_width(&mut self, width: u32) {
         self.width = width;
     }
@@ -97,7 +105,7 @@ impl RendererBuilder {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Clone, Copy)]
 pub struct RendererState {
     pub mesh_type: MeshType,
     pub topology: Topology,

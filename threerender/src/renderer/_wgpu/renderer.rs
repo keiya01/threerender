@@ -21,6 +21,7 @@ use crate::{
 
 use super::{
     scene::Scene,
+    shadow::ShadowBaker,
     uniform::{EntityUniformBuffer, TextureInfoUniformBuffer},
     unit::{rgba_to_array, rgba_to_array_64},
 };
@@ -85,7 +86,7 @@ impl RenderedEntity {
         (vertex_buf, index_buf, vertex_length)
     }
 
-    fn make_uniform(
+    pub(super) fn make_uniform(
         device: &Device,
         length: usize,
     ) -> (wgpu::BufferAddress, Buffer, wgpu::BufferAddress) {
@@ -110,7 +111,7 @@ impl RenderedEntity {
         )
     }
 
-    fn make_bind_group(
+    pub(super) fn make_bind_group(
         device: &Device,
         entity_uniform_size: wgpu::BufferAddress,
         entity_uniform_buf: &Buffer,
@@ -392,7 +393,6 @@ impl DynamicRenderer {
             position,
             dimension,
             rotation,
-            has_shadow,
             state,
         }) = renderer_builder.entities.pop()
         {
@@ -424,7 +424,6 @@ impl DynamicRenderer {
                 position,
                 dimension,
                 rotation,
-                has_shadow,
                 state,
             });
             meta_list.push(RenderedEntityMeta {
@@ -502,7 +501,6 @@ impl EntityList for DynamicRenderer {
             position,
             dimension,
             rotation,
-            has_shadow,
             mesh,
             state,
         } = descriptor;
@@ -541,7 +539,6 @@ impl EntityList for DynamicRenderer {
             position,
             dimension,
             rotation,
-            has_shadow,
             state,
         });
         rendered_entity.entity_uniform_buf = entity_uniform_buf;
@@ -566,6 +563,7 @@ pub struct Renderer<Event> {
     pub(super) scene: Scene,
     background: [f64; 4],
     render_pipelines: HashMap<EntityRendererState, RenderPipeline>,
+    shadow_baker: ShadowBaker,
 
     phantom_event: PhantomData<Event>,
 }
@@ -597,14 +595,17 @@ impl<Event> Renderer<Event> {
         } else {
             Features::empty()
         };
+        let mut limits =
+            wgpu::Limits::downlevel_webgl2_defaults().using_resolution(adapter.limits());
+        // TODO: Use constant variable to reduce group.
+        limits.max_bind_groups = 5;
         // Create the logical device and command queue
         let (device, queue) = pollster::block_on(adapter.request_device(
             &wgpu::DeviceDescriptor {
                 label: None,
                 features: adapter_features | renderer_builder.renderer_specific_attributes.features,
                 // Make sure we use the texture resolution limits from the adapter, so we can support images the size of the swapchain.
-                limits:
-                    wgpu::Limits::downlevel_webgl2_defaults().using_resolution(adapter.limits()),
+                limits,
             },
             None,
         ))
@@ -640,8 +641,11 @@ impl<Event> Renderer<Event> {
 
         let mut bind_group_layouts = vec![
             &scene.camera_uniform.bind_group_layout,
-            &scene.light_uniform.bind_group_layout,
             &dynamic_renderer.rendered_entity.entity_bind_group_layout,
+            &scene.light_uniform.bind_group_layout,
+            // TODO: To share shader source, it should be included even if shadow is not used.
+            //       But this is overhead, so I will improve this when we use modularized wgsl.
+            &scene.shadow_uniform.bind_group_layout,
         ];
 
         if let Some(rt) = &dynamic_renderer.rendered_texture {
@@ -658,8 +662,14 @@ impl<Event> Renderer<Event> {
                 });
 
         let mut render_pipelines = HashMap::new();
-        for state in renderer_builder.states {
-            let (shader, vertex_buf_size, vertex_buf_attr) = match &state.mesh_type {
+        let states = renderer_builder.states.clone();
+        for state in states {
+            let key = EntityRendererState::from_renderer_state(state);
+            if render_pipelines.get(&key).is_some() {
+                continue;
+            }
+
+            let (shader, vertex_buf_size, vertex_buf_attr) = match &key.mesh_type {
                 MeshType::Entity => (
                     lazy_load_shader(&mut entity_shader, include_str!("shaders/entity.wgsl")),
                     mem::size_of::<Vertex>() as wgpu::BufferAddress,
@@ -676,7 +686,7 @@ impl<Event> Renderer<Event> {
                 dynamic_renderer
                     .device
                     .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                        label: None,
+                        label: Some("Renderer"),
                         layout: Some(&pipeline_layout),
                         vertex: wgpu::VertexState {
                             module: &shader,
@@ -693,14 +703,14 @@ impl<Event> Renderer<Event> {
                             targets: &[Some(config.format.into())],
                         }),
                         primitive: wgpu::PrimitiveState {
-                            topology: match state.topology {
+                            topology: match &key.topology {
                                 Topology::PointList => PrimitiveTopology::PointList,
                                 Topology::LineList => PrimitiveTopology::LineList,
                                 Topology::TriangleList => PrimitiveTopology::TriangleList,
                             },
                             front_face: wgpu::FrontFace::Ccw,
                             cull_mode: Some(wgpu::Face::Back),
-                            polygon_mode: match &state.polygon_mode {
+                            polygon_mode: match &key.polygon_mode {
                                 PolygonMode::Fill => wgpu::PolygonMode::Fill,
                                 PolygonMode::Line => wgpu::PolygonMode::Line,
                                 PolygonMode::Point => wgpu::PolygonMode::Point,
@@ -717,11 +727,16 @@ impl<Event> Renderer<Event> {
                         multisample: wgpu::MultisampleState::default(),
                         multiview: None,
                     });
-            render_pipelines.insert(
-                EntityRendererState::from_renderer_state(state),
-                render_pipeline,
-            );
+            render_pipelines.insert(key, render_pipeline);
         }
+
+        let shadow_baker = ShadowBaker::new(
+            &dynamic_renderer.device,
+            dynamic_renderer.rendered_entity.entities.len(),
+            scene.camera_uniform.model,
+            &scene.shadow_uniform.texture,
+            renderer_builder.states,
+        );
 
         let mut renderer = Self {
             dynamic_renderer,
@@ -731,6 +746,7 @@ impl<Event> Renderer<Event> {
             background: rgba_to_array_64(&renderer_builder.background),
             render_pipelines,
             phantom_event: PhantomData,
+            shadow_baker,
         };
 
         if renderer_builder.enable_forward_depth {
@@ -777,11 +793,16 @@ impl<Event> Renderer<Event> {
 
     pub fn update(&mut self, updater: &mut dyn Updater<Event = Event>, ev: Event) {
         updater.update(&mut self.dynamic_renderer, &mut self.scene.style, ev);
+        self.update_scene();
+    }
 
+    fn update_scene(&mut self) {
         // TODO: Invoke it only when camera is changed
         self.scene.update_camera(&self.dynamic_renderer.queue);
         // TODO: Invoke it only when light is changed
         self.scene.update_light(&self.dynamic_renderer.queue);
+        // TODO: Invoke it only when light is changed
+        self.scene.update_shadow(&self.dynamic_renderer.queue);
     }
 
     pub fn draw(&self) {
@@ -798,6 +819,61 @@ impl<Event> Renderer<Event> {
             .dynamic_renderer
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+
+        if self.scene.shadow_uniform.use_shadow {
+            // shadow pass
+            encoder.push_debug_group("shadow passe");
+            {
+                let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: None,
+                    color_attachments: &[],
+                    depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                        view: &self.shadow_baker.view,
+                        depth_ops: Some(wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(1.0),
+                            store: true,
+                        }),
+                        stencil_ops: None,
+                    }),
+                });
+
+                rpass.set_bind_group(0, &self.shadow_baker.camera.bind_group, &[]);
+
+                for (i, entity) in rendered_entity.entities.iter().enumerate() {
+                    rpass.set_pipeline(
+                        self.shadow_baker
+                            .render_pipelines
+                            .get(&entity.state)
+                            .expect("Specified renderer state is not found"),
+                    );
+
+                    let meta = rendered_entity
+                        .meta_list
+                        .get(i)
+                        .expect("The length of meta_list must match with entities");
+
+                    self.prepare_shadow_entity(entity, meta);
+                    rpass.set_bind_group(
+                        1,
+                        &self.shadow_baker.entity.entity_bind_group,
+                        &[meta.uniform_offset as u32],
+                    );
+
+                    rpass.set_vertex_buffer(0, meta.vertex_buf.slice(..));
+                    match &meta.index_buf {
+                        Some(index_buf) => {
+                            rpass.set_index_buffer(index_buf.slice(..), wgpu::IndexFormat::Uint16);
+                            rpass.draw_indexed(0..meta.index_length, 0, 0..1);
+                        }
+                        None => rpass.draw(0..meta.vertex_length, 0..1),
+                    }
+                }
+            }
+            encoder.pop_debug_group();
+        }
+
+        // forward pass
+        encoder.push_debug_group("forward rendering pass");
         {
             let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: None,
@@ -826,7 +902,8 @@ impl<Event> Renderer<Event> {
                 }),
             });
             rpass.set_bind_group(0, &self.scene.camera_uniform.bind_group, &[]);
-            rpass.set_bind_group(1, &self.scene.light_uniform.bind_group, &[]);
+            rpass.set_bind_group(2, &self.scene.light_uniform.bind_group, &[]);
+            rpass.set_bind_group(3, &self.scene.shadow_uniform.bind_group, &[]);
 
             for (i, entity) in rendered_entity.entities.iter().enumerate() {
                 rpass.set_pipeline(
@@ -841,17 +918,19 @@ impl<Event> Renderer<Event> {
 
                 self.prepare_entity(entity, meta);
                 rpass.set_bind_group(
-                    2,
+                    1,
                     &rendered_entity.entity_bind_group,
                     &[meta.uniform_offset as u32],
                 );
 
                 if let Some(rt) = &self.dynamic_renderer.rendered_texture {
-                    rpass.set_bind_group(
-                        3,
-                        &rt.texture_bind_group,
-                        &[meta.texture.as_ref().unwrap().uniform_offset as u32],
-                    );
+                    if let Some(texture_meta) = &meta.texture {
+                        rpass.set_bind_group(
+                            4,
+                            &rt.texture_bind_group,
+                            &[texture_meta.uniform_offset as u32],
+                        );
+                    }
                 }
 
                 rpass.set_vertex_buffer(0, meta.vertex_buf.slice(..));
@@ -864,6 +943,7 @@ impl<Event> Renderer<Event> {
                 }
             }
         }
+        encoder.pop_debug_group();
 
         self.dynamic_renderer.queue.submit(Some(encoder.finish()));
         frame.present();
@@ -889,12 +969,33 @@ impl<Event> Renderer<Event> {
         );
 
         if let Some(rt) = &self.dynamic_renderer.rendered_texture {
-            let tex_meta = meta.texture.as_ref().unwrap();
-            self.dynamic_renderer.queue.write_buffer(
-                &rt.texture_uniform_buf,
-                tex_meta.uniform_offset,
-                bytemuck::bytes_of(&tex_meta.tex_info),
-            );
+            if let Some(tex_meta) = &meta.texture {
+                self.dynamic_renderer.queue.write_buffer(
+                    &rt.texture_uniform_buf,
+                    tex_meta.uniform_offset,
+                    bytemuck::bytes_of(&tex_meta.tex_info),
+                );
+            };
         }
+    }
+
+    fn prepare_shadow_entity(&self, entity: &Entity, meta: &RenderedEntityMeta) {
+        let renderer_entity = &self.shadow_baker.entity;
+        let buf = EntityUniformBuffer {
+            transform: Mat4::from_scale_rotation_translation(
+                entity.dimension,
+                Quat::from_rotation_x(entity.rotation.x)
+                    .mul_quat(Quat::from_rotation_y(entity.rotation.y))
+                    .mul_quat(Quat::from_rotation_z(entity.rotation.z)),
+                entity.position,
+            )
+            .to_cols_array_2d(),
+            color: rgba_to_array(&entity.fill_color),
+        };
+        self.dynamic_renderer.queue.write_buffer(
+            &renderer_entity.entity_uniform_buf,
+            meta.uniform_offset,
+            bytemuck::bytes_of(&buf),
+        );
     }
 }

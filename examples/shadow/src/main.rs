@@ -4,10 +4,10 @@ use examples_common::CustomEvent;
 use threerender::entity::{EntityDescriptor, EntityList};
 use threerender::math::Vec3;
 use threerender::mesh::traits::EntityMesh;
-use threerender::mesh::{Sphere, Square};
+use threerender::mesh::{Plane, Sphere, Square};
 use threerender::renderer::Updater;
 use threerender::unit::RGBA;
-use threerender::{CameraStyle, LightModel, LightStyle, RendererBuilder, SceneStyle};
+use threerender::{CameraStyle, LightModel, LightStyle, RendererBuilder, SceneStyle, ShadowStyle};
 
 #[derive(Default)]
 struct State {
@@ -34,13 +34,9 @@ impl Updater for App {
     fn update(
         &mut self,
         entity_list: &mut dyn EntityList,
-        scene: &mut SceneStyle,
+        _scene: &mut SceneStyle,
         _event: Self::Event,
     ) {
-        // TODO: improve this without Mat4
-        // Rotate light
-        scene.light.rotation.y -= 0.05;
-
         for entity in entity_list.items_mut() {
             // Scale sphere
             if entity.id == "sphere" {
@@ -73,7 +69,6 @@ fn main() {
     let mut renderer_builder = RendererBuilder::new();
     renderer_builder.set_width(width);
     renderer_builder.set_height(height);
-    renderer_builder.set_background(RGBA::new(0, 0, 0, 1));
 
     renderer_builder.set_camera(CameraStyle {
         width: width as f32,
@@ -83,9 +78,23 @@ fn main() {
 
     renderer_builder.set_light(LightStyle {
         model: LightModel::Directional,
+        position: Vec3::new(3., 2.0, 1.0),
         ..Default::default()
     });
 
+    renderer_builder.set_shadow(ShadowStyle::default());
+
+    let plane = Plane::new([0, 1, 0]);
+    let plane = Rc::new(plane.use_entity());
+    renderer_builder.push(EntityDescriptor {
+        id: "plane".to_owned(),
+        mesh: plane,
+        fill_color: RGBA::new(255, 255, 255, 255),
+        position: Vec3::new(-3., -5., -3.),
+        dimension: Vec3::new(10., 10., 10.),
+        rotation: Vec3::new(0., -1., 0.),
+        state: Default::default(),
+    });
     let sphere = Sphere::new(50, 50);
     let sphere = Rc::new(sphere.use_entity());
     renderer_builder.push(EntityDescriptor {

@@ -90,7 +90,6 @@ fn main() {
         dimension: Vec3::ONE,
         rotation: Vec3::ZERO,
         state: Default::default(),
-        has_shadow: false,
     });
     let square = Square::new();
     let square = Rc::new(square.use_entity());
@@ -102,7 +101,6 @@ fn main() {
         dimension: Vec3::ONE,
         rotation: Vec3::ZERO,
         state: Default::default(),
-        has_shadow: false,
     });
     renderer_builder.push(EntityDescriptor {
         id: "square2".to_owned(),
@@ -112,7 +110,6 @@ fn main() {
         dimension: Vec3::ONE,
         rotation: Vec3::ZERO,
         state: Default::default(),
-        has_shadow: false,
     });
 
     examples_common::start(

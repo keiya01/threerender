@@ -4,13 +4,15 @@ use examples_common::CustomEvent;
 use image::EncodableLayout;
 use threerender::entity::{EntityDescriptor, EntityList, EntityRendererState};
 use threerender::math::Vec3;
-use threerender::mesh::traits::TextureMesh;
+use threerender::mesh::traits::{EntityMesh, TextureMesh};
 use threerender::mesh::{MeshType, Plane, Sphere, Square, TextureDescriptor, TextureFormat};
 #[cfg(feature = "wgpu")]
 use threerender::renderer::builder::WGPURendererBuilder;
 use threerender::renderer::Updater;
 use threerender::unit::RGBA;
-use threerender::{CameraStyle, RendererBuilder, RendererState, SceneStyle};
+use threerender::{
+    CameraStyle, LightModel, LightStyle, RendererBuilder, RendererState, SceneStyle, ShadowStyle,
+};
 #[cfg(feature = "wgpu")]
 use wgpu::Features;
 
@@ -49,12 +51,31 @@ fn main() {
         ..Default::default()
     });
 
+    renderer_builder.set_light(LightStyle {
+        model: LightModel::Directional,
+        position: Vec3::new(3., 2., 1.),
+        ..Default::default()
+    });
+    renderer_builder.set_shadow(ShadowStyle::default());
+
     #[cfg(feature = "wgpu")]
     renderer_builder.set_features(Features::TEXTURE_BINDING_ARRAY);
 
     renderer_builder.push_state(RendererState {
         mesh_type: MeshType::Texture,
         ..Default::default()
+    });
+
+    let plane = Plane::new([0, 1, 0]);
+    let plane = Rc::new(plane.use_entity());
+    renderer_builder.push(EntityDescriptor {
+        id: "plane".to_owned(),
+        mesh: plane,
+        fill_color: RGBA::new(255, 255, 255, 255),
+        position: Vec3::new(-3., -5., -3.),
+        dimension: Vec3::new(10., 10., 10.),
+        rotation: Vec3::new(0., -1., 0.),
+        state: Default::default(),
     });
 
     let im = image::load_from_memory(include_bytes!("../sample.jpg")).unwrap();
@@ -79,7 +100,6 @@ fn main() {
             mesh_type: MeshType::Texture,
             ..Default::default()
         },
-        has_shadow: false,
     });
 
     let plane = Plane::new([0, 1, 0]);
@@ -100,7 +120,6 @@ fn main() {
             mesh_type: MeshType::Texture,
             ..Default::default()
         },
-        has_shadow: false,
     });
 
     let globe_im = image::load_from_memory(include_bytes!("../globe.jpg")).unwrap();
@@ -117,7 +136,7 @@ fn main() {
     renderer_builder.push(EntityDescriptor {
         id: "sphere".to_owned(),
         mesh: sphere,
-        fill_color: RGBA::new(0, 255, 0, 255),
+        fill_color: RGBA::new(255, 255, 255, 255),
         position: Vec3::new(2., 0., 1.),
         dimension: Vec3::ONE,
         rotation: Vec3::new(0., 0.5, 0.),
@@ -125,7 +144,6 @@ fn main() {
             mesh_type: MeshType::Texture,
             ..Default::default()
         },
-        has_shadow: false,
     });
     examples_common::start(renderer_builder, Box::new(App));
 }

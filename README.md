@@ -19,16 +19,32 @@ This is similar to Three.js, but this will provide more low level API.
     - [x] 2D texture rendering
 - [x] 2D entities
   - [x] Lines
-  - [x] Quadrangle
+  - [x] Plane
     - [x] 2D texture rendering
   - [x] Triangle
 - [x] Camera
-- [x] Light
+- [ ] Light
+  - [x] Directional light
+  - [ ] Spot light
+  - [ ] Point light
+  - [ ] Hemisphere light
+- [ ] Shadow
+  - [x] Directional shadow
+  - [ ] Opacity
+  - [ ] Point light shadow
+  - [ ] Spot light shadow
 - [x] 2D texture
 - [ ] 3D texture(3D model)
 - [ ] Font
-- [ ] Integration with 2D library like egui
-- [ ] Convenient Math API for 3D development
+- [ ] Override shader
+- [ ] Extendable shader
+- [ ] multi light
 - [ ] Performance improvement
+    - [ ] dirty check
+    - [ ] multi threading
+    - [ ] Optimize image loading. Eg. We should not draw image if image is not visible.
+- [ ] Integration with 2D library like egui
 - [ ] Web support
+- [ ] Convenient Math API for 3D development
 - [ ] OpenGL Support
+- [ ] Light variation
