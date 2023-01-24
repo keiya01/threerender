@@ -1,11 +1,11 @@
-use std::{collections::HashMap, fs::File, io::{Read}, str::Lines};
+use std::{collections::HashMap, fs::File, io::Read, str::Lines};
 
 enum IFStatement {
-    IFDEF(bool),
-    ELSE(bool),
+    Ifdef(bool),
+    Else(bool),
 }
 
-const EXTENSION: &'static str = "wgsl";
+const EXTENSION: &str = "wgsl";
 
 pub struct ShaderProcessor<'a> {
     shader: &'a str,
@@ -41,52 +41,52 @@ impl<'a> ShaderProcessor<'a> {
     }
 
     fn process_lines(&mut self, lines: Lines) {
-      for (_, line) in lines.enumerate() {
-        if self.handle_ifdef_statement(line) {
-            continue;
-        }
-        match self.if_nest_order.last() {
-            Some(IFStatement::IFDEF(matched) | IFStatement::ELSE(matched)) if !*matched => {
-                continue
+        for (_, line) in lines.enumerate() {
+            if self.handle_ifdef_statement(line) {
+                continue;
             }
-            _ => {}
-        };
+            match self.if_nest_order.last() {
+                Some(IFStatement::Ifdef(matched) | IFStatement::Else(matched)) if !*matched => {
+                    continue
+                }
+                _ => {}
+            };
 
-        if self.handle_include_statement(line) {
-          continue;
+            if self.handle_include_statement(line) {
+                continue;
+            }
+
+            self.lines.push(format!("{}{}", line, "\n"));
         }
-
-        self.lines.push(format!("{}{}", line, "\n"));
-    }
     }
 
     fn handle_ifdef_statement(&mut self, line: &str) -> bool {
         if line.starts_with("#ifdef") {
             match self.if_nest_order.last() {
-                Some(IFStatement::IFDEF(matched) | IFStatement::ELSE(matched)) if !*matched => {
-                    self.if_nest_order.push(IFStatement::IFDEF(false));
+                Some(IFStatement::Ifdef(matched) | IFStatement::Else(matched)) if !*matched => {
+                    self.if_nest_order.push(IFStatement::Ifdef(false));
                     return true;
                 }
                 _ => {}
             };
 
-            let split = line.split(" ").collect::<Vec<&str>>();
+            let split = line.split(' ').collect::<Vec<&str>>();
             let env = split.get(1);
             let matched = match env {
                 Some(env) => self.envs.get(env).map_or(false, |e| *e),
                 None => false,
             };
-            self.if_nest_order.push(IFStatement::IFDEF(matched));
+            self.if_nest_order.push(IFStatement::Ifdef(matched));
             return true;
         }
 
         if line.starts_with("#else") {
             let i = self.if_nest_order.pop();
             let matched = match i {
-                Some(IFStatement::IFDEF(matched)) => !matched,
+                Some(IFStatement::Ifdef(matched)) => !matched,
                 _ => unreachable!(),
             };
-            self.if_nest_order.push(IFStatement::ELSE(matched));
+            self.if_nest_order.push(IFStatement::Else(matched));
             return true;
         }
 
@@ -94,7 +94,7 @@ impl<'a> ShaderProcessor<'a> {
             let i = self.if_nest_order.pop();
             // assert if statement
             match i {
-                Some(IFStatement::IFDEF(_) | IFStatement::ELSE(_)) => {}
+                Some(IFStatement::Ifdef(_) | IFStatement::Else(_)) => {}
                 None => unreachable!(),
             };
             return true;
@@ -104,32 +104,33 @@ impl<'a> ShaderProcessor<'a> {
     }
 
     fn handle_include_statement(&mut self, line: &str) -> bool {
-      if !line.starts_with("#include") {
-        return false;
-      }
+        if !line.starts_with("#include") {
+            return false;
+        }
 
-      let split_line = line.split(" ").collect::<Vec<&str>>();
-      let mut path = match split_line.get(1) {
-        Some(s) => *s,
-        None => panic!("Invalid include statement"),
-      };
-
-      if path.starts_with("builtin") {
-        let include = path.trim_start_matches("builtin::");
-        match self.builtin.get(include) {
-          Some(s) => path = s,
-          None => panic!("Could not find {} builtin module", include),
+        let split_line = line.split(' ').collect::<Vec<&str>>();
+        let mut path = match split_line.get(1) {
+            Some(s) => *s,
+            None => panic!("Invalid #include statement"),
         };
-      }
 
-      let path = &format!("{}.{}", path, EXTENSION);
+        if path.starts_with("builtin") {
+            let include = path.trim_start_matches("builtin::");
+            match self.builtin.get(include) {
+                Some(s) => path = s,
+                None => panic!("Could not find {} builtin module", include),
+            };
+        }
 
-      let mut file = File::open(path).expect(&format!("Could not find {}", path));
-      let mut contents = String::new();
-      file.read_to_string(&mut contents).expect(&format!("Failed to read file {}", path));
-      self.process_lines(contents.lines());
+        let path = &format!("{}.{}", path, EXTENSION);
 
-      return true;
+        let mut file = File::open(path).unwrap_or_else(|_| panic!("Could not find {}", path));
+        let mut contents = String::new();
+        file.read_to_string(&mut contents)
+            .unwrap_or_else(|_| panic!("Failed to read file {}", path));
+        self.process_lines(contents.lines());
+
+        true
     }
 }
 

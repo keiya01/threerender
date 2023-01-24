@@ -28,7 +28,7 @@
 //! p.insert_builtin("light", "./assets/builtin/light");
 //! p.process(); // Return processed string
 //! ```
-//! 
+//!
 //! ## Feature flags
 //! - The `wgsl` feature enables processor for WGSL.
 //!
