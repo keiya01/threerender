@@ -29,7 +29,7 @@
 //! #ifdef USE_SHADER
 //! var<uniform> ushadow: vec4<f32>;
 //! #end
-//! 
+//!
 //! @vertex
 //! fn v_main() -> vec4<f32> {
 //!   var color: vec4<f32> = vec4(1.0, 1.0, 1.0, 1.0);
