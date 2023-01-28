@@ -6,7 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["wgpu"]
+default = ["wgpu", "wgsl"]
+wgsl = ["shader_processor/wgsl"]
 
 [dependencies]
 bytemuck = { version = "1.12.3", features = ["derive"]}
@@ -14,3 +15,4 @@ glam = "0.22.0"
 pollster = "0.2.5"
 raw-window-handle = "0.5.0"
 wgpu = { git = "https://github.com/gfx-rs/wgpu", optional = true }
+shader_processor = { path = "../shader_processor", optional = true }

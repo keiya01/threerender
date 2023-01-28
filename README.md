@@ -10,6 +10,16 @@ This will target providing feature of fundamental for 3D development.
 
 This is similar to Three.js, but this will provide more low level API. 
 
+## Examples
+
+You can try this project by [examples](/examples).
+
+You can run these examples by below command.
+
+```sh
+cargo run -p examples_{PROJECT_NAME}
+```
+
 ## Status
 
 - [x] 3D entities

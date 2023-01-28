@@ -15,7 +15,7 @@ use crate::{
     RendererState,
 };
 
-use super::{scene::CameraUniform, RenderedEntity};
+use super::{scene::CameraUniform, RenderedEntity, processor::{process_shader, ShaderProcessOption}};
 
 pub(super) struct ShadowEntityUniform {
     pub(super) entity_uniform_buf: Buffer,
@@ -51,12 +51,14 @@ impl ShadowBaker {
             push_constant_ranges: &[],
         });
 
-        let lazy_load_shader = |shader: &mut Option<Rc<ShaderModule>>, source: &str| match shader {
+        let lazy_load_shader = |shader: &mut Option<Rc<ShaderModule>>, option: ShaderProcessOption| match shader {
             Some(ref s) => s.clone(),
             None => {
+                // TODO: Cache source
+                let source = process_shader(include_str!("shaders/shadow.wgsl"), option);
                 let s = Rc::new(device.create_shader_module(wgpu::ShaderModuleDescriptor {
                     label: None,
-                    source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(source)),
+                    source: wgpu::ShaderSource::Wgsl(Cow::Owned(source)),
                 }));
                 *shader = Some(s.clone());
                 s
@@ -78,12 +80,16 @@ impl ShadowBaker {
 
             let (shader, vertex_buf_size, vertex_buf_attr) = match &key.mesh_type {
                 MeshType::Entity => (
-                    lazy_load_shader(&mut entity_shader, include_str!("shaders/shadow.wgsl")),
+                    lazy_load_shader(&mut entity_shader, ShaderProcessOption {
+                        use_texture: false,
+                    }),
                     mem::size_of::<Vertex>() as wgpu::BufferAddress,
                     vertex_attr_array![0 => Float32x4, 1 => Float32x3].to_vec(),
                 ),
                 MeshType::Texture => (
-                    lazy_load_shader(&mut texture_shader, include_str!("shaders/shadow_tex.wgsl")),
+                    lazy_load_shader(&mut texture_shader, ShaderProcessOption {
+                        use_texture: true,
+                    }),
                     mem::size_of::<TextureVertex>() as wgpu::BufferAddress,
                     vertex_attr_array![0 => Float32x4, 1 => Float32x3, 2 => Float32x2].to_vec(),
                 ),
