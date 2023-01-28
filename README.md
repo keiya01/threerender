@@ -47,9 +47,8 @@ cargo run -p examples_{PROJECT_NAME}
 - [x] 2D texture
 - [ ] 3D texture(3D model)
 - [ ] Font
-- [ ] Override shader
-- [ ] Extendable shader
-- [ ] multi light
+- [x] Override shader
+- [ ] Extendable shader by user
 - [ ] Performance improvement
     - [ ] dirty check
     - [ ] multi threading
