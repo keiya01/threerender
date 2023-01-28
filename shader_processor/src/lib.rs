@@ -23,7 +23,22 @@
 //! Made for [`threerender`](https://github.com/keiya01/threerender/).
 //!
 //! ```rust
-//! let mut p = ShaderProcessor::from_shader_str(SHADER_INPUT);
+//! use shader_processor::ShaderProcessor;
+//! let mut p = ShaderProcessor::from_shader_str(r"
+//! #include builtin::light
+//! #ifdef USE_SHADER
+//! var<uniform> ushadow: vec4<f32>;
+//! #end
+//! 
+//! @vertex
+//! fn v_main() -> vec4<f32> {
+//!   var color: vec4<f32> = vec4(1.0, 1.0, 1.0, 1.0);
+//! #ifdef USE_SHADER
+//!   color *= ushadow;
+//! #end
+//!   return color;
+//! }
+//! ");
 //! p.insert_env("USE_SHADOW", true);
 //! p.insert_builtin("light", "./assets/builtin/light");
 //! p.process(); // Return processed string
