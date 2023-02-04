@@ -66,6 +66,7 @@ fn main() {
     let mut renderer_builder = RendererBuilder::new();
     renderer_builder.set_width(width);
     renderer_builder.set_height(height);
+    renderer_builder.set_background(RGBA::new(137, 189, 222, 255));
 
     renderer_builder.set_camera(CameraStyle {
         width: width as f32,
@@ -75,7 +76,10 @@ fn main() {
     });
 
     renderer_builder.set_light(LightStyle::with_hemisphere(
-        LightBaseStyle::default(),
+        LightBaseStyle {
+            position: Vec3::new(2., 3., -3.),
+            ..Default::default()
+        },
         ReflectionLightStyle::default(),
         HemisphereLightStyle { sky_color: RGB::new(137, 189, 222), ground_color: RGB::new(163, 104, 64) },
     ));

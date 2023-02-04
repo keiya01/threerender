@@ -82,7 +82,7 @@ impl Light {
                     .mul_quat(Quat::from_rotation_z(style.base.rotation.z)),
                 style.base.position,
             )
-            .transform_vector3(Vec3::ONE)
+            .transform_vector3(style.base.position)
             .to_array(),
             brightness: style.base.brightness,
             model: match style.model {
