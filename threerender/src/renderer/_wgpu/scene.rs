@@ -1,7 +1,7 @@
 use std::mem;
 
 use bytemuck::{Pod, Zeroable};
-use glam::{Affine3A, Mat4, Quat, Vec3};
+use glam::{Affine3A, Mat4, Quat};
 use wgpu::{
     util::DeviceExt, BindGroup, BindGroupLayout, Buffer, Device, Queue, Sampler, Texture,
     TextureView,

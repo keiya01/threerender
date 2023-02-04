@@ -61,6 +61,7 @@ impl Default for LightBaseStyle {
     }
 }
 
+#[derive(Default)]
 pub struct LightStyle {
     pub base: LightBaseStyle,
     pub reflection: Option<ReflectionLightStyle>,
@@ -68,16 +69,7 @@ pub struct LightStyle {
     pub(crate) model: LightModel,
 }
 
-impl Default for LightStyle {
-    fn default() -> Self {
-        Self {
-            base: LightBaseStyle::default(),
-            reflection: None,
-            hemisphere: None,
-            model: Default::default(),
-        }
-    }
-}
+
 
 impl LightStyle {
     pub fn with_directional(base: LightBaseStyle) -> Self {

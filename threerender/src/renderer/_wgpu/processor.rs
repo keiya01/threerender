@@ -45,5 +45,5 @@ fn make_builtin_path(path: &str) -> String {
     let common_path =
         std::fs::canonicalize("./threerender/src/renderer/_wgpu/shaders/builtin/").unwrap();
     let common_path = common_path.to_str().unwrap();
-    format!("{}/{}", common_path, path)
+    format!("{common_path}/{path}")
 }

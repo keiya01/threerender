@@ -118,16 +118,16 @@ impl<'a> ShaderProcessor<'a> {
             let include = path.trim_start_matches("builtin::");
             match self.builtin.get(include) {
                 Some(s) => path = s,
-                None => panic!("Could not find {} builtin module", include),
+                None => panic!("Could not find {include} builtin module"),
             };
         }
 
-        let path = &format!("{}.{}", path, EXTENSION);
+        let path = &format!("{path}.{EXTENSION}");
 
-        let mut file = File::open(path).unwrap_or_else(|_| panic!("Could not find {}", path));
+        let mut file = File::open(path).unwrap_or_else(|_| panic!("Could not find {path}"));
         let mut contents = String::new();
         file.read_to_string(&mut contents)
-            .unwrap_or_else(|_| panic!("Failed to read file {}", path));
+            .unwrap_or_else(|_| panic!("Failed to read file {path}"));
         self.process_lines(contents.lines());
 
         true
