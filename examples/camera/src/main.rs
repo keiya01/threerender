@@ -4,9 +4,9 @@ use examples_common::CustomEvent;
 use threerender::entity::{EntityDescriptor, EntityList};
 use threerender::math::Vec3;
 use threerender::mesh::traits::EntityMesh;
-use threerender::mesh::{Sphere, Square, Plane};
+use threerender::mesh::{Plane, Sphere, Square};
 use threerender::renderer::Updater;
-use threerender::unit::{RGBA, RGB};
+use threerender::unit::{RGB, RGBA};
 use threerender::{
     CameraStyle, HemisphereLightStyle, LightBaseStyle, LightStyle, ReflectionLightStyle,
     RendererBuilder, SceneStyle,
@@ -81,7 +81,10 @@ fn main() {
             ..Default::default()
         },
         ReflectionLightStyle::default(),
-        HemisphereLightStyle { sky_color: RGB::new(137, 189, 222), ground_color: RGB::new(163, 104, 64) },
+        HemisphereLightStyle {
+            sky_color: RGB::new(137, 189, 222),
+            ground_color: RGB::new(163, 104, 64),
+        },
     ));
 
     let plane = Plane::new([0, 1, 0]);

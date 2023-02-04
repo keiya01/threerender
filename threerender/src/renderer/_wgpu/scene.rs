@@ -95,7 +95,6 @@ impl Light {
 
             reflection: ReflectionLight::from_style(&style.reflection),
             hemisphere: HemisphereLight::from_style(&style.hemisphere),
-
         }
     }
 }
