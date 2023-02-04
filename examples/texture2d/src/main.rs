@@ -11,7 +11,8 @@ use threerender::renderer::builder::WGPURendererBuilder;
 use threerender::renderer::Updater;
 use threerender::unit::RGBA;
 use threerender::{
-    CameraStyle, LightModel, LightStyle, RendererBuilder, RendererState, SceneStyle, ShadowStyle,
+    CameraStyle, LightBaseStyle, LightStyle, RendererBuilder, RendererState, SceneStyle,
+    ShadowStyle,
 };
 #[cfg(feature = "wgpu")]
 use wgpu::Features;
@@ -51,11 +52,10 @@ fn main() {
         ..Default::default()
     });
 
-    renderer_builder.set_light(LightStyle {
-        model: LightModel::Directional,
+    renderer_builder.set_light(LightStyle::with_directional(LightBaseStyle {
         position: Vec3::new(3., 2., 1.),
         ..Default::default()
-    });
+    }));
     renderer_builder.set_shadow(ShadowStyle::default());
 
     #[cfg(feature = "wgpu")]

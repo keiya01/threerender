@@ -1,44 +1,16 @@
+mod light;
+
 use std::f32::consts;
 
 use glam::{Mat4, Vec3};
 
-use crate::unit::RGB;
+pub use light::*;
 
 #[derive(Default)]
 pub struct SceneStyle {
     pub light: LightStyle,
     pub camera: CameraStyle,
     pub shadow: Option<ShadowStyle>,
-}
-
-#[derive(Default)]
-pub enum LightModel {
-    #[default]
-    OFF,
-    Directional,
-}
-
-pub struct LightStyle {
-    // The alpha chanel is always ignored. This is to align buffer for wgsl.
-    pub color: RGB,
-    pub ambient: RGB,
-    pub position: Vec3,
-    pub rotation: Vec3,
-    pub brightness: f32,
-    pub model: LightModel,
-}
-
-impl Default for LightStyle {
-    fn default() -> Self {
-        Self {
-            color: RGB::new(255, 255, 255),
-            ambient: RGB::new(30, 30, 30),
-            position: Vec3::new(0.0, 0.5, -1.0),
-            rotation: Vec3::ZERO,
-            brightness: 2.,
-            model: Default::default(),
-        }
-    }
 }
 
 pub struct ShadowStyle {
@@ -71,11 +43,11 @@ impl ShadowStyle {
     pub(super) fn transform(&self, light: &LightStyle) -> Mat4 {
         let projection =
             glam::Mat4::perspective_rh(self.fov * consts::PI / 180., 1., self.near, self.far);
-        let view = glam::Mat4::look_at_rh(light.position, self.center, self.up);
+        let view = glam::Mat4::look_at_rh(light.base.position, self.center, self.up);
         let view = view
-            .mul_mat4(&Mat4::from_rotation_x(light.rotation.x))
-            .mul_mat4(&Mat4::from_rotation_y(light.rotation.y))
-            .mul_mat4(&Mat4::from_rotation_z(light.rotation.z));
+            .mul_mat4(&Mat4::from_rotation_x(light.base.rotation.x))
+            .mul_mat4(&Mat4::from_rotation_y(light.base.rotation.y))
+            .mul_mat4(&Mat4::from_rotation_z(light.base.rotation.z));
         projection * view
     }
 }

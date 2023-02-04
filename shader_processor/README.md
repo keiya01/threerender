@@ -24,4 +24,5 @@ var<uniform> color: vec4<f32>;
 
 ## TODO
 
-- module caching
+- [ ] Remove duplicated `include`
+- [ ] module caching

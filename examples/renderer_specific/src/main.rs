@@ -10,7 +10,7 @@ use threerender::renderer::wgpu_builder::WGPURendererBuilder;
 use threerender::renderer::Updater;
 use threerender::unit::RGBA;
 use threerender::{
-    CameraStyle, LightModel, LightStyle, RendererBuilder, RendererState, SceneStyle,
+    CameraStyle, LightBaseStyle, LightStyle, RendererBuilder, RendererState, SceneStyle,
 };
 #[cfg(feature = "wgpu")]
 use wgpu::Features;
@@ -45,7 +45,7 @@ impl Updater for App {
     ) {
         // TODO: improve this without Mat4
         // Rotate light
-        scene.light.rotation.y -= 0.05;
+        scene.light.base.rotation.y -= 0.05;
 
         for entity in entity_list.items_mut() {
             // Scale sphere
@@ -94,10 +94,7 @@ fn main() {
         ..Default::default()
     });
 
-    renderer_builder.set_light(LightStyle {
-        model: LightModel::Directional,
-        ..Default::default()
-    });
+    renderer_builder.set_light(LightStyle::with_directional(LightBaseStyle::default()));
 
     let sphere = Sphere::new(50, 50);
     let sphere = Rc::new(sphere.use_entity());

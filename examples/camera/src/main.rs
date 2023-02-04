@@ -4,10 +4,13 @@ use examples_common::CustomEvent;
 use threerender::entity::{EntityDescriptor, EntityList};
 use threerender::math::Vec3;
 use threerender::mesh::traits::EntityMesh;
-use threerender::mesh::{Sphere, Square};
+use threerender::mesh::{Sphere, Square, Plane};
 use threerender::renderer::Updater;
-use threerender::unit::RGBA;
-use threerender::{CameraStyle, LightModel, LightStyle, RendererBuilder, SceneStyle};
+use threerender::unit::{RGBA, RGB};
+use threerender::{
+    CameraStyle, HemisphereLightStyle, LightBaseStyle, LightStyle, ReflectionLightStyle,
+    RendererBuilder, SceneStyle,
+};
 
 struct App {
     width: f64,
@@ -29,10 +32,6 @@ impl Updater for App {
         scene: &mut SceneStyle,
         event: Self::Event,
     ) {
-        // TODO: improve this without Mat4
-        // Rotate light
-        scene.light.rotation.y -= 0.05;
-
         match event {
             CustomEvent::MouseMove(pos) => {
                 let distance_x = (pos.x / self.width * 10.) as f32;
@@ -75,11 +74,23 @@ fn main() {
         ..Default::default()
     });
 
-    renderer_builder.set_light(LightStyle {
-        model: LightModel::Directional,
-        ..Default::default()
-    });
+    renderer_builder.set_light(LightStyle::with_hemisphere(
+        LightBaseStyle::default(),
+        ReflectionLightStyle::default(),
+        HemisphereLightStyle { sky_color: RGB::new(137, 189, 222), ground_color: RGB::new(163, 104, 64) },
+    ));
 
+    let plane = Plane::new([0, 1, 0]);
+    let plane = Rc::new(plane.use_entity());
+    renderer_builder.push(EntityDescriptor {
+        id: "plane".to_owned(),
+        mesh: plane,
+        fill_color: RGBA::new(163, 104, 64, 255),
+        position: Vec3::new(-3., -2., -3.),
+        dimension: Vec3::new(10., 10., 10.),
+        rotation: Vec3::new(0., -1., 0.),
+        state: Default::default(),
+    });
     let sphere = Sphere::new(50, 50);
     let sphere = Rc::new(sphere.use_entity());
     renderer_builder.push(EntityDescriptor {

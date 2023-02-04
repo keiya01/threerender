@@ -87,7 +87,10 @@ impl ShadowBaker {
                 MeshType::Entity => (
                     lazy_load_shader(
                         &mut entity_shader,
-                        ShaderProcessOption { use_texture: false },
+                        ShaderProcessOption {
+                            use_texture: false,
+                            use_lights: vec![],
+                        },
                     ),
                     mem::size_of::<Vertex>() as wgpu::BufferAddress,
                     vertex_attr_array![0 => Float32x4, 1 => Float32x3].to_vec(),
@@ -95,7 +98,10 @@ impl ShadowBaker {
                 MeshType::Texture => (
                     lazy_load_shader(
                         &mut texture_shader,
-                        ShaderProcessOption { use_texture: true },
+                        ShaderProcessOption {
+                            use_texture: true,
+                            use_lights: vec![],
+                        },
                     ),
                     mem::size_of::<TextureVertex>() as wgpu::BufferAddress,
                     vertex_attr_array![0 => Float32x4, 1 => Float32x3, 2 => Float32x2].to_vec(),

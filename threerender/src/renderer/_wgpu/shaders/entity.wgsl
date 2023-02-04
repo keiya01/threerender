@@ -95,7 +95,7 @@ var<uniform> tex_info: TextureInfo;
 @fragment
 fn fs_main(vertex: VertexOutput) -> @location(0) vec4<f32> {
     var color: vec4<f32> = vertex.color;
-    if ulight.model == 1u {
+    if ulight.model != 0u {
         let world_position = umodel * entity.transform;
         let entity_position = umodel * vertex.local_position;
 
@@ -116,6 +116,13 @@ fn fs_main(vertex: VertexOutput) -> @location(0) vec4<f32> {
             } else {
                 color *= ulight.ambient + light.color;
             }
+        }
+
+        // Hemisphere light
+        if ulight.model == 2u {
+            let light = calc_hemisphere_light(world_position, entity_position, vertex.normal, ulight);
+
+            color *= ulight.ambient + light.color;
         }
     }
 

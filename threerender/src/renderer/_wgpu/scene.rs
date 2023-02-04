@@ -7,9 +7,51 @@ use wgpu::{
     TextureView,
 };
 
-use crate::{CameraStyle, LightModel, LightStyle, SceneStyle, ShadowStyle};
+use crate::{
+    CameraStyle, HemisphereLightStyle, LightModel, LightStyle, ReflectionLightStyle, SceneStyle,
+    ShadowStyle,
+};
 
 use super::unit::rgb_to_array;
+
+#[repr(C)]
+#[derive(Clone, Copy, Pod, Zeroable)]
+pub struct ReflectionLight {
+    specular: [f32; 4],
+    shininess: f32,
+    _padding: [f32; 3],
+}
+
+impl ReflectionLight {
+    fn from_style(style: &Option<ReflectionLightStyle>) -> Self {
+        let reflection = style.clone().unwrap_or_default();
+        let specular = rgb_to_array(&reflection.specular);
+        Self {
+            specular: [specular[0], specular[1], specular[2], 1.],
+            shininess: reflection.shininess,
+            _padding: [0., 0., 0.],
+        }
+    }
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Pod, Zeroable)]
+pub struct HemisphereLight {
+    ground_color: [f32; 4],
+    sky_color: [f32; 4],
+}
+
+impl HemisphereLight {
+    fn from_style(style: &Option<HemisphereLightStyle>) -> Self {
+        let hemisphere = style.clone().unwrap_or_default();
+        let ground = rgb_to_array(&hemisphere.ground_color);
+        let sky = rgb_to_array(&hemisphere.sky_color);
+        Self {
+            ground_color: [ground[0], ground[1], ground[2], 1.],
+            sky_color: [sky[0], sky[1], sky[2], 1.],
+        }
+    }
+}
 
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
@@ -21,31 +63,39 @@ pub struct Light {
     brightness: f32,
     model: u32,
 
-    _padding: [f32; 4],
+    _padding: [f32; 3],
+
+    reflection: ReflectionLight,
+    hemisphere: HemisphereLight,
 }
 
 impl Light {
     fn from_light_style(style: &LightStyle) -> Self {
-        let color = rgb_to_array(&style.color);
-        let ambient = rgb_to_array(&style.ambient);
+        let color = rgb_to_array(&style.base.color);
+        let ambient = rgb_to_array(&style.base.ambient);
         Self {
             color: [color[0], color[1], color[2], 1.],
             ambient: [ambient[0], ambient[1], ambient[2], 1.],
             position: Affine3A::from_rotation_translation(
-                Quat::from_rotation_x(style.rotation.x)
-                    .mul_quat(Quat::from_rotation_y(style.rotation.y))
-                    .mul_quat(Quat::from_rotation_z(style.rotation.z)),
-                style.position,
+                Quat::from_rotation_x(style.base.rotation.x)
+                    .mul_quat(Quat::from_rotation_y(style.base.rotation.y))
+                    .mul_quat(Quat::from_rotation_z(style.base.rotation.z)),
+                style.base.position,
             )
             .transform_vector3(Vec3::ONE)
             .to_array(),
-            brightness: style.brightness,
+            brightness: style.base.brightness,
             model: match style.model {
                 LightModel::OFF => 0,
                 LightModel::Directional => 1,
+                LightModel::Hemisphere => 2,
             },
 
-            _padding: [0., 0., 0., 0.],
+            _padding: [0., 0., 0.],
+
+            reflection: ReflectionLight::from_style(&style.reflection),
+            hemisphere: HemisphereLight::from_style(&style.hemisphere),
+
         }
     }
 }

@@ -9,7 +9,7 @@ use threerender::mesh::traits::{EntityMesh, Mesh};
 use threerender::mesh::Sphere;
 use threerender::renderer::Updater;
 use threerender::unit::RGBA;
-use threerender::{CameraStyle, LightModel, LightStyle, RendererBuilder, SceneStyle};
+use threerender::{CameraStyle, LightBaseStyle, LightStyle, RendererBuilder, SceneStyle};
 
 struct App {
     sphere: Rc<Mesh>,
@@ -57,10 +57,7 @@ fn main() {
         ..Default::default()
     });
 
-    renderer_builder.set_light(LightStyle {
-        model: LightModel::Directional,
-        ..Default::default()
-    });
+    renderer_builder.set_light(LightStyle::with_directional(LightBaseStyle::default()));
 
     let sphere = Sphere::new(50, 50);
     let sphere = Rc::new(sphere.use_entity());

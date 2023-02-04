@@ -1,16 +1,29 @@
 use shader_processor::ShaderProcessor;
 
+use crate::LightModel;
+
 #[derive(Default)]
 pub(super) struct ShaderProcessOption {
     pub(super) use_texture: bool,
+    pub(super) use_lights: Vec<LightModel>,
 }
 
 pub(super) fn process_shader(shader: &str, option: ShaderProcessOption) -> String {
     let mut s = ShaderProcessor::from_shader_str(shader);
 
+    // math builtin modules
+    let p = make_builtin_path("math/affine");
+    s.insert_builtin("math::affine", &p);
+    let p = make_builtin_path("math/mod");
+    s.insert_builtin("math", &p);
+
     // light builtin modules
+    let p = make_builtin_path("light/shared");
+    s.insert_builtin("light::shared", &p);
     let p = make_builtin_path("light/directional");
     s.insert_builtin("light::directional", &p);
+    let p = make_builtin_path("light/hemisphere");
+    s.insert_builtin("light::hemisphere", &p);
     let p = make_builtin_path("light/mod");
     s.insert_builtin("light", &p);
 

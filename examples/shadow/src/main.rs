@@ -7,7 +7,9 @@ use threerender::mesh::traits::EntityMesh;
 use threerender::mesh::{Plane, Sphere, Square};
 use threerender::renderer::Updater;
 use threerender::unit::RGBA;
-use threerender::{CameraStyle, LightModel, LightStyle, RendererBuilder, SceneStyle, ShadowStyle};
+use threerender::{
+    CameraStyle, LightBaseStyle, LightStyle, RendererBuilder, SceneStyle, ShadowStyle,
+};
 
 #[derive(Default)]
 struct State {
@@ -76,11 +78,10 @@ fn main() {
         ..Default::default()
     });
 
-    renderer_builder.set_light(LightStyle {
-        model: LightModel::Directional,
+    renderer_builder.set_light(LightStyle::with_directional(LightBaseStyle {
         position: Vec3::new(3., 2.0, 1.0),
         ..Default::default()
-    });
+    }));
 
     renderer_builder.set_shadow(ShadowStyle::default());
 
