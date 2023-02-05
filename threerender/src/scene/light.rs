@@ -81,13 +81,15 @@ impl LightStyle {
     }
 
     pub fn with_hemisphere(
-        base: LightBaseStyle,
-        reflection: ReflectionLightStyle,
         hemisphere: HemisphereLightStyle,
+        position: Vec3,
     ) -> Self {
         Self {
-            base,
-            reflection: Some(reflection),
+            base: LightBaseStyle {
+                position,
+                ..Default::default()
+            },
+            reflection: None,
             hemisphere: Some(hemisphere),
             model: LightModel::Hemisphere,
         }

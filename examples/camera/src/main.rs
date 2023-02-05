@@ -76,15 +76,11 @@ fn main() {
     });
 
     renderer_builder.set_light(LightStyle::with_hemisphere(
-        LightBaseStyle {
-            position: Vec3::new(2., 3., -3.),
-            ..Default::default()
-        },
-        ReflectionLightStyle::default(),
         HemisphereLightStyle {
             sky_color: RGB::new(137, 189, 222),
             ground_color: RGB::new(163, 104, 64),
         },
+        Vec3::new(0., 1., 1.),
     ));
 
     let plane = Plane::new([0, 1, 0]);
