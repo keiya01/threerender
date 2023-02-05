@@ -9,7 +9,7 @@ use threerender::mesh::{MeshType, Plane, Sphere, Square, TextureDescriptor, Text
 #[cfg(feature = "wgpu")]
 use threerender::renderer::builder::WGPURendererBuilder;
 use threerender::renderer::Updater;
-use threerender::unit::RGBA;
+use threerender::unit::{Rotation, RGBA};
 use threerender::{
     CameraStyle, LightBaseStyle, LightStyle, RendererBuilder, RendererState, SceneStyle,
     ShadowStyle,
@@ -30,11 +30,14 @@ impl Updater for App {
     ) {
         for entity in entity_list.items_mut() {
             // Rotate square
-            if entity.id == "square" {
-                entity.rotation.y += 0.01;
+            // Rotate square
+            if entity.id() == "square1" {
+                let prev = entity.rotation_z();
+                entity.rotate_z(prev + 0.01);
             }
-            if entity.id == "sphere" {
-                entity.rotation.y += 0.01;
+            if entity.id() == "square2" {
+                let prev = entity.rotation_y();
+                entity.rotate_y(prev + 0.01);
             }
         }
     }

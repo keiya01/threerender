@@ -1,10 +1,11 @@
 use std::rc::Rc;
 
-use glam::Vec3;
+use crate::math::Vec3;
+use getset::{Getters, MutGetters, Setters};
 
 use crate::{
     mesh::{traits::Mesh, MeshType, PolygonMode, Topology},
-    unit::RGBA,
+    unit::{Rotation, Scale, Translation, RGBA},
     RendererState,
 };
 
@@ -18,14 +19,46 @@ pub struct EntityDescriptor {
     pub state: EntityRendererState,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Getters, MutGetters, Setters)]
 pub struct Entity {
-    pub id: String,
-    pub fill_color: RGBA,
-    pub position: Vec3,
-    pub dimension: Vec3,
-    pub rotation: Vec3,
+    #[getset(get = "pub")]
+    pub(crate) id: String,
+    #[getset(get = "pub", set = "pub")]
+    pub(crate) fill_color: RGBA,
+    #[getset(get = "pub", set = "pub")]
+    pub(crate) position: Vec3,
+    #[getset(get = "pub", set = "pub")]
+    pub(crate) dimension: Vec3,
+    #[getset(get = "pub", set = "pub")]
+    pub(crate) rotation: Vec3,
     pub(super) state: EntityRendererState,
+}
+
+impl Translation for Entity {
+    fn translation(&self) -> &Vec3 {
+        &self.position
+    }
+    fn translation_mut(&mut self) -> &mut Vec3 {
+        &mut self.position
+    }
+}
+
+impl Rotation for Entity {
+    fn rotation(&self) -> &Vec3 {
+        &self.rotation
+    }
+    fn rotation_mut(&mut self) -> &mut Vec3 {
+        &mut self.rotation
+    }
+}
+
+impl Scale for Entity {
+    fn scale(&self) -> &Vec3 {
+        &self.dimension
+    }
+    fn scale_mut(&mut self) -> &mut Vec3 {
+        &mut self.dimension
+    }
 }
 
 pub trait EntityList {

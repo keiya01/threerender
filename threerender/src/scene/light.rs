@@ -1,6 +1,7 @@
-use glam::Vec3;
+use crate::math::Vec3;
+use getset::{Getters, MutGetters, Setters};
 
-use crate::unit::RGB;
+use crate::unit::{Rotation, Translation, RGB};
 
 #[derive(Default, Clone)]
 pub enum LightModel {
@@ -40,13 +41,35 @@ impl Default for HemisphereLightStyle {
     }
 }
 
+#[derive(Getters, MutGetters, Setters)]
 pub struct LightBaseStyle {
     // The alpha chanel is always ignored. This is to align buffer for wgsl.
+    #[getset(get = "pub", set = "pub")]
     pub color: RGB,
+    #[getset(get = "pub", set = "pub")]
     pub ambient: RGB,
     pub position: Vec3,
     pub rotation: Vec3,
+    #[getset(get = "pub", set = "pub")]
     pub brightness: f32,
+}
+
+impl Translation for LightBaseStyle {
+    fn translation(&self) -> &Vec3 {
+        &self.position
+    }
+    fn translation_mut(&mut self) -> &mut Vec3 {
+        &mut self.position
+    }
+}
+
+impl Rotation for LightBaseStyle {
+    fn rotation(&self) -> &Vec3 {
+        &self.rotation
+    }
+    fn rotation_mut(&mut self) -> &mut Vec3 {
+        &mut self.rotation
+    }
 }
 
 impl Default for LightBaseStyle {
@@ -54,19 +77,23 @@ impl Default for LightBaseStyle {
         Self {
             color: RGB::new(255, 255, 255),
             ambient: RGB::new(30, 30, 30),
-            position: Vec3::new(0.0, 0.5, -1.0),
+            position: Vec3::new(0., 0.5, -1.0),
             rotation: Vec3::ZERO,
             brightness: 1.,
         }
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Getters, MutGetters)]
 pub struct LightStyle {
-    pub base: LightBaseStyle,
-    pub reflection: Option<ReflectionLightStyle>,
-    pub hemisphere: Option<HemisphereLightStyle>,
-    pub(crate) model: LightModel,
+    #[getset(get = "pub", get_mut = "pub")]
+    base: LightBaseStyle,
+    #[getset(get = "pub", get_mut = "pub")]
+    reflection: Option<ReflectionLightStyle>,
+    #[getset(get = "pub", get_mut = "pub")]
+    hemisphere: Option<HemisphereLightStyle>,
+    #[getset(get = "pub")]
+    model: LightModel,
 }
 
 impl LightStyle {

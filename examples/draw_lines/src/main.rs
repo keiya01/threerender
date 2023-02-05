@@ -6,8 +6,8 @@ use threerender::math::Vec3;
 use threerender::mesh::traits::EntityMesh;
 use threerender::mesh::{PointList, PointTopology, Topology};
 use threerender::renderer::Updater;
-use threerender::unit::RGBA;
-use threerender::{CameraStyle, RendererBuilder, RendererState, SceneStyle};
+use threerender::unit::{Rotation, RGBA};
+use threerender::{CameraPosition, CameraStyle, RendererBuilder, RendererState, SceneStyle};
 
 struct App {}
 
@@ -28,8 +28,9 @@ impl Updater for App {
     ) {
         for entity in entity_list.items_mut() {
             // Rotate lines
-            if entity.id == "lines" {
-                entity.rotation.y += 0.01;
+            if entity.id() == "lines" {
+                let prev = entity.rotation_y();
+                entity.rotate_y(prev + 0.01);
             }
         }
     }
@@ -44,7 +45,7 @@ fn main() {
     renderer_builder.set_camera(CameraStyle {
         width: width as f32,
         height: height as f32,
-        position: Vec3::new(0., 0., 10.),
+        position: CameraPosition::new(0., 0., 10.),
         ..Default::default()
     });
 

@@ -6,7 +6,7 @@ use threerender::math::Vec3;
 use threerender::mesh::traits::EntityMesh;
 use threerender::mesh::{Plane, Sphere, Square};
 use threerender::renderer::Updater;
-use threerender::unit::RGBA;
+use threerender::unit::{Rotation, Scale, RGBA};
 use threerender::{
     CameraStyle, LightBaseStyle, LightStyle, RendererBuilder, SceneStyle, ShadowStyle,
 };
@@ -41,10 +41,20 @@ impl Updater for App {
     ) {
         for entity in entity_list.items_mut() {
             // Scale sphere
-            if entity.id == "sphere" {
-                if entity.dimension.cmpgt(Vec3::new(2., 2., 2.)).all() {
+            if entity.id() == "sphere" {
+                if entity
+                    .dimension()
+                    .as_glam()
+                    .cmpgt(glam::Vec3::new(2., 2., 2.))
+                    .all()
+                {
                     self.state.should_scale_sphere = false;
-                } else if entity.dimension.cmple(Vec3::new(1., 1., 1.)).all() {
+                } else if entity
+                    .dimension()
+                    .as_glam()
+                    .cmple(glam::Vec3::new(1., 1., 1.))
+                    .all()
+                {
                     self.state.should_scale_sphere = true;
                 };
                 let scale = if self.state.should_scale_sphere {
@@ -52,15 +62,22 @@ impl Updater for App {
                 } else {
                     -0.01
                 };
-                entity.dimension += Vec3::new(scale, scale, scale);
+                let prev_x = entity.scale_x();
+                let prev_y = entity.scale_y();
+                let prev_z = entity.scale_z();
+                entity.scale_to_x(prev_x + scale);
+                entity.scale_to_y(prev_y + scale);
+                entity.scale_to_z(prev_z + scale);
             }
 
             // Rotate square
-            if entity.id == "square1" {
-                entity.rotation.z += 0.01;
+            if entity.id() == "square1" {
+                let prev = entity.rotation_z();
+                entity.rotate_z(prev + 0.01);
             }
-            if entity.id == "square2" {
-                entity.rotation.y += 0.01;
+            if entity.id() == "square2" {
+                let prev = entity.rotation_y();
+                entity.rotate_y(prev + 0.01);
             }
         }
     }

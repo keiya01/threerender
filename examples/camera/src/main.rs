@@ -6,7 +6,7 @@ use threerender::math::Vec3;
 use threerender::mesh::traits::EntityMesh;
 use threerender::mesh::{Plane, Sphere, Square};
 use threerender::renderer::Updater;
-use threerender::unit::{RGB, RGBA};
+use threerender::unit::{Rotation, Translation, RGB, RGBA};
 use threerender::{CameraStyle, HemisphereLightStyle, LightStyle, RendererBuilder, SceneStyle};
 
 struct App {
@@ -33,11 +33,15 @@ impl Updater for App {
             CustomEvent::MouseMove(pos) => {
                 let distance_x = (pos.x / self.width * 10.) as f32;
                 let distance_y = (pos.y / self.height * 10.) as f32;
-                scene.camera.position.x = distance_x;
-                scene.camera.position.y = distance_y;
+                scene.camera_mut().position_mut().translate_x(distance_x);
+                scene.camera_mut().position_mut().translate_y(distance_y);
             }
             CustomEvent::MouseWheel(pos) => {
-                scene.camera.position.z += if pos.y > 0. { 0.1 } else { -0.1 };
+                let prev = scene.camera().position().translation_z();
+                scene
+                    .camera_mut()
+                    .position_mut()
+                    .translate_z(prev + if pos.y > 0. { 0.1 } else { -0.1 });
             }
             CustomEvent::Resize(w, h) => {
                 self.width = w as f64;
@@ -48,11 +52,13 @@ impl Updater for App {
 
         for entity in entity_list.items_mut() {
             // Rotate square
-            if entity.id == "square1" {
-                entity.rotation.z += 0.01;
+            if entity.id() == "square1" {
+                let prev = entity.rotation_z();
+                entity.rotate_z(prev + 0.01);
             }
-            if entity.id == "square2" {
-                entity.rotation.y += 0.01;
+            if entity.id() == "square2" {
+                let prev = entity.rotation_y();
+                entity.rotate_y(prev + 0.01);
             }
         }
     }

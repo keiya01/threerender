@@ -8,6 +8,7 @@ use wgpu::{
 };
 
 use crate::{
+    unit::{Rotation, Translation},
     CameraStyle, HemisphereLightStyle, LightModel, LightStyle, ReflectionLightStyle, SceneStyle,
     ShadowStyle,
 };
@@ -71,21 +72,21 @@ pub struct Light {
 
 impl Light {
     fn from_light_style(style: &LightStyle) -> Self {
-        let color = rgb_to_array(&style.base.color);
-        let ambient = rgb_to_array(&style.base.ambient);
+        let color = rgb_to_array(style.base().color());
+        let ambient = rgb_to_array(style.base().ambient());
         Self {
             color: [color[0], color[1], color[2], 1.],
             ambient: [ambient[0], ambient[1], ambient[2], 1.],
             position: Affine3A::from_rotation_translation(
-                Quat::from_rotation_x(style.base.rotation.x)
-                    .mul_quat(Quat::from_rotation_y(style.base.rotation.y))
-                    .mul_quat(Quat::from_rotation_z(style.base.rotation.z)),
-                style.base.position,
+                Quat::from_rotation_x(style.base().rotation_x())
+                    .mul_quat(Quat::from_rotation_y(style.base().rotation_y()))
+                    .mul_quat(Quat::from_rotation_z(style.base().rotation_z())),
+                style.base().translation().as_glam(),
             )
-            .transform_vector3(style.base.position)
+            .transform_vector3(style.base().translation().as_glam())
             .to_array(),
-            brightness: style.base.brightness,
-            model: match style.model {
+            brightness: *style.base().brightness(),
+            model: match style.model() {
                 LightModel::OFF => 0,
                 LightModel::Directional => 1,
                 LightModel::Hemisphere => 2,
@@ -93,8 +94,8 @@ impl Light {
 
             _padding: [0., 0., 0.],
 
-            reflection: ReflectionLight::from_style(&style.reflection),
-            hemisphere: HemisphereLight::from_style(&style.hemisphere),
+            reflection: ReflectionLight::from_style(style.reflection()),
+            hemisphere: HemisphereLight::from_style(style.hemisphere()),
         }
     }
 }
@@ -375,7 +376,7 @@ impl Scene {
             scene_style
                 .shadow
                 .as_ref()
-                .map_or_else(|| ShadowStyle::DEFAULT_MAP_SIZE, |s| s.map_size),
+                .map_or_else(|| ShadowStyle::DEFAULT_MAP_SIZE, |s| *s.map_size()),
         );
 
         Scene {

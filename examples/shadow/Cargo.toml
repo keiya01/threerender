@@ -13,3 +13,4 @@ default = ["wgpu"]
 threerender = { path = "../../threerender" }
 examples_common = { path = "../common" }
 wgpu = { git = "https://github.com/gfx-rs/wgpu", optional = true }
+glam = "0.22.0"

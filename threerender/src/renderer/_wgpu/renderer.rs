@@ -16,6 +16,7 @@ use crate::{
         MeshType, PolygonMode, TextureFormat, Topology,
     },
     renderer::Updater,
+    unit::Rotation,
     RendererBuilder,
 };
 
@@ -794,8 +795,8 @@ impl<Event> Renderer<Event> {
         self.config.height = height;
         self.surface
             .configure(&self.dynamic_renderer.device, &self.config);
-        self.scene.style.camera.width = width as f32;
-        self.scene.style.camera.height = height as f32;
+        self.scene.style.camera.set_width(width as f32);
+        self.scene.style.camera.set_height(height as f32);
         self.scene.update_camera(&self.dynamic_renderer.queue);
 
         self.set_depth_texture();
@@ -963,14 +964,14 @@ impl<Event> Renderer<Event> {
         let renderer_entity = &self.dynamic_renderer.rendered_entity;
         let buf = EntityUniformBuffer {
             transform: Mat4::from_scale_rotation_translation(
-                entity.dimension,
-                Quat::from_rotation_x(entity.rotation.x)
-                    .mul_quat(Quat::from_rotation_y(entity.rotation.y))
-                    .mul_quat(Quat::from_rotation_z(entity.rotation.z)),
-                entity.position,
+                entity.dimension().as_glam(),
+                Quat::from_rotation_x(entity.rotation_x())
+                    .mul_quat(Quat::from_rotation_y(entity.rotation_y()))
+                    .mul_quat(Quat::from_rotation_z(entity.rotation_z())),
+                entity.position().as_glam(),
             )
             .to_cols_array_2d(),
-            color: rgba_to_array(&entity.fill_color),
+            color: rgba_to_array(entity.fill_color()),
         };
         self.dynamic_renderer.queue.write_buffer(
             &renderer_entity.entity_uniform_buf,
@@ -993,14 +994,14 @@ impl<Event> Renderer<Event> {
         let renderer_entity = &self.shadow_baker.entity;
         let buf = EntityUniformBuffer {
             transform: Mat4::from_scale_rotation_translation(
-                entity.dimension,
-                Quat::from_rotation_x(entity.rotation.x)
-                    .mul_quat(Quat::from_rotation_y(entity.rotation.y))
-                    .mul_quat(Quat::from_rotation_z(entity.rotation.z)),
-                entity.position,
+                entity.dimension().as_glam(),
+                Quat::from_rotation_x(entity.rotation_x())
+                    .mul_quat(Quat::from_rotation_y(entity.rotation_y()))
+                    .mul_quat(Quat::from_rotation_z(entity.rotation_z())),
+                entity.position().as_glam(),
             )
             .to_cols_array_2d(),
-            color: rgba_to_array(&entity.fill_color),
+            color: rgba_to_array(entity.fill_color()),
         };
         self.dynamic_renderer.queue.write_buffer(
             &renderer_entity.entity_uniform_buf,

@@ -1,4 +1,4 @@
-use glam::Vec3;
+use crate::math::Vec3;
 
 use super::{
     traits::{EntityMesh, Mesh, TextureMesh},
