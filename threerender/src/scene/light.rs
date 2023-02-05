@@ -69,8 +69,6 @@ pub struct LightStyle {
     pub(crate) model: LightModel,
 }
 
-
-
 impl LightStyle {
     pub fn with_directional(base: LightBaseStyle) -> Self {
         Self {
@@ -80,10 +78,7 @@ impl LightStyle {
         }
     }
 
-    pub fn with_hemisphere(
-        hemisphere: HemisphereLightStyle,
-        position: Vec3,
-    ) -> Self {
+    pub fn with_hemisphere(hemisphere: HemisphereLightStyle, position: Vec3) -> Self {
         Self {
             base: LightBaseStyle {
                 position,

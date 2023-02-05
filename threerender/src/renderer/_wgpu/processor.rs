@@ -1,11 +1,8 @@
 use shader_processor::ShaderProcessor;
 
-use crate::LightModel;
-
 #[derive(Default)]
 pub(super) struct ShaderProcessOption {
     pub(super) use_texture: bool,
-    pub(super) use_lights: Vec<LightModel>,
 }
 
 pub(super) fn process_shader(shader: &str, option: ShaderProcessOption) -> String {

@@ -7,10 +7,7 @@ use threerender::mesh::traits::EntityMesh;
 use threerender::mesh::{Plane, Sphere, Square};
 use threerender::renderer::Updater;
 use threerender::unit::{RGB, RGBA};
-use threerender::{
-    CameraStyle, HemisphereLightStyle, LightBaseStyle, LightStyle, ReflectionLightStyle,
-    RendererBuilder, SceneStyle,
-};
+use threerender::{CameraStyle, HemisphereLightStyle, LightStyle, RendererBuilder, SceneStyle};
 
 struct App {
     width: f64,
