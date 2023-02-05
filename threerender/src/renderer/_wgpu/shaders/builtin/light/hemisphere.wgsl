@@ -9,7 +9,7 @@ fn calc_hemisphere_light(model: mat4x4<f32>, position: vec4<f32>, normal: vec3<f
 
     let light_normal = normalize(calc_affine_normal(light_position, position).xyz);
 
-    let hemisphere = (dot(normal, light_normal) + 1.0) * 0.5;
+    let hemisphere = (dot(world_normal, light_normal) + 1.0) * 0.5;
     let ambient: vec4<f32> = mix(ulight.hemisphere.ground_color, ulight.hemisphere.sky_color, hemisphere);
 
     var h: HemisphereLight;
