@@ -3,6 +3,7 @@ use shader_processor::ShaderProcessor;
 #[derive(Default)]
 pub(super) struct ShaderProcessOption {
     pub(super) use_texture: bool,
+    pub(super) support_storage: bool,
 }
 
 pub(super) fn process_shader(shader: &str, option: ShaderProcessOption) -> String {
@@ -15,8 +16,10 @@ pub(super) fn process_shader(shader: &str, option: ShaderProcessOption) -> Strin
     s.insert_builtin("math", &p);
 
     // light builtin modules
-    let p = make_builtin_path("light/shared");
-    s.insert_builtin("light::shared", &p);
+    let p = make_builtin_path("light/uniforms");
+    s.insert_builtin("light::uniforms", &p);
+    let p = make_builtin_path("light/types");
+    s.insert_builtin("light::types", &p);
     let p = make_builtin_path("light/directional");
     s.insert_builtin("light::directional", &p);
     let p = make_builtin_path("light/hemisphere");
@@ -25,15 +28,16 @@ pub(super) fn process_shader(shader: &str, option: ShaderProcessOption) -> Strin
     s.insert_builtin("light", &p);
 
     // shadow builtin modules
-    let p = make_builtin_path("shadow/shared");
-    s.insert_builtin("shadow::shared", &p);
-    let p = make_builtin_path("shadow/directional");
-    s.insert_builtin("shadow::directional", &p);
-    let p = make_builtin_path("shadow/mod");
-    s.insert_builtin("shadow", &p);
+    let p = make_builtin_path("light/shadow/uniforms");
+    s.insert_builtin("light::shadow::uniforms", &p);
+    let p = make_builtin_path("light/shadow/directional");
+    s.insert_builtin("light::shadow::directional", &p);
+    let p = make_builtin_path("light/shadow/mod");
+    s.insert_builtin("light::shadow", &p);
 
     // envs
     s.insert_env("USE_TEXTURE", option.use_texture);
+    s.insert_env("SUPPORT_STORAGE", option.support_storage);
 
     s.process()
 }

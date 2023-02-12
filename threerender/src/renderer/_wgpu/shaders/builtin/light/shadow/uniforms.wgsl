@@ -17,5 +17,3 @@ fn fetch_shadow(light_id: u32, homogeneous_coords: vec4<f32>, t_shadow: texture_
     // do the lookup, using HW PCF and comparison
     return textureSampleCompareLevel(t_shadow, sampler_shadow, light_local, i32(light_id), homogeneous_coords.z * proj_correction);
 }
-
-

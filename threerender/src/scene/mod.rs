@@ -13,30 +13,35 @@ use crate::unit::{Rotation, Translation};
 
 #[derive(Default, Getters, MutGetters)]
 pub struct SceneStyle {
-    #[getset(get = "pub", get_mut = "pub")]
-    pub(super) light: LightStyle,
+    pub(super) lights: Vec<LightStyle>,
     #[getset(get = "pub", get_mut = "pub")]
     pub(super) camera: CameraStyle,
     #[getset(get = "pub", get_mut = "pub")]
-    pub(super) shadow: Option<ShadowStyle>,
+    pub(super) shadow_options: Option<ShadowOptions>,
+}
+
+impl SceneStyle {
+    pub fn get_light(&self, id: &str) -> Option<&LightStyle> {
+        self.lights.iter().find(|l| l.id() == id)
+    }
+
+    pub fn get_light_mut(&mut self, id: &str) -> Option<&mut LightStyle> {
+        self.lights.iter_mut().find(|l| l.id() == id)
+    }
 }
 
 #[derive(Getters, MutGetters)]
 pub struct ShadowStyle {
     #[getset(get = "pub", get_mut = "pub")]
-    fov: f32,
+    pub fov: f32,
     #[getset(get = "pub", get_mut = "pub")]
-    near: f32,
+    pub near: f32,
     #[getset(get = "pub", get_mut = "pub")]
-    far: f32,
+    pub far: f32,
     #[getset(get = "pub")]
-    center: CameraCenter,
+    pub center: CameraCenter,
     #[getset(get = "pub")]
-    up: CameraUp,
-
-    /// Defines resolution of shadow texture
-    #[getset(get = "pub", get_mut = "pub")]
-    map_size: (u32, u32),
+    pub up: CameraUp,
 }
 
 impl Default for ShadowStyle {
@@ -44,10 +49,9 @@ impl Default for ShadowStyle {
         Self {
             fov: 50.,
             near: 1.,
-            far: 100.,
+            far: 1000.,
             center: CameraCenter::default(),
             up: CameraUp::default(),
-            map_size: (512, 512),
         }
     }
 }
@@ -68,5 +72,20 @@ impl ShadowStyle {
             .mul_mat4(&Mat4::from_rotation_y(light.base().rotation_y()))
             .mul_mat4(&Mat4::from_rotation_z(light.base().rotation_z()));
         projection * view
+    }
+}
+
+#[derive(Getters, MutGetters)]
+pub struct ShadowOptions {
+    /// Defines resolution of shadow texture
+    #[getset(get = "pub", get_mut = "pub")]
+    pub map_size: (u32, u32),
+}
+
+impl Default for ShadowOptions {
+    fn default() -> Self {
+        Self {
+            map_size: (512, 512),
+        }
     }
 }

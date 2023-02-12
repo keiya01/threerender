@@ -37,13 +37,14 @@ cargo run -p examples_{PROJECT_NAME}
   - [x] Directional light
   - [ ] Spot light
   - [ ] Point light
-  - [ ] Hemisphere light
+  - [x] Hemisphere light
 - [ ] Shadow
   - [x] Directional shadow
   - [ ] Opacity
   - [ ] Point light shadow
   - [ ] Spot light shadow
-- [ ] Multi light/shadow
+- [x] Multi light/shadow
+- [ ] Reflection rate for entity
 - [x] 2D texture
 - [ ] 3D texture(3D model)
 - [ ] Font

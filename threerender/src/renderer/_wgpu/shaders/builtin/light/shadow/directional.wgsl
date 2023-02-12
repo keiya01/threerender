@@ -1,4 +1,5 @@
 fn make_directional_shadow_mask(
+  idx: u32,
   local_normal: vec3<f32>,
   local_position: vec4<f32>,
   light_dir: vec3<f32>,
@@ -9,7 +10,7 @@ fn make_directional_shadow_mask(
     let normal = normalize(local_normal);
     // project into the light space
     let shadow = fetch_shadow(
-      0u,
+      idx,
       ushadow.projection * local_position,
       t_shadow,
       sampler_shadow
@@ -21,6 +22,7 @@ fn make_directional_shadow_mask(
 }
 
 fn calc_directional_shadow(
+  idx: u32,
   local_normal: vec3<f32>,
   local_position: vec4<f32>,
   d: DirectionalLight,
@@ -30,6 +32,7 @@ fn calc_directional_shadow(
 ) -> vec4<f32> {
     return vec4<f32>(
       make_directional_shadow_mask(
+        idx,
         local_normal,
         local_position,
         d.normal,

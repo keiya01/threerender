@@ -7,7 +7,10 @@ use threerender::mesh::traits::EntityMesh;
 use threerender::mesh::{Plane, Sphere, Square};
 use threerender::renderer::Updater;
 use threerender::unit::{Rotation, Translation, RGB, RGBA};
-use threerender::{CameraStyle, HemisphereLightStyle, LightStyle, RendererBuilder, SceneStyle};
+use threerender::{
+    CameraStyle, HemisphereLightStyle, LightBaseStyle, LightStyle, RendererBuilder, SceneStyle,
+    ShadowOptions, ShadowStyle,
+};
 
 struct App {
     width: f64,
@@ -78,7 +81,25 @@ fn main() {
         ..Default::default()
     });
 
-    renderer_builder.set_light(LightStyle::with_hemisphere(
+    renderer_builder.set_shadow_options(ShadowOptions {
+        map_size: (1028, 1028),
+    });
+
+    renderer_builder.add_light(LightStyle::with_directional(
+        "directional".to_owned(),
+        LightBaseStyle {
+            position: Vec3::new(5., 6., 5.),
+            ..Default::default()
+        },
+        Some(ShadowStyle {
+            far: 1000.,
+            fov: 65.,
+            ..Default::default()
+        }),
+    ));
+
+    renderer_builder.add_light(LightStyle::with_hemisphere(
+        "hemisphere".to_owned(),
         HemisphereLightStyle {
             sky_color: RGB::new(137, 189, 222),
             ground_color: RGB::new(163, 104, 64),
@@ -93,7 +114,7 @@ fn main() {
         mesh: plane,
         fill_color: RGBA::new(163, 104, 64, 255),
         position: Vec3::new(-3., -2., -3.),
-        dimension: Vec3::new(10., 10., 10.),
+        dimension: Vec3::new(30., 30., 30.),
         rotation: Vec3::new(0., -1., 0.),
         state: Default::default(),
     });

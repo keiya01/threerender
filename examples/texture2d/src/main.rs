@@ -55,11 +55,14 @@ fn main() {
         ..Default::default()
     });
 
-    renderer_builder.set_light(LightStyle::with_directional(LightBaseStyle {
-        position: Vec3::new(3., 2., 1.),
-        ..Default::default()
-    }));
-    renderer_builder.set_shadow(ShadowStyle::default());
+    renderer_builder.add_light(LightStyle::with_directional(
+        "directional".to_owned(),
+        LightBaseStyle {
+            position: Vec3::new(5., 5., 3.),
+            ..Default::default()
+        },
+        Some(ShadowStyle::default()),
+    ));
 
     #[cfg(feature = "wgpu")]
     renderer_builder.set_features(Features::TEXTURE_BINDING_ARRAY);
@@ -95,7 +98,7 @@ fn main() {
     renderer_builder.push(EntityDescriptor {
         id: "square".to_owned(),
         mesh: square,
-        fill_color: RGBA::new(0, 255, 0, 255),
+        fill_color: RGBA::new(255, 255, 0, 255),
         position: Vec3::new(-1., 0., -2.),
         dimension: Vec3::ONE,
         rotation: Vec3::ZERO,
@@ -115,7 +118,7 @@ fn main() {
     renderer_builder.push(EntityDescriptor {
         id: "plane".to_owned(),
         mesh: plane,
-        fill_color: RGBA::new(0, 255, 0, 255),
+        fill_color: RGBA::new(0, 255, 255, 255),
         position: Vec3::new(-1., 0., 1.),
         dimension: Vec3::ONE,
         rotation: Vec3::new(0., 0.5, 0.),

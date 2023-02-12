@@ -1,4 +1,4 @@
-use crate::math::Vec3;
+use crate::{math::Vec3, ShadowStyle};
 use getset::{Getters, MutGetters, Setters};
 
 use crate::unit::{Rotation, Translation, RGB};
@@ -76,8 +76,8 @@ impl Default for LightBaseStyle {
     fn default() -> Self {
         Self {
             color: RGB::new(255, 255, 255),
-            ambient: RGB::new(30, 30, 30),
-            position: Vec3::new(0., 0.5, -1.0),
+            ambient: RGB::new(0, 0, 0),
+            position: Vec3::new(0., 3., 2.),
             rotation: Vec3::ZERO,
             brightness: 1.,
         }
@@ -86,6 +86,8 @@ impl Default for LightBaseStyle {
 
 #[derive(Default, Getters, MutGetters)]
 pub struct LightStyle {
+    #[getset(get = "pub", set = "pub")]
+    id: String,
     #[getset(get = "pub", get_mut = "pub")]
     base: LightBaseStyle,
     #[getset(get = "pub", get_mut = "pub")]
@@ -94,19 +96,24 @@ pub struct LightStyle {
     hemisphere: Option<HemisphereLightStyle>,
     #[getset(get = "pub")]
     model: LightModel,
+    #[getset(get = "pub", get_mut = "pub")]
+    shadow: Option<ShadowStyle>,
 }
 
 impl LightStyle {
-    pub fn with_directional(base: LightBaseStyle) -> Self {
+    pub fn with_directional(id: String, base: LightBaseStyle, shadow: Option<ShadowStyle>) -> Self {
         Self {
+            id,
             base,
             model: LightModel::Directional,
+            shadow,
             ..Default::default()
         }
     }
 
-    pub fn with_hemisphere(hemisphere: HemisphereLightStyle, position: Vec3) -> Self {
+    pub fn with_hemisphere(id: String, hemisphere: HemisphereLightStyle, position: Vec3) -> Self {
         Self {
+            id,
             base: LightBaseStyle {
                 position,
                 ..Default::default()
@@ -114,6 +121,7 @@ impl LightStyle {
             reflection: None,
             hemisphere: Some(hemisphere),
             model: LightModel::Hemisphere,
+            shadow: None,
         }
     }
 }

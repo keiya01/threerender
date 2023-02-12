@@ -95,12 +95,14 @@ fn main() {
         ..Default::default()
     });
 
-    renderer_builder.set_light(LightStyle::with_directional(LightBaseStyle {
-        position: Vec3::new(3., 2.0, 1.0),
-        ..Default::default()
-    }));
-
-    renderer_builder.set_shadow(ShadowStyle::default());
+    renderer_builder.add_light(LightStyle::with_directional(
+        "directional".to_owned(),
+        LightBaseStyle {
+            position: Vec3::new(0., 10.0, 5.0),
+            ..Default::default()
+        },
+        Some(ShadowStyle::default()),
+    ));
 
     let plane = Plane::new([0, 1, 0]);
     let plane = Rc::new(plane.use_entity());
@@ -110,7 +112,7 @@ fn main() {
         fill_color: RGBA::new(255, 255, 255, 255),
         position: Vec3::new(-3., -5., -3.),
         dimension: Vec3::new(10., 10., 10.),
-        rotation: Vec3::new(0., -1., 0.),
+        rotation: Vec3::new(0., 0., 0.),
         state: Default::default(),
     });
     let sphere = Sphere::new(50, 50);

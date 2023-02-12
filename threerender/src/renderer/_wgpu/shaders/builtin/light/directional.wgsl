@@ -1,8 +1,3 @@
-struct DirectionalLight {
-    color: vec4<f32>,
-    normal: vec3<f32>,
-}
-
 fn calc_directional_light(model: mat4x4<f32>, position: vec4<f32>, normal: vec3<f32>, ulight: UniformLight) -> DirectionalLight {
     // Normalizing matrix should always be calculated in shader.
     let world_normal = normalize(model * vec4<f32>(normal, 0.0)).xyz;

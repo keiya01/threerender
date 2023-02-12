@@ -1,11 +1,16 @@
+#include builtin::math
 #include builtin::light
-#include builtin::shadow
 
 // Variables for vertex
 
+struct Scene {
+    model: mat4x4<f32>,
+    num_lights: u32,
+}
+
 @group(0)
 @binding(0)
-var<uniform> umodel: mat4x4<f32>;
+var<uniform> uscene: Scene;
 
 struct Entity {
     transform: mat4x4<f32>,
@@ -39,7 +44,7 @@ fn vs_main(
 ) -> VertexOutput {
     let w = entity.transform;
     let local_position = entity.transform * position;
-    let entity_position = umodel * local_position;
+    let entity_position = uscene.model * local_position;
 
     var result: VertexOutput;
 
@@ -57,20 +62,22 @@ fn vs_main(
 // Variables for fragment
 
 // Light style
+#ifdef SUPPORT_STORAGE
 @group(2)
 @binding(0)
-var<uniform> ulight: UniformLight;
+var<storage, read> ulights: array<UniformLight>;
+#else
+@group(2)
+@binding(0)
+var<uniform> ulights: array<UniformLight, 10>; // TODO: Set array size through environment variables.
+#end
 
 @group(3)
 @binding(0)
-var<uniform> ushadow: UniformShadow;
-
-@group(3)
-@binding(1)
 var t_shadow: texture_depth_2d_array;
 
 @group(3)
-@binding(2)
+@binding(1)
 var sampler_shadow: sampler_comparison;
 
 #ifdef USE_TEXTURE
@@ -94,37 +101,43 @@ var<uniform> tex_info: TextureInfo;
 
 @fragment
 fn fs_main(vertex: VertexOutput) -> @location(0) vec4<f32> {
-    var color: vec4<f32> = vertex.color;
-    if ulight.model != 0u {
-        let world_position = umodel * entity.transform;
-        let entity_position = umodel * vertex.local_position;
+    var color: vec4<f32> = vec4(0.);
+    // TODO: Use environment variables as max value.
+    for(var i = 0u; i < min(uscene.num_lights, 10u); i += 1u) {
+        let ulight = ulights[i];
+        if ulight.model != 0u {
+            let entity_position = uscene.model * vertex.local_position;
 
-        // Directional light
-        if ulight.model == 1u {
-            let light = calc_directional_light(world_position, entity_position, vertex.normal, ulight);
+            // Directional light
+            if ulight.model == 1u {
+                let light = calc_directional_light(entity.transform, entity_position, vertex.normal, ulight);
 
-            // shadow
-            if ushadow.use_shadow == 1u {
-                color *= ulight.ambient + calc_directional_shadow(
-                    vertex.local_normal,
-                    vertex.local_position,
-                    light,
-                    ushadow,
-                    t_shadow,
-                    sampler_shadow
-                );
-            } else {
-                color *= ulight.ambient + light.color;
+                // shadow
+                if ulight.shadow.use_shadow == 1u {
+                    color += ulight.ambient + calc_directional_shadow(
+                        i,
+                        vertex.local_normal,
+                        vertex.local_position,
+                        light,
+                        ulight.shadow,
+                        t_shadow,
+                        sampler_shadow
+                    );
+                } else {
+                    color += ulight.ambient + light.color;
+                }
+            }
+
+            // Hemisphere light
+            if ulight.model == 2u {
+                let light = calc_hemisphere_light(entity.transform, entity_position, vertex.normal, ulight);
+
+                color += ulight.ambient + light.color;
             }
         }
-
-        // Hemisphere light
-        if ulight.model == 2u {
-            let light = calc_hemisphere_light(world_position, entity_position, vertex.normal, ulight);
-
-            color *= ulight.ambient + light.color;
-        }
     }
+
+    color *= vertex.color;
 
 #ifdef USE_TEXTURE
     color *= textureSampleLevel(texs[tex_info.idx], sams[tex_info.idx], vertex.tex_coords, 0.0);

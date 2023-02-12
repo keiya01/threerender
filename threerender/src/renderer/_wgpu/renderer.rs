@@ -22,7 +22,7 @@ use crate::{
 
 use super::{
     processor::{process_shader, ShaderProcessOption},
-    scene::Scene,
+    scene::{is_storage_supported, Scene},
     shadow::ShadowBaker,
     uniform::{EntityUniformBuffer, TextureInfoUniformBuffer},
     unit::{rgba_to_array, rgba_to_array_64},
@@ -619,7 +619,7 @@ impl<Event> Renderer<Event> {
 
         surface.configure(&device, &config);
 
-        let scene = Scene::new(&device, renderer_builder.scene.take().unwrap());
+        let scene = Scene::new(&adapter, &device, renderer_builder.scene.take().unwrap());
 
         let dynamic_renderer = DynamicRenderer::new(device, queue, &mut renderer_builder);
 
@@ -645,7 +645,7 @@ impl<Event> Renderer<Event> {
             };
 
         let mut bind_group_layouts = vec![
-            &scene.camera_uniform.bind_group_layout,
+            &scene.scene_uniform.bind_group_layout,
             &dynamic_renderer.rendered_entity.entity_bind_group_layout,
             &scene.light_uniform.bind_group_layout,
             // TODO: To share shader source, it should be included even if shadow is not used.
@@ -666,6 +666,8 @@ impl<Event> Renderer<Event> {
                     push_constant_ranges: &[],
                 });
 
+        let support_storage = is_storage_supported(&adapter, &dynamic_renderer.device);
+
         let mut render_pipelines = HashMap::new();
         let states = renderer_builder.states.clone();
         for state in states {
@@ -678,7 +680,10 @@ impl<Event> Renderer<Event> {
                 MeshType::Entity => (
                     lazy_load_shader(
                         &mut entity_shader,
-                        ShaderProcessOption { use_texture: false },
+                        ShaderProcessOption {
+                            use_texture: false,
+                            support_storage,
+                        },
                     ),
                     mem::size_of::<Vertex>() as wgpu::BufferAddress,
                     vertex_attr_array![0 => Float32x4, 1 => Float32x3].to_vec(),
@@ -686,7 +691,10 @@ impl<Event> Renderer<Event> {
                 MeshType::Texture => (
                     lazy_load_shader(
                         &mut texture_shader,
-                        ShaderProcessOption { use_texture: true },
+                        ShaderProcessOption {
+                            use_texture: true,
+                            support_storage,
+                        },
                     ),
                     mem::size_of::<TextureVertex>() as wgpu::BufferAddress,
                     vertex_attr_array![0 => Float32x4, 1 => Float32x3, 2 => Float32x2].to_vec(),
@@ -742,9 +750,9 @@ impl<Event> Renderer<Event> {
         }
 
         let shadow_baker = ShadowBaker::new(
+            &adapter,
             &dynamic_renderer.device,
             dynamic_renderer.rendered_entity.entities.len(),
-            scene.camera_uniform.model,
             &scene.shadow_uniform.texture,
             renderer_builder.states,
         );
@@ -797,7 +805,7 @@ impl<Event> Renderer<Event> {
             .configure(&self.dynamic_renderer.device, &self.config);
         self.scene.style.camera.set_width(width as f32);
         self.scene.style.camera.set_height(height as f32);
-        self.scene.update_camera(&self.dynamic_renderer.queue);
+        self.scene.update_scene(&self.dynamic_renderer.queue);
 
         self.set_depth_texture();
     }
@@ -809,11 +817,9 @@ impl<Event> Renderer<Event> {
 
     fn update_scene(&mut self) {
         // TODO: Invoke it only when camera is changed
-        self.scene.update_camera(&self.dynamic_renderer.queue);
+        self.scene.update_scene(&self.dynamic_renderer.queue);
         // TODO: Invoke it only when light is changed
         self.scene.update_light(&self.dynamic_renderer.queue);
-        // TODO: Invoke it only when light is changed
-        self.scene.update_shadow(&self.dynamic_renderer.queue);
     }
 
     pub fn draw(&self) {
@@ -850,33 +856,44 @@ impl<Event> Renderer<Event> {
 
                 rpass.set_bind_group(0, &self.shadow_baker.camera.bind_group, &[]);
 
-                for (i, entity) in rendered_entity.entities.iter().enumerate() {
-                    rpass.set_pipeline(
+                for light in &self.scene.style.lights {
+                    if let Some(shadow) = light.shadow() {
                         self.shadow_baker
-                            .render_pipelines
-                            .get(&entity.state)
-                            .expect("Specified renderer state is not found"),
-                    );
+                            .camera
+                            .update(&self.dynamic_renderer.queue, shadow.transform(light));
+                    }
 
-                    let meta = rendered_entity
-                        .meta_list
-                        .get(i)
-                        .expect("The length of meta_list must match with entities");
+                    for (i, entity) in rendered_entity.entities.iter().enumerate() {
+                        rpass.set_pipeline(
+                            self.shadow_baker
+                                .render_pipelines
+                                .get(&entity.state)
+                                .expect("Specified renderer state is not found"),
+                        );
 
-                    self.prepare_shadow_entity(entity, meta);
-                    rpass.set_bind_group(
-                        1,
-                        &self.shadow_baker.entity.entity_bind_group,
-                        &[meta.uniform_offset as u32],
-                    );
+                        let meta = rendered_entity
+                            .meta_list
+                            .get(i)
+                            .expect("The length of meta_list must match with entities");
 
-                    rpass.set_vertex_buffer(0, meta.vertex_buf.slice(..));
-                    match &meta.index_buf {
-                        Some(index_buf) => {
-                            rpass.set_index_buffer(index_buf.slice(..), wgpu::IndexFormat::Uint16);
-                            rpass.draw_indexed(0..meta.index_length, 0, 0..1);
+                        self.prepare_shadow_entity(entity, meta);
+                        rpass.set_bind_group(
+                            1,
+                            &self.shadow_baker.entity.entity_bind_group,
+                            &[meta.uniform_offset as u32],
+                        );
+
+                        rpass.set_vertex_buffer(0, meta.vertex_buf.slice(..));
+                        match &meta.index_buf {
+                            Some(index_buf) => {
+                                rpass.set_index_buffer(
+                                    index_buf.slice(..),
+                                    wgpu::IndexFormat::Uint16,
+                                );
+                                rpass.draw_indexed(0..meta.index_length, 0, 0..1);
+                            }
+                            None => rpass.draw(0..meta.vertex_length, 0..1),
                         }
-                        None => rpass.draw(0..meta.vertex_length, 0..1),
                     }
                 }
             }
@@ -912,7 +929,7 @@ impl<Event> Renderer<Event> {
                     }
                 }),
             });
-            rpass.set_bind_group(0, &self.scene.camera_uniform.bind_group, &[]);
+            rpass.set_bind_group(0, &self.scene.scene_uniform.bind_group, &[]);
             rpass.set_bind_group(2, &self.scene.light_uniform.bind_group, &[]);
             rpass.set_bind_group(3, &self.scene.shadow_uniform.bind_group, &[]);
 

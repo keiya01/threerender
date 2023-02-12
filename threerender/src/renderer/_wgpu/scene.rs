@@ -3,14 +3,13 @@ use std::mem;
 use bytemuck::{Pod, Zeroable};
 use glam::{Affine3A, Mat4, Quat};
 use wgpu::{
-    util::DeviceExt, BindGroup, BindGroupLayout, Buffer, Device, Queue, Sampler, Texture,
-    TextureView,
+    util::DeviceExt, Adapter, BindGroup, BindGroupLayout, Buffer, BufferAddress, Device, Queue,
+    Sampler, Texture, TextureView,
 };
 
 use crate::{
     unit::{Rotation, Translation},
-    CameraStyle, HemisphereLightStyle, LightModel, LightStyle, ReflectionLightStyle, SceneStyle,
-    ShadowStyle,
+    HemisphereLightStyle, LightModel, LightStyle, ReflectionLightStyle, SceneStyle, ShadowStyle,
 };
 
 use super::unit::rgb_to_array;
@@ -68,6 +67,7 @@ pub struct Light {
 
     reflection: ReflectionLight,
     hemisphere: HemisphereLight,
+    shadow: Shadow,
 }
 
 impl Light {
@@ -96,24 +96,32 @@ impl Light {
 
             reflection: ReflectionLight::from_style(style.reflection()),
             hemisphere: HemisphereLight::from_style(style.hemisphere()),
+            shadow: Shadow::from_shadow_style(style),
         }
     }
 }
 
 pub(super) struct LightUniform {
     buf: Buffer,
-    data: Light,
+    data: Vec<Light>,
     pub(super) bind_group_layout: BindGroupLayout,
     pub(super) bind_group: BindGroup,
 }
 
 impl LightUniform {
-    fn new(device: &Device, light: Light) -> Self {
+    fn new(device: &Device, lights: Vec<Light>, is_storage_supported: bool) -> Self {
         // Create light style uniforms
-        let light_uniform_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Light Uniform Buffer"),
-            contents: bytemuck::bytes_of(&light),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        let light_uniform_size = (lights.len() * mem::size_of::<Light>()) as wgpu::BufferAddress;
+        let light_storage_buf = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Light Uniform"),
+            size: light_uniform_size,
+            usage: if is_storage_supported {
+                wgpu::BufferUsages::STORAGE
+            } else {
+                wgpu::BufferUsages::UNIFORM
+            } | wgpu::BufferUsages::COPY_SRC
+                | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
         });
 
         let light_bind_group_layout =
@@ -135,21 +143,27 @@ impl LightUniform {
             layout: &light_bind_group_layout,
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
-                resource: light_uniform_buf.as_entire_binding(),
+                resource: light_storage_buf.as_entire_binding(),
             }],
             label: None,
         });
 
         Self {
-            buf: light_uniform_buf,
-            data: light,
+            buf: light_storage_buf,
+            data: lights,
             bind_group_layout: light_bind_group_layout,
             bind_group: light_bind_group,
         }
     }
 
-    pub(super) fn update(&self, queue: &Queue, light: &Light) {
-        queue.write_buffer(&self.buf, 0, bytemuck::bytes_of(light));
+    pub(super) fn update(&self, queue: &Queue) {
+        for (i, light) in self.data.iter().enumerate() {
+            queue.write_buffer(
+                &self.buf,
+                (i * mem::size_of::<Light>()) as BufferAddress,
+                bytemuck::bytes_of(light),
+            );
+        }
     }
 }
 
@@ -160,26 +174,25 @@ pub struct Shadow {
     projection: [[f32; 4]; 4],
     use_shadow: u32,
 
-    _padding: [f32; 4],
+    _padding: [f32; 3],
 }
 
 impl Shadow {
-    fn from_shadow_style(style: &Option<ShadowStyle>, light: &LightStyle) -> Self {
+    fn from_shadow_style(light: &LightStyle) -> Self {
         Self {
-            projection: style
+            projection: light
+                .shadow()
                 .as_ref()
                 .map_or_else(|| Mat4::ZERO, |s| s.transform(light))
                 .to_cols_array_2d(),
-            use_shadow: style.is_some() as u32,
+            use_shadow: light.shadow().is_some() as u32,
 
-            _padding: [0., 0., 0., 0.],
+            _padding: [0., 0., 0.],
         }
     }
 }
 
 pub(super) struct ShadowUniform {
-    buf: Buffer,
-    data: Shadow,
     pub(super) bind_group_layout: BindGroupLayout,
     pub(super) bind_group: BindGroup,
     pub(super) texture: Texture,
@@ -190,14 +203,7 @@ impl ShadowUniform {
     const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
     const DEFAULT_MAX_LIGHT_LENGTH: u32 = 10;
 
-    fn new(device: &Device, shadow: Shadow, use_shadow: bool, map_size: (u32, u32)) -> Self {
-        // Create shadow style uniforms
-        let shadow_uniform_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Shadow Uniform Buffer"),
-            contents: bytemuck::bytes_of(&shadow),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
-
+    fn new(device: &Device, use_shadow: bool, map_size: (u32, u32)) -> Self {
         let (sampler, texture, view) = Self::create_texture(device, map_size);
 
         let shadow_bind_group_layout =
@@ -207,16 +213,6 @@ impl ShadowUniform {
                     wgpu::BindGroupLayoutEntry {
                         binding: 0,
                         visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: wgpu::BufferSize::new(mem::size_of::<Shadow>() as _),
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Texture {
                             multisampled: false,
                             sample_type: wgpu::TextureSampleType::Depth,
@@ -225,7 +221,7 @@ impl ShadowUniform {
                         count: None,
                     },
                     wgpu::BindGroupLayoutEntry {
-                        binding: 2,
+                        binding: 1,
                         visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Comparison),
                         count: None,
@@ -238,14 +234,10 @@ impl ShadowUniform {
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: shadow_uniform_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
                     resource: wgpu::BindingResource::TextureView(&view),
                 },
                 wgpu::BindGroupEntry {
-                    binding: 2,
+                    binding: 1,
                     resource: wgpu::BindingResource::Sampler(&sampler),
                 },
             ],
@@ -253,8 +245,6 @@ impl ShadowUniform {
         });
 
         Self {
-            buf: shadow_uniform_buf,
-            data: shadow,
             bind_group_layout: shadow_bind_group_layout,
             bind_group: shadow_bind_group,
             texture,
@@ -293,72 +283,81 @@ impl ShadowUniform {
 
         (shadow_sampler, shadow_texture, shadow_view)
     }
+}
 
-    pub(super) fn update(&self, queue: &Queue, shadow: &Shadow) {
-        queue.write_buffer(&self.buf, 0, bytemuck::bytes_of(shadow));
+#[repr(C)]
+#[derive(Clone, Copy, Pod, Zeroable)]
+pub(super) struct SceneData {
+    pub(super) model: [f32; 16],
+    pub(super) num_lights: u32,
+
+    padding: [f32; 3],
+}
+
+impl SceneData {
+    pub(super) fn from_style(style: &SceneStyle) -> Self {
+        Self {
+            model: style.camera.transform().to_cols_array(),
+            num_lights: style.lights.len() as u32,
+
+            padding: [0., 0., 0.],
+        }
     }
 }
 
-pub(super) struct CameraUniform {
+pub(super) struct SceneUniform {
     buf: Buffer,
     pub(super) bind_group_layout: BindGroupLayout,
     pub(super) bind_group: BindGroup,
-    pub(super) model: Mat4,
+    pub(super) data: SceneData,
 }
 
-impl CameraUniform {
-    fn new(device: &Device, camera: &CameraStyle) -> Self {
+impl SceneUniform {
+    pub(super) fn new(device: &Device, data: SceneData) -> Self {
         // Create model uniform
-        let model = camera.transform();
-        Self::with_mat4(device, model)
-    }
-
-    pub(super) fn with_mat4(device: &Device, model: Mat4) -> Self {
-        let model_uniform_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let scene_uniform_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Transform Uniform Buffer"),
-            contents: bytemuck::bytes_of(model.as_ref()),
+            contents: bytemuck::bytes_of(&data),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
-        let model_bind_group_layout =
+        let scene_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: None,
                 entries: &[wgpu::BindGroupLayoutEntry {
-                    binding: 0, // model
+                    binding: 0,
                     visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
-                        min_binding_size: wgpu::BufferSize::new(mem::size_of::<Mat4>() as _),
+                        min_binding_size: wgpu::BufferSize::new(mem::size_of::<SceneData>() as _),
                     },
                     count: None,
                 }],
             });
-        let model_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &model_bind_group_layout,
+        let scene_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &scene_bind_group_layout,
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
-                resource: model_uniform_buf.as_entire_binding(),
+                resource: scene_uniform_buf.as_entire_binding(),
             }],
             label: None,
         });
 
         Self {
-            buf: model_uniform_buf,
-            bind_group_layout: model_bind_group_layout,
-            bind_group: model_bind_group,
-            model,
+            buf: scene_uniform_buf,
+            bind_group_layout: scene_bind_group_layout,
+            bind_group: scene_bind_group,
+            data,
         }
     }
 
-    pub(super) fn update(&self, queue: &Queue, camera: &CameraStyle) {
-        let model = camera.transform();
-        let mx_ref: &[f32; 16] = model.as_ref();
-        queue.write_buffer(&self.buf, 0, bytemuck::cast_slice(mx_ref));
+    pub(super) fn update(&self, queue: &Queue) {
+        queue.write_buffer(&self.buf, 0, bytemuck::bytes_of(&self.data));
     }
 }
 
 pub struct Scene {
-    pub(super) camera_uniform: CameraUniform,
+    pub(super) scene_uniform: SceneUniform,
     pub(super) light_uniform: LightUniform,
     pub(super) shadow_uniform: ShadowUniform,
     pub(super) forward_depth: Option<TextureView>,
@@ -366,21 +365,34 @@ pub struct Scene {
 }
 
 impl Scene {
-    pub(super) fn new(device: &Device, scene_style: SceneStyle) -> Self {
-        let camera_uniform = CameraUniform::new(device, &scene_style.camera);
-        let light_uniform = LightUniform::new(device, Light::from_light_style(&scene_style.light));
+    pub(super) fn new(adapter: &Adapter, device: &Device, scene_style: SceneStyle) -> Self {
+        let is_storage_supported = is_storage_supported(adapter, device);
+        let scene_uniform = SceneUniform::new(device, SceneData::from_style(&scene_style));
+        let mut has_shadow = false;
+        let light_data = scene_style
+            .lights
+            .iter()
+            .map(|light| {
+                has_shadow = if has_shadow {
+                    has_shadow
+                } else {
+                    light.shadow().is_some()
+                };
+                Light::from_light_style(light)
+            })
+            .collect();
+        let light_uniform = LightUniform::new(device, light_data, is_storage_supported);
         let shadow_uniform = ShadowUniform::new(
             device,
-            Shadow::from_shadow_style(&scene_style.shadow, &scene_style.light),
-            scene_style.shadow.is_some(),
+            has_shadow,
             scene_style
-                .shadow
+                .shadow_options
                 .as_ref()
                 .map_or_else(|| ShadowStyle::DEFAULT_MAP_SIZE, |s| *s.map_size()),
         );
 
         Scene {
-            camera_uniform,
+            scene_uniform,
             light_uniform,
             shadow_uniform,
             forward_depth: None,
@@ -388,17 +400,26 @@ impl Scene {
         }
     }
 
-    pub(super) fn update_camera(&self, queue: &Queue) {
-        self.camera_uniform.update(queue, &self.style.camera);
+    pub(super) fn update_scene(&mut self, queue: &Queue) {
+        self.scene_uniform.data = SceneData::from_style(&self.style);
+        self.scene_uniform.update(queue);
     }
 
     pub(super) fn update_light(&mut self, queue: &Queue) {
-        self.light_uniform.data = Light::from_light_style(&self.style.light);
-        self.light_uniform.update(queue, &self.light_uniform.data);
+        self.light_uniform.data = self
+            .style
+            .lights
+            .iter()
+            .map(Light::from_light_style)
+            .collect();
+        self.light_uniform.update(queue);
     }
+}
 
-    pub(super) fn update_shadow(&mut self, queue: &Queue) {
-        self.shadow_uniform.data = Shadow::from_shadow_style(&self.style.shadow, &self.style.light);
-        self.shadow_uniform.update(queue, &self.shadow_uniform.data);
-    }
+pub(super) fn is_storage_supported(adapter: &Adapter, device: &Device) -> bool {
+    adapter
+        .get_downlevel_capabilities()
+        .flags
+        .contains(wgpu::DownlevelFlags::VERTEX_STORAGE)
+        && device.limits().max_storage_buffers_per_shader_stage > 0
 }

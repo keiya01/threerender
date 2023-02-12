@@ -2,8 +2,8 @@ use std::{borrow::Cow, collections::HashMap, mem, num::NonZeroU32, rc::Rc};
 
 use glam::Mat4;
 use wgpu::{
-    vertex_attr_array, BindGroup, Buffer, Device, PrimitiveTopology, RenderPipeline, ShaderModule,
-    Texture, TextureView,
+    vertex_attr_array, Adapter, BindGroup, BindGroupLayout, Buffer, Device, PrimitiveTopology,
+    Queue, RenderPipeline, ShaderModule, Texture, TextureView,
 };
 
 use crate::{
@@ -17,7 +17,7 @@ use crate::{
 
 use super::{
     processor::{process_shader, ShaderProcessOption},
-    scene::CameraUniform,
+    scene::is_storage_supported,
     RenderedEntity,
 };
 
@@ -37,13 +37,13 @@ impl ShadowBaker {
     const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 
     pub(super) fn new(
+        adapter: &Adapter,
         device: &Device,
         entity_len: usize,
-        camera: Mat4,
         shadow_texture: &Texture,
         states: Vec<RendererState>,
     ) -> Self {
-        let camera = CameraUniform::with_mat4(device, camera);
+        let camera = CameraUniform::with_mat4(device);
         let (entity_uniform_size, entity_uniform_buf, _) =
             RenderedEntity::make_uniform(device, entity_len);
         let (entity_bind_group_layout, entity_bind_group) =
@@ -70,6 +70,8 @@ impl ShadowBaker {
                 }
             };
 
+        let support_storage = is_storage_supported(adapter, device);
+
         // Load the shaders from disk
         let mut entity_shader: Option<Rc<ShaderModule>> = None;
         let mut texture_shader: Option<Rc<ShaderModule>> = None;
@@ -87,7 +89,10 @@ impl ShadowBaker {
                 MeshType::Entity => (
                     lazy_load_shader(
                         &mut entity_shader,
-                        ShaderProcessOption { use_texture: false },
+                        ShaderProcessOption {
+                            use_texture: false,
+                            support_storage,
+                        },
                     ),
                     mem::size_of::<Vertex>() as wgpu::BufferAddress,
                     vertex_attr_array![0 => Float32x4, 1 => Float32x3].to_vec(),
@@ -95,7 +100,10 @@ impl ShadowBaker {
                 MeshType::Texture => (
                     lazy_load_shader(
                         &mut texture_shader,
-                        ShaderProcessOption { use_texture: true },
+                        ShaderProcessOption {
+                            use_texture: true,
+                            support_storage,
+                        },
                     ),
                     mem::size_of::<TextureVertex>() as wgpu::BufferAddress,
                     vertex_attr_array![0 => Float32x4, 1 => Float32x3, 2 => Float32x2].to_vec(),
@@ -171,5 +179,55 @@ impl ShadowBaker {
             camera,
             view: bake_view,
         }
+    }
+}
+
+pub(super) struct CameraUniform {
+    buf: Buffer,
+    pub(super) bind_group_layout: BindGroupLayout,
+    pub(super) bind_group: BindGroup,
+}
+
+impl CameraUniform {
+    pub(super) fn with_mat4(device: &Device) -> Self {
+        let model_uniform_buf = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Camera Uniform Buffer"),
+            size: mem::size_of::<Mat4>() as wgpu::BufferAddress,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let model_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: None,
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0, // model
+                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: wgpu::BufferSize::new(mem::size_of::<Mat4>() as _),
+                    },
+                    count: None,
+                }],
+            });
+        let model_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &model_bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: model_uniform_buf.as_entire_binding(),
+            }],
+            label: None,
+        });
+
+        Self {
+            buf: model_uniform_buf,
+            bind_group_layout: model_bind_group_layout,
+            bind_group: model_bind_group,
+        }
+    }
+
+    pub(super) fn update(&self, queue: &Queue, model: Mat4) {
+        let mx_ref: &[f32; 16] = model.as_ref();
+        queue.write_buffer(&self.buf, 0, bytemuck::cast_slice(mx_ref));
     }
 }

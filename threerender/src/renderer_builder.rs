@@ -4,7 +4,7 @@ use crate::{
     entity::EntityDescriptor,
     mesh::{MeshType, PolygonMode, Topology},
     unit::RGBA,
-    ShadowStyle,
+    ShadowOptions,
 };
 
 use super::scene::{CameraStyle, LightStyle, SceneStyle};
@@ -59,11 +59,28 @@ impl RendererBuilder {
         self.enable_forward_depth = enable;
     }
 
-    pub fn set_light(&mut self, light: LightStyle) {
+    pub fn add_light(&mut self, light: LightStyle) {
         self.scene
             .as_mut()
             .expect("RendererBuilder has been consumed")
-            .light = light;
+            .lights
+            .push(light);
+    }
+
+    pub fn remove_light(&mut self, id: &str) {
+        let mut lights = &mut self
+            .scene
+            .as_mut()
+            .expect("RendererBuilder has been consumed")
+            .lights;
+
+        // NOTE: This will change order, but it is no problem.
+        while let Some(l) = lights.pop() {
+            if l.id() == id {
+                continue;
+            }
+            lights.push(l);
+        }
     }
 
     pub fn set_camera(&mut self, camera: CameraStyle) {
@@ -73,11 +90,11 @@ impl RendererBuilder {
             .camera = camera;
     }
 
-    pub fn set_shadow(&mut self, shadow: ShadowStyle) {
+    pub fn set_shadow_options(&mut self, options: ShadowOptions) {
         self.scene
             .as_mut()
             .expect("RendererBuilder has been consumed")
-            .shadow = Some(shadow);
+            .shadow_options = Some(options);
     }
 
     pub fn set_width(&mut self, width: u32) {

@@ -44,9 +44,10 @@ impl Updater for App {
         _event: Self::Event,
     ) {
         // Rotate light
-        let prev_light_rotate_y = scene.light().base().rotation_y();
+        let prev_light_rotate_y = scene.get_light("directional").unwrap().base().rotation_y();
         scene
-            .light_mut()
+            .get_light_mut("directional")
+            .unwrap()
             .base_mut()
             .rotate_y(prev_light_rotate_y - 0.05);
 
@@ -115,7 +116,11 @@ fn main() {
         ..Default::default()
     });
 
-    renderer_builder.set_light(LightStyle::with_directional(LightBaseStyle::default()));
+    renderer_builder.add_light(LightStyle::with_directional(
+        "directional".to_owned(),
+        LightBaseStyle::default(),
+        None,
+    ));
 
     let sphere = Sphere::new(50, 50);
     let sphere = Rc::new(sphere.use_entity());

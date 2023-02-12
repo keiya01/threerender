@@ -57,7 +57,11 @@ fn main() {
         ..Default::default()
     });
 
-    renderer_builder.set_light(LightStyle::with_directional(LightBaseStyle::default()));
+    renderer_builder.add_light(LightStyle::with_directional(
+        "directional".to_owned(),
+        LightBaseStyle::default(),
+        None,
+    ));
 
     let sphere = Sphere::new(50, 50);
     let sphere = Rc::new(sphere.use_entity());
