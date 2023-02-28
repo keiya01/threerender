@@ -16,6 +16,7 @@ pub struct EntityDescriptor {
     pub position: Vec3,
     pub dimension: Vec3,
     pub rotation: Vec3,
+    pub reflection: ReflectionStyle,
     pub state: EntityRendererState,
 }
 
@@ -31,6 +32,8 @@ pub struct Entity {
     pub(crate) dimension: Vec3,
     #[getset(get = "pub", set = "pub")]
     pub(crate) rotation: Vec3,
+    #[getset(get = "pub", get_mut = "pub")]
+    pub(crate) reflection: ReflectionStyle,
     pub(super) state: EntityRendererState,
 }
 
@@ -85,3 +88,20 @@ impl EntityRendererState {
 }
 
 impl Eq for EntityRendererState {}
+
+#[derive(Debug, Clone, Getters, MutGetters, Setters)]
+pub struct ReflectionStyle {
+    pub brightness: f32,
+    pub shininess: f32,
+    pub specular: f32,
+}
+
+impl Default for ReflectionStyle {
+    fn default() -> Self {
+        Self {
+            brightness: 0.,
+            shininess: 0.,
+            specular: 1.
+        }
+    }
+}

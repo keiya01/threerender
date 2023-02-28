@@ -12,21 +12,6 @@ pub enum LightModel {
 }
 
 #[derive(Clone)]
-pub struct ReflectionLightStyle {
-    pub specular: RGB,
-    pub shininess: f32,
-}
-
-impl Default for ReflectionLightStyle {
-    fn default() -> Self {
-        Self {
-            specular: RGB::new(255, 255, 255),
-            shininess: 10.,
-        }
-    }
-}
-
-#[derive(Clone)]
 pub struct HemisphereLightStyle {
     pub sky_color: RGB,
     pub ground_color: RGB,
@@ -91,8 +76,6 @@ pub struct LightStyle {
     #[getset(get = "pub", get_mut = "pub")]
     base: LightBaseStyle,
     #[getset(get = "pub", get_mut = "pub")]
-    reflection: Option<ReflectionLightStyle>,
-    #[getset(get = "pub", get_mut = "pub")]
     hemisphere: Option<HemisphereLightStyle>,
     #[getset(get = "pub")]
     model: LightModel,
@@ -118,7 +101,6 @@ impl LightStyle {
                 position,
                 ..Default::default()
             },
-            reflection: None,
             hemisphere: Some(hemisphere),
             model: LightModel::Hemisphere,
             shadow: None,

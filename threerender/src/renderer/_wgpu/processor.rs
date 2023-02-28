@@ -27,6 +27,10 @@ pub(super) fn process_shader(shader: &str, option: ShaderProcessOption) -> Strin
     let p = make_builtin_path("light/mod");
     s.insert_builtin("light", &p);
 
+    // reflection
+    let p = make_builtin_path("reflection");
+    s.insert_builtin("reflection", &p);
+
     // shadow builtin modules
     let p = make_builtin_path("light/shadow/uniforms");
     s.insert_builtin("light::shadow::uniforms", &p);

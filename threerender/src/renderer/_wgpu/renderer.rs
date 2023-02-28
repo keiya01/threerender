@@ -22,7 +22,7 @@ use crate::{
 
 use super::{
     processor::{process_shader, ShaderProcessOption},
-    scene::{is_storage_supported, Scene},
+    scene::{is_storage_supported, Scene, Reflection},
     shadow::ShadowBaker,
     uniform::{EntityUniformBuffer, TextureInfoUniformBuffer},
     unit::{rgba_to_array, rgba_to_array_64},
@@ -396,6 +396,7 @@ impl DynamicRenderer {
             dimension,
             rotation,
             state,
+            reflection,
         }) = renderer_builder.entities.pop()
         {
             let (vertex_buf, index_buf, vertex_length) =
@@ -427,6 +428,7 @@ impl DynamicRenderer {
                 dimension,
                 rotation,
                 state,
+                reflection,
             });
             meta_list.push(RenderedEntityMeta {
                 uniform_offset: i * entity_uniform_alignment,
@@ -505,6 +507,7 @@ impl EntityList for DynamicRenderer {
             rotation,
             mesh,
             state,
+            reflection,
         } = descriptor;
 
         let (entity_uniform_size, entity_uniform_buf, entity_uniform_alignment) =
@@ -542,6 +545,7 @@ impl EntityList for DynamicRenderer {
             dimension,
             rotation,
             state,
+            reflection,
         });
         rendered_entity.entity_uniform_buf = entity_uniform_buf;
         rendered_entity.entity_bind_group_layout = entity_bind_group_layout;
@@ -989,6 +993,7 @@ impl<Event> Renderer<Event> {
             )
             .to_cols_array_2d(),
             color: rgba_to_array(entity.fill_color()),
+            reflection: Reflection::from_style(entity.reflection()),
         };
         self.dynamic_renderer.queue.write_buffer(
             &renderer_entity.entity_uniform_buf,
@@ -1019,6 +1024,7 @@ impl<Event> Renderer<Event> {
             )
             .to_cols_array_2d(),
             color: rgba_to_array(entity.fill_color()),
+            reflection: Reflection::from_style(entity.reflection()),
         };
         self.dynamic_renderer.queue.write_buffer(
             &renderer_entity.entity_uniform_buf,

@@ -114,6 +114,7 @@ fn main() {
         dimension: Vec3::new(10., 10., 10.),
         rotation: Vec3::new(0., 0., 0.),
         state: Default::default(),
+        reflection: Default::default(),
     });
     let sphere = Sphere::new(50, 50);
     let sphere = Rc::new(sphere.use_entity());
@@ -125,6 +126,7 @@ fn main() {
         dimension: Vec3::ONE,
         rotation: Vec3::ZERO,
         state: Default::default(),
+        reflection: Default::default(),
     });
     let square = Square::new();
     let square = Rc::new(square.use_entity());
@@ -136,6 +138,7 @@ fn main() {
         dimension: Vec3::ONE,
         rotation: Vec3::ZERO,
         state: Default::default(),
+        reflection: Default::default(),
     });
     renderer_builder.push(EntityDescriptor {
         id: "square2".to_owned(),
@@ -145,6 +148,7 @@ fn main() {
         dimension: Vec3::ONE,
         rotation: Vec3::ZERO,
         state: Default::default(),
+        reflection: Default::default(),
     });
 
     examples_common::start(renderer_builder, Box::new(App::new()));

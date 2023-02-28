@@ -82,6 +82,7 @@ fn main() {
         dimension: Vec3::new(10., 10., 10.),
         rotation: Vec3::new(0., -1., 0.),
         state: Default::default(),
+        reflection: Default::default(),
     });
 
     let im = image::load_from_memory(include_bytes!("../sample.jpg")).unwrap();
@@ -106,6 +107,7 @@ fn main() {
             mesh_type: MeshType::Texture,
             ..Default::default()
         },
+        reflection: Default::default(),
     });
 
     let plane = Plane::new([0, 1, 0]);
@@ -126,6 +128,7 @@ fn main() {
             mesh_type: MeshType::Texture,
             ..Default::default()
         },
+        reflection: Default::default(),
     });
 
     let globe_im = image::load_from_memory(include_bytes!("../globe.jpg")).unwrap();
@@ -150,6 +153,7 @@ fn main() {
             mesh_type: MeshType::Texture,
             ..Default::default()
         },
+        reflection: Default::default(),
     });
     examples_common::start(renderer_builder, Box::new(App));
 }

@@ -1,10 +1,12 @@
 #include builtin::math
 #include builtin::light
+#include builtin::reflection
 
 // Variables for vertex
 
 struct Scene {
     model: mat4x4<f32>,
+    eye: vec3<f32>,
     num_lights: u32,
 }
 
@@ -15,6 +17,7 @@ var<uniform> uscene: Scene;
 struct Entity {
     transform: mat4x4<f32>,
     color: vec4<f32>,
+    reflection: Reflection,
 }
 
 @group(1)
@@ -102,15 +105,19 @@ var<uniform> tex_info: TextureInfo;
 @fragment
 fn fs_main(vertex: VertexOutput) -> @location(0) vec4<f32> {
     var color: vec4<f32> = vec4(0.);
+    let camera_position = vec4(uscene.eye, 1.0);
+    let entity_position = vertex.local_position;
+    let world_normal = normalize(entity.transform * vec4<f32>(vertex.normal, 0.0)).xyz;
     // TODO: Use environment variables as max value.
     for(var i = 0u; i < min(uscene.num_lights, 10u); i += 1u) {
         let ulight = ulights[i];
         if ulight.model != 0u {
-            let entity_position = uscene.model * vertex.local_position;
 
             // Directional light
             if ulight.model == 1u {
-                let light = calc_directional_light(entity.transform, entity_position, vertex.normal, ulight);
+                var light = calc_directional_light(world_normal, vertex.local_position, vertex.normal, ulight);
+
+                light.color += calc_reflection(camera_position, entity_position, world_normal, ulight.position, entity.reflection);
 
                 // shadow
                 if ulight.shadow.use_shadow == 1u {
@@ -130,7 +137,7 @@ fn fs_main(vertex: VertexOutput) -> @location(0) vec4<f32> {
 
             // Hemisphere light
             if ulight.model == 2u {
-                let light = calc_hemisphere_light(entity.transform, entity_position, vertex.normal, ulight);
+                let light = calc_hemisphere_light(entity.transform, vertex.local_position, vertex.normal, ulight);
 
                 color += ulight.ambient + light.color;
             }

@@ -9,27 +9,30 @@ use wgpu::{
 
 use crate::{
     unit::{Rotation, Translation},
-    HemisphereLightStyle, LightModel, LightStyle, ReflectionLightStyle, SceneStyle, ShadowStyle,
+    HemisphereLightStyle, LightModel, LightStyle, SceneStyle, ShadowStyle, entity::ReflectionStyle,
 };
 
 use super::unit::rgb_to_array;
 
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
-pub struct ReflectionLight {
-    specular: [f32; 4],
+pub struct Reflection {
+    brightness: f32,
     shininess: f32,
-    _padding: [f32; 3],
+    specular: f32,
+    _padding1: [f32; 4],
+    _padding2: [f32; 1],
 }
 
-impl ReflectionLight {
-    fn from_style(style: &Option<ReflectionLightStyle>) -> Self {
-        let reflection = style.clone().unwrap_or_default();
-        let specular = rgb_to_array(&reflection.specular);
+impl Reflection {
+    pub(super) fn from_style(style: &ReflectionStyle) -> Self {
+        let reflection = style;
         Self {
-            specular: [specular[0], specular[1], specular[2], 1.],
+            brightness: reflection.brightness,
             shininess: reflection.shininess,
-            _padding: [0., 0., 0.],
+            specular: reflection.shininess,
+            _padding1: [0., 0., 0., 0.],
+            _padding2: [0.],
         }
     }
 }
@@ -65,7 +68,6 @@ pub struct Light {
 
     _padding: [f32; 3],
 
-    reflection: ReflectionLight,
     hemisphere: HemisphereLight,
     shadow: Shadow,
 }
@@ -94,7 +96,6 @@ impl Light {
 
             _padding: [0., 0., 0.],
 
-            reflection: ReflectionLight::from_style(style.reflection()),
             hemisphere: HemisphereLight::from_style(style.hemisphere()),
             shadow: Shadow::from_shadow_style(style),
         }
@@ -290,8 +291,7 @@ impl ShadowUniform {
 pub(super) struct SceneData {
     pub(super) model: [f32; 16],
     pub(super) num_lights: u32,
-
-    padding: [f32; 3],
+    pub(super) eye: [f32; 3],
 }
 
 impl SceneData {
@@ -299,8 +299,7 @@ impl SceneData {
         Self {
             model: style.camera.transform().to_cols_array(),
             num_lights: style.lights.len() as u32,
-
-            padding: [0., 0., 0.],
+            eye: style.camera.position.0.as_glam().to_array(),
         }
     }
 }

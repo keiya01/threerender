@@ -1,14 +1,3 @@
-struct UniformReflection {
-  specular: vec4<f32>,
-  shininess: f32,
-}
-
-fn calc_reflection_light(position: vec4<f32>, normal: vec3<f32>, light_normal: vec3<f32>, reflection: UniformReflection) -> vec4<f32> {
-  let eye_normal = normalize(position.xyz);
-  let reflection_normal = normalize(light_normal - eye_normal);
-  return pow(max(dot(normal, reflection_normal), 0.0), reflection.shininess) * reflection.specular;
-}
-
 struct UniformHemisphereLight {
   ground_color: vec4<f32>,
   sky_color: vec4<f32>,
@@ -24,7 +13,6 @@ struct UniformLight {
     // 1: directional light
     // 2: hemisphere light
     model: u32,
-    reflection: UniformReflection,
     hemisphere: UniformHemisphereLight,
     shadow: UniformShadow,
 }

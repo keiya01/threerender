@@ -83,6 +83,7 @@ fn main() {
             topology: lines.topology(),
             ..Default::default()
         },
+        reflection: Default::default(),
     });
 
     let mut circles = vec![];
@@ -107,6 +108,7 @@ fn main() {
             topology: points.topology(),
             ..Default::default()
         },
+        reflection: Default::default(),
     });
 
     examples_common::start(renderer_builder, Box::new(App::new()));

@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use examples_common::CustomEvent;
-use threerender::entity::{EntityDescriptor, EntityList};
+use threerender::entity::{EntityDescriptor, EntityList, ReflectionStyle};
 use threerender::math::Vec3;
 use threerender::mesh::traits::EntityMesh;
 use threerender::mesh::{Plane, Sphere, Square};
@@ -101,10 +101,10 @@ fn main() {
     renderer_builder.add_light(LightStyle::with_hemisphere(
         "hemisphere".to_owned(),
         HemisphereLightStyle {
-            sky_color: RGB::new(137, 189, 222),
-            ground_color: RGB::new(163, 104, 64),
+            sky_color: RGB::new(232, 244, 252),
+            ground_color: RGB::new(216, 210, 205),
         },
-        Vec3::new(0., 1., 1.),
+        Vec3::new(0., 1., 0.),
     ));
 
     let plane = Plane::new([0, 1, 0]);
@@ -117,17 +117,23 @@ fn main() {
         dimension: Vec3::new(30., 30., 30.),
         rotation: Vec3::new(0., -1., 0.),
         state: Default::default(),
+        reflection: Default::default(),
     });
     let sphere = Sphere::new(50, 50);
     let sphere = Rc::new(sphere.use_entity());
     renderer_builder.push(EntityDescriptor {
         id: "sphere".to_owned(),
         mesh: sphere,
-        fill_color: RGBA::new(255, 255, 255, 255),
+        fill_color: RGBA::new(255, 25, 255, 255),
         position: Vec3::ZERO,
         dimension: Vec3::ONE,
         rotation: Vec3::ZERO,
         state: Default::default(),
+        reflection: ReflectionStyle {
+            brightness: 10.,
+            shininess: 100.,
+            specular: 1.,
+        },
     });
     let square = Square::new();
     let square = Rc::new(square.use_entity());
@@ -139,6 +145,11 @@ fn main() {
         dimension: Vec3::ONE,
         rotation: Vec3::ZERO,
         state: Default::default(),
+        reflection: ReflectionStyle {
+            brightness: 10.,
+            shininess: 100.,
+            specular: 1.,
+        },
     });
     renderer_builder.push(EntityDescriptor {
         id: "square2".to_owned(),
@@ -148,6 +159,11 @@ fn main() {
         dimension: Vec3::ONE,
         rotation: Vec3::ZERO,
         state: Default::default(),
+        reflection: ReflectionStyle {
+            brightness: 0.,
+            shininess: 0.,
+            specular: 0.1,
+        },
     });
 
     examples_common::start(
