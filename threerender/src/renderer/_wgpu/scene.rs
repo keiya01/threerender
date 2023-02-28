@@ -290,8 +290,8 @@ impl ShadowUniform {
 #[derive(Clone, Copy, Pod, Zeroable)]
 pub(super) struct SceneData {
     pub(super) model: [f32; 16],
-    pub(super) num_lights: u32,
     pub(super) eye: [f32; 3],
+    pub(super) num_lights: u32,
 }
 
 impl SceneData {

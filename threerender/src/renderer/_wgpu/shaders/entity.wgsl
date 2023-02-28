@@ -106,7 +106,6 @@ var<uniform> tex_info: TextureInfo;
 fn fs_main(vertex: VertexOutput) -> @location(0) vec4<f32> {
     var color: vec4<f32> = vec4(0.);
     let camera_position = vec4(uscene.eye, 1.0);
-    let entity_position = vertex.local_position;
     let world_normal = normalize(entity.transform * vec4<f32>(vertex.normal, 0.0)).xyz;
     // TODO: Use environment variables as max value.
     for(var i = 0u; i < min(uscene.num_lights, 10u); i += 1u) {
@@ -115,9 +114,9 @@ fn fs_main(vertex: VertexOutput) -> @location(0) vec4<f32> {
 
             // Directional light
             if ulight.model == 1u {
-                var light = calc_directional_light(world_normal, vertex.local_position, vertex.normal, ulight);
+                let light = calc_directional_light(world_normal, vertex.local_position, vertex.normal, ulight);
 
-                light.color += calc_reflection(camera_position, entity_position, world_normal, ulight.position, entity.reflection);
+                let reflection = calc_reflection(camera_position, vertex.local_position, world_normal, ulight.position, entity.reflection);
 
                 // shadow
                 if ulight.shadow.use_shadow == 1u {
@@ -129,9 +128,9 @@ fn fs_main(vertex: VertexOutput) -> @location(0) vec4<f32> {
                         ulight.shadow,
                         t_shadow,
                         sampler_shadow
-                    );
+                    ) + reflection;
                 } else {
-                    color += ulight.ambient + light.color;
+                    color += ulight.ambient + light.color + reflection;
                 }
             }
 
