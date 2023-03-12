@@ -9,7 +9,7 @@ const EXTENSION: &str = "wgsl";
 
 pub struct ShaderProcessor<'a> {
     shader: &'a str,
-    envs: HashMap<&'a str, bool>,
+    condition_envs: HashMap<&'a str, bool>,
     builtin: HashMap<&'a str, &'a str>,
     lines: Vec<String>,
     if_nest_order: Vec<IFStatement>,
@@ -19,15 +19,15 @@ impl<'a> ShaderProcessor<'a> {
     pub fn from_shader_str(shader: &'a str) -> Self {
         Self {
             shader,
-            envs: HashMap::new(),
+            condition_envs: HashMap::new(),
             builtin: HashMap::new(),
             lines: vec![],
             if_nest_order: vec![],
         }
     }
 
-    pub fn insert_env(&mut self, key: &'a str, val: bool) {
-        self.envs.insert(key, val);
+    pub fn insert_condition_env(&mut self, key: &'a str, val: bool) {
+        self.condition_envs.insert(key, val);
     }
 
     pub fn insert_builtin(&mut self, key: &'a str, val: &'a str) {
@@ -73,7 +73,7 @@ impl<'a> ShaderProcessor<'a> {
             let split = line.split(' ').collect::<Vec<&str>>();
             let env = split.get(1);
             let matched = match env {
-                Some(env) => self.envs.get(env).map_or(false, |e| *e),
+                Some(env) => self.condition_envs.get(env).map_or(false, |e| *e),
                 None => false,
             };
             self.if_nest_order.push(IFStatement::Ifdef(matched));
@@ -179,7 +179,7 @@ fn main(@location(0) pos: vec4<f32>) -> vec4<f32> {
 ";
         // Check only entity
         let mut p = ShaderProcessor::from_shader_str(IFDEF_SHADER_INPUT);
-        p.insert_env("ENABLE_ENTITY", true);
+        p.insert_condition_env("ENABLE_ENTITY", true);
         assert_eq!(
             &p.process(),
             r"
@@ -200,8 +200,8 @@ fn main(@location(0) pos: vec4<f32>) -> vec4<f32> {
 
         // Check only entity
         let mut p = ShaderProcessor::from_shader_str(IFDEF_SHADER_INPUT);
-        p.insert_env("ENABLE_ENTITY", true);
-        p.insert_env("ENABLE_TEXTURE", false);
+        p.insert_condition_env("ENABLE_ENTITY", true);
+        p.insert_condition_env("ENABLE_TEXTURE", false);
         assert_eq!(
             &p.process(),
             r"
@@ -221,8 +221,8 @@ fn main(@location(0) pos: vec4<f32>) -> vec4<f32> {
         );
 
         let mut p = ShaderProcessor::from_shader_str(IFDEF_SHADER_INPUT);
-        p.insert_env("ENABLE_ENTITY", true);
-        p.insert_env("ENABLE_TEXTURE", true);
+        p.insert_condition_env("ENABLE_ENTITY", true);
+        p.insert_condition_env("ENABLE_TEXTURE", true);
         assert_eq!(
             &p.process(),
             r"
@@ -247,9 +247,9 @@ fn main(@location(0) pos: vec4<f32>) -> vec4<f32> {
         );
         // Check ubias
         let mut p = ShaderProcessor::from_shader_str(IFDEF_SHADER_INPUT);
-        p.insert_env("ENABLE_ENTITY", false);
-        p.insert_env("ENABLE_TEXTURE", true);
-        p.insert_env("BIAS", true);
+        p.insert_condition_env("ENABLE_ENTITY", false);
+        p.insert_condition_env("ENABLE_TEXTURE", true);
+        p.insert_condition_env("BIAS", true);
         assert_eq!(
             &p.process(),
             r"
@@ -283,7 +283,7 @@ fn main() vec4<f32> {
 }
 "#;
         let mut p = ShaderProcessor::from_shader_str(INCLUDE_SHADER_INPUT);
-        p.insert_env("USE_BIAS", false);
+        p.insert_condition_env("USE_BIAS", false);
         p.insert_builtin("light", "./assets/builtin/light");
         assert_eq!(
             &p.process(),
@@ -304,7 +304,7 @@ fn main() vec4<f32> {
 "#
         );
         let mut p = ShaderProcessor::from_shader_str(INCLUDE_SHADER_INPUT);
-        p.insert_env("USE_BIAS", true);
+        p.insert_condition_env("USE_BIAS", true);
         p.insert_builtin("light", "./assets/builtin/light");
         assert_eq!(
             &p.process(),

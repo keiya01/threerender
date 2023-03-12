@@ -39,9 +39,9 @@ pub(super) fn process_shader(shader: &str, option: ShaderProcessOption) -> Strin
     let p = make_builtin_path("light/shadow/mod");
     s.insert_builtin("light::shadow", &p);
 
-    // envs
-    s.insert_env("USE_TEXTURE", option.use_texture);
-    s.insert_env("SUPPORT_STORAGE", option.support_storage);
+    // condition envs
+    s.insert_condition_env("USE_TEXTURE", option.use_texture);
+    s.insert_condition_env("SUPPORT_STORAGE", option.support_storage);
 
     s.process()
 }
