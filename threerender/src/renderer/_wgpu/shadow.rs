@@ -2,8 +2,8 @@ use std::{borrow::Cow, collections::HashMap, mem, num::NonZeroU32, rc::Rc};
 
 use glam::Mat4;
 use wgpu::{
-    vertex_attr_array, Adapter, BindGroup, BindGroupLayout, Buffer, Device, PrimitiveTopology,
-    Queue, RenderPipeline, ShaderModule, Texture, TextureView,
+    util::align_to, vertex_attr_array, Adapter, BindGroup, BindGroupLayout, Buffer, Device,
+    PrimitiveTopology, Queue, RenderPipeline, ShaderModule, TextureView,
 };
 
 use crate::{
@@ -17,7 +17,7 @@ use crate::{
 
 use super::{
     processor::{process_shader, ShaderProcessOption},
-    scene::is_storage_supported,
+    scene::{is_storage_supported, Scene},
     RenderedEntity,
 };
 
@@ -30,7 +30,7 @@ pub(super) struct ShadowBaker {
     pub(super) render_pipelines: HashMap<EntityRendererState, RenderPipeline>,
     pub(super) entity: ShadowEntityUniform,
     pub(super) camera: CameraUniform,
-    pub(super) view: TextureView,
+    pub(super) views: Vec<TextureView>,
 }
 
 impl ShadowBaker {
@@ -40,10 +40,10 @@ impl ShadowBaker {
         adapter: &Adapter,
         device: &Device,
         entity_len: usize,
-        shadow_texture: &Texture,
+        scene: &Scene,
         states: Vec<RendererState>,
     ) -> Self {
-        let camera = CameraUniform::with_mat4(device);
+        let camera = CameraUniform::with_mat4(device, scene.light_uniform.len());
         let (entity_uniform_size, entity_uniform_buf, _) =
             RenderedEntity::make_uniform(device, entity_len);
         let (entity_bind_group_layout, entity_bind_group) =
@@ -159,16 +159,25 @@ impl ShadowBaker {
             render_pipelines.insert(key, pipeline);
         }
 
-        let bake_view = shadow_texture.create_view(&wgpu::TextureViewDescriptor {
-            label: Some("shadow"),
-            format: None,
-            dimension: Some(wgpu::TextureViewDimension::D2),
-            aspect: wgpu::TextureAspect::All,
-            base_mip_level: 0,
-            mip_level_count: None,
-            base_array_layer: 0_u32,
-            array_layer_count: NonZeroU32::new(1),
-        });
+        let mut views = vec![];
+
+        for i in 0..scene.light_uniform.len() {
+            let bake_view =
+                scene
+                    .shadow_uniform
+                    .texture
+                    .create_view(&wgpu::TextureViewDescriptor {
+                        label: Some("shadow"),
+                        format: None,
+                        dimension: Some(wgpu::TextureViewDimension::D2),
+                        aspect: wgpu::TextureAspect::All,
+                        base_mip_level: 0,
+                        mip_level_count: None,
+                        base_array_layer: i as u32,
+                        array_layer_count: NonZeroU32::new(1),
+                    });
+            views.push(bake_view);
+        }
 
         Self {
             render_pipelines,
@@ -177,57 +186,67 @@ impl ShadowBaker {
                 entity_bind_group,
             },
             camera,
-            view: bake_view,
+            views,
         }
     }
 }
 
 pub(super) struct CameraUniform {
-    buf: Buffer,
+    pub(super) buf: Buffer,
     pub(super) bind_group_layout: BindGroupLayout,
     pub(super) bind_group: BindGroup,
 }
 
 impl CameraUniform {
-    pub(super) fn with_mat4(device: &Device) -> Self {
-        let model_uniform_buf = device.create_buffer(&wgpu::BufferDescriptor {
+    pub(super) fn with_mat4(device: &Device, light_length: usize) -> Self {
+        let camera_uniform_size = mem::size_of::<[f32; 16]>() as wgpu::BufferAddress;
+        let camera_uniform_alignment = {
+            let alignment =
+                device.limits().min_uniform_buffer_offset_alignment as wgpu::BufferAddress;
+            align_to(camera_uniform_size, alignment)
+        };
+        let camera_uniform_buf = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Camera Uniform Buffer"),
-            size: mem::size_of::<Mat4>() as wgpu::BufferAddress,
+            size: light_length as wgpu::BufferAddress * camera_uniform_alignment,
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        let model_bind_group_layout =
+        let camera_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: None,
                 entries: &[wgpu::BindGroupLayoutEntry {
-                    binding: 0, // model
+                    binding: 0, // camera
                     visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: wgpu::BufferSize::new(mem::size_of::<Mat4>() as _),
+                        has_dynamic_offset: true,
+                        min_binding_size: wgpu::BufferSize::new(camera_uniform_size),
                     },
                     count: None,
                 }],
             });
-        let model_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &model_bind_group_layout,
+        let camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &camera_bind_group_layout,
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
-                resource: model_uniform_buf.as_entire_binding(),
+                resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                    buffer: &camera_uniform_buf,
+                    offset: 0,
+                    size: wgpu::BufferSize::new(camera_uniform_size),
+                }),
             }],
             label: None,
         });
 
         Self {
-            buf: model_uniform_buf,
-            bind_group_layout: model_bind_group_layout,
-            bind_group: model_bind_group,
+            buf: camera_uniform_buf,
+            bind_group_layout: camera_bind_group_layout,
+            bind_group: camera_bind_group,
         }
     }
 
-    pub(super) fn update(&self, queue: &Queue, model: Mat4) {
+    pub(super) fn update(&self, queue: &Queue, model: Mat4, offset: wgpu::BufferAddress) {
         let mx_ref: &[f32; 16] = model.as_ref();
-        queue.write_buffer(&self.buf, 0, bytemuck::cast_slice(mx_ref));
+        queue.write_buffer(&self.buf, offset, bytemuck::cast_slice(mx_ref));
     }
 }

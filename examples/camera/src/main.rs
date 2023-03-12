@@ -86,9 +86,22 @@ fn main() {
     });
 
     renderer_builder.add_light(LightStyle::with_directional(
-        "directional".to_owned(),
+        "directional1".to_owned(),
         LightBaseStyle {
             position: Vec3::new(5., 6., 5.),
+            ..Default::default()
+        },
+        Some(ShadowStyle {
+            far: 1000.,
+            fov: 65.,
+            ..Default::default()
+        }),
+    ));
+
+    renderer_builder.add_light(LightStyle::with_directional(
+        "directional2".to_owned(),
+        LightBaseStyle {
+            position: Vec3::new(-5., 6., 5.),
             ..Default::default()
         },
         Some(ShadowStyle {

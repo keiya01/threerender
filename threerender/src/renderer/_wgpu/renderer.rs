@@ -22,7 +22,7 @@ use crate::{
 
 use super::{
     processor::{process_shader, ShaderProcessOption},
-    scene::{is_storage_supported, Scene, Reflection},
+    scene::{is_storage_supported, Reflection, Scene},
     shadow::ShadowBaker,
     uniform::{EntityUniformBuffer, TextureInfoUniformBuffer},
     unit::{rgba_to_array, rgba_to_array_64},
@@ -757,7 +757,7 @@ impl<Event> Renderer<Event> {
             &adapter,
             &dynamic_renderer.device,
             dynamic_renderer.rendered_entity.entities.len(),
-            &scene.shadow_uniform.texture,
+            &scene,
             renderer_builder.states,
         );
 
@@ -843,28 +843,53 @@ impl<Event> Renderer<Event> {
 
         if self.scene.shadow_uniform.use_shadow {
             // shadow pass
-            encoder.push_debug_group("shadow passe");
+            encoder.push_debug_group("shadow pass");
             {
-                let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                    label: None,
-                    color_attachments: &[],
-                    depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                        view: &self.shadow_baker.view,
-                        depth_ops: Some(wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(1.0),
-                            store: true,
+                for (i, light) in self.scene.style.lights.iter().enumerate() {
+                    let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                        label: None,
+                        color_attachments: &[],
+                        depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                            view: &self.shadow_baker.views[i],
+                            depth_ops: Some(wgpu::Operations {
+                                load: wgpu::LoadOp::Clear(1.0),
+                                store: true,
+                            }),
+                            stencil_ops: None,
                         }),
-                        stencil_ops: None,
-                    }),
-                });
+                    });
 
-                rpass.set_bind_group(0, &self.shadow_baker.camera.bind_group, &[]);
+                    // Set shadow projection dynamically
+                    {
+                        let size = mem::size_of::<[f32; 16]>() as wgpu::BufferAddress;
+                        let uniform_alignment = {
+                            let alignment = self
+                                .dynamic_renderer
+                                .device
+                                .limits()
+                                .min_uniform_buffer_offset_alignment
+                                as wgpu::BufferAddress;
+                            align_to(size, alignment)
+                        };
+                        let offset = i as wgpu::BufferAddress * uniform_alignment;
 
-                for light in &self.scene.style.lights {
-                    if let Some(shadow) = light.shadow() {
-                        self.shadow_baker
-                            .camera
-                            .update(&self.dynamic_renderer.queue, shadow.transform(light));
+                        let default = Default::default();
+                        let shadow = if let Some(shadow) = light.shadow() {
+                            shadow
+                        } else {
+                            &default
+                        };
+                        self.shadow_baker.camera.update(
+                            &self.dynamic_renderer.queue,
+                            shadow.transform(light),
+                            offset,
+                        );
+
+                        rpass.set_bind_group(
+                            0,
+                            &self.shadow_baker.camera.bind_group,
+                            &[offset as u32],
+                        );
                     }
 
                     for (i, entity) in rendered_entity.entities.iter().enumerate() {

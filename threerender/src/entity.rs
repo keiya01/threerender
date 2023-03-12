@@ -101,7 +101,7 @@ impl Default for ReflectionStyle {
         Self {
             brightness: 0.,
             shininess: 0.,
-            specular: 1.
+            specular: 1.,
         }
     }
 }

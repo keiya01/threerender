@@ -8,8 +8,9 @@ use wgpu::{
 };
 
 use crate::{
+    entity::ReflectionStyle,
     unit::{Rotation, Translation},
-    HemisphereLightStyle, LightModel, LightStyle, SceneStyle, ShadowStyle, entity::ReflectionStyle,
+    HemisphereLightStyle, LightModel, LightStyle, SceneStyle, ShadowStyle,
 };
 
 use super::unit::rgb_to_array;
@@ -103,7 +104,7 @@ impl Light {
 }
 
 pub(super) struct LightUniform {
-    buf: Buffer,
+    pub(super) buf: Buffer,
     data: Vec<Light>,
     pub(super) bind_group_layout: BindGroupLayout,
     pub(super) bind_group: BindGroup,
@@ -165,6 +166,10 @@ impl LightUniform {
                 bytemuck::bytes_of(light),
             );
         }
+    }
+
+    pub(super) fn len(&self) -> usize {
+        self.data.len()
     }
 }
 
