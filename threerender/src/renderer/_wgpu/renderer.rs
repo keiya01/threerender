@@ -187,15 +187,14 @@ impl RenderedTexture {
                     TextureFormat::RGBA => wgpu::TextureFormat::Rgba8Unorm,
                 },
                 usage: wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::TEXTURE_BINDING,
+                view_formats: &[],
             });
             queue.write_texture(
                 texture.as_image_copy(),
                 buf,
                 wgpu::ImageDataLayout {
                     offset: 0,
-                    bytes_per_row: std::num::NonZeroU32::new(
-                        width * texture_mesh.bytes_per_pixel(),
-                    ),
+                    bytes_per_row: Some(width * texture_mesh.bytes_per_pixel()),
                     rows_per_image: None,
                 },
                 size,
@@ -583,7 +582,14 @@ impl<Event> Renderer<Event> {
         window: &W,
         mut renderer_builder: RendererBuilder,
     ) -> Self {
-        let instance = wgpu::Instance::new(wgpu::Backends::all());
+        let backends = wgpu::util::backend_bits_from_env().unwrap_or_else(wgpu::Backends::all);
+        let dx12_shader_compiler = wgpu::util::dx12_shader_compiler_from_env().unwrap_or_default();
+
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+            backends,
+            dx12_shader_compiler,
+        });
+
         let surface = unsafe { instance.create_surface(&window) }.unwrap();
         let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
             power_preference: wgpu::PowerPreference::default(),
@@ -795,6 +801,7 @@ impl<Event> Renderer<Event> {
                 format: Self::DEPTH_FORMAT,
                 usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
                 label: None,
+                view_formats: &[]
             });
 
         self.scene.forward_depth =

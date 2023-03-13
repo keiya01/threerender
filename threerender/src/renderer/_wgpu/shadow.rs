@@ -1,4 +1,4 @@
-use std::{borrow::Cow, collections::HashMap, mem, num::NonZeroU32, rc::Rc};
+use std::{borrow::Cow, collections::HashMap, mem, rc::Rc};
 
 use glam::Mat4;
 use wgpu::{
@@ -174,7 +174,7 @@ impl ShadowBaker {
                         base_mip_level: 0,
                         mip_level_count: None,
                         base_array_layer: i as u32,
-                        array_layer_count: NonZeroU32::new(1),
+                        array_layer_count: Some(1),
                     });
             views.push(bake_view);
         }
