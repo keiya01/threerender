@@ -39,7 +39,7 @@
 //!   return color;
 //! }
 //! ");
-//! p.insert_env("USE_SHADOW", true);
+//! p.insert_condition_env("USE_SHADOW", true);
 //! p.insert_builtin("light", "./assets/builtin/light");
 //! p.process(); // Return processed string
 //! ```
