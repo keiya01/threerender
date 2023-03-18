@@ -7,9 +7,7 @@ use threerender::mesh::traits::EntityMesh;
 use threerender::mesh::{Plane, Sphere, Square};
 use threerender::renderer::Updater;
 use threerender::unit::{Rotation, Scale, RGBA};
-use threerender::{
-    CameraStyle, LightBaseStyle, LightStyle, RendererBuilder, SceneStyle, ShadowStyle,
-};
+use threerender::{CameraStyle, LightBaseStyle, LightStyle, RendererBuilder, Scene, ShadowStyle};
 
 #[derive(Default)]
 struct State {
@@ -36,7 +34,7 @@ impl Updater for App {
     fn update(
         &mut self,
         entity_list: &mut dyn EntityList,
-        _scene: &mut SceneStyle,
+        _scene: &mut Scene,
         _event: Self::Event,
     ) {
         for entity in entity_list.items_mut() {

@@ -11,8 +11,7 @@ use threerender::renderer::builder::WGPURendererBuilder;
 use threerender::renderer::Updater;
 use threerender::unit::{Rotation, RGBA};
 use threerender::{
-    CameraStyle, LightBaseStyle, LightStyle, RendererBuilder, RendererState, SceneStyle,
-    ShadowStyle,
+    CameraStyle, LightBaseStyle, LightStyle, RendererBuilder, RendererState, Scene, ShadowStyle,
 };
 #[cfg(feature = "wgpu")]
 use wgpu::Features;
@@ -25,7 +24,7 @@ impl Updater for App {
     fn update(
         &mut self,
         entity_list: &mut dyn EntityList,
-        _scene: &mut SceneStyle,
+        _scene: &mut Scene,
         _event: Self::Event,
     ) {
         for entity in entity_list.items_mut() {

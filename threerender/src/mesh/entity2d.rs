@@ -119,7 +119,6 @@ impl EntityMesh for PointList {
     }
 }
 
-// TODO: use index
 pub struct Plane {
     vertex: Vec<Vertex>,
     index: [u16; 6],

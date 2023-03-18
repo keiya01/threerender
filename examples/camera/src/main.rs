@@ -8,7 +8,7 @@ use threerender::mesh::{Plane, Sphere, Square};
 use threerender::renderer::Updater;
 use threerender::unit::{Rotation, Translation, RGB, RGBA};
 use threerender::{
-    CameraStyle, HemisphereLightStyle, LightBaseStyle, LightStyle, RendererBuilder, SceneStyle,
+    CameraStyle, HemisphereLightStyle, LightBaseStyle, LightStyle, RendererBuilder, Scene,
     ShadowOptions, ShadowStyle,
 };
 
@@ -26,12 +26,7 @@ impl App {
 impl Updater for App {
     type Event = CustomEvent;
 
-    fn update(
-        &mut self,
-        entity_list: &mut dyn EntityList,
-        scene: &mut SceneStyle,
-        event: Self::Event,
-    ) {
+    fn update(&mut self, entity_list: &mut dyn EntityList, scene: &mut Scene, event: Self::Event) {
         match event {
             CustomEvent::MouseMove(pos) => {
                 let distance_x = (pos.x / self.width * 10.) as f32;

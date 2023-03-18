@@ -72,7 +72,7 @@ var<storage, read> ulights: array<UniformLight>;
 #else
 @group(2)
 @binding(0)
-var<uniform> ulights: array<UniformLight, 10>; // TODO: Set array size through environment variables.
+var<uniform> ulights: array<UniformLight, #{MAX_LIGHT_NUM}>;
 #end
 
 @group(3)
@@ -107,8 +107,7 @@ fn fs_main(vertex: VertexOutput) -> @location(0) vec4<f32> {
     var color: vec4<f32> = vec4(0.);
     let camera_position = vec4(uscene.eye, 1.0);
     let world_normal = normalize(entity.transform * vec4<f32>(vertex.normal, 0.0)).xyz;
-    // TODO: Use environment variables as max value.
-    for(var i = 0u; i < min(uscene.num_lights, 10u); i += 1u) {
+    for(var i = 0u; i < min(uscene.num_lights, #{MAX_LIGHT_NUM}u); i += 1u) {
         let ulight = ulights[i];
         if ulight.model != 0u {
 

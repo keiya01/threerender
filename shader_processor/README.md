@@ -9,6 +9,7 @@ As described above, this library provides the following statement.
 - `#include ./path/to/shader`
 - `#include builtin::light`
 - `#ifdef ENABLE_SHADOW`
+- `#{ENV_VARIABLE}`
 
 `#include` provides feature to include specified file or builtin module.
 
@@ -21,6 +22,10 @@ var<uniform> shadow: vec4<f32>;
 var<uniform> color: vec4<f32>;
 #end
 ```
+
+`#{ENV_VARIABLE}` provides defining environment variable with `#{}` syntax.
+
+You can check [a wgpu processor for threerender](https://github.com/keiya01/threerender/blob/main/threerender/src/renderer/_wgpu/processor.rs) if you want to use only this crate.
 
 ## TODO
 

@@ -23,7 +23,7 @@
 //! Made for [`threerender`](https://github.com/keiya01/threerender/).
 //!
 //! ```rust
-//! use shader_processor::ShaderProcessor;
+//! use shader_processor::{ShaderProcessor, EnvType};
 //! let mut p = ShaderProcessor::from_shader_str(r"
 //! #include builtin::light
 //! #ifdef USE_SHADER
@@ -39,7 +39,7 @@
 //!   return color;
 //! }
 //! ");
-//! p.insert_condition_env("USE_SHADOW", true);
+//! p.insert_env("USE_SHADOW", EnvType::Bool(true));
 //! p.insert_builtin("light", "./assets/builtin/light");
 //! p.process(); // Return processed string
 //! ```

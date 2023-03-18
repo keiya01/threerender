@@ -1,4 +1,11 @@
-use std::{collections::HashMap, fs::File, io::Read, str::Lines};
+use std::{
+    collections::HashMap,
+    fmt::Debug,
+    fs::File,
+    io::Read,
+    iter::Peekable,
+    str::{Chars, Lines},
+};
 
 enum IFStatement {
     Ifdef(bool),
@@ -7,9 +14,38 @@ enum IFStatement {
 
 const EXTENSION: &str = "wgsl";
 
+#[derive(Debug, Clone)]
+pub enum EnvType {
+    Bool(bool),
+    Number(u32),
+    Str(String),
+}
+
+pub enum ProcessError {
+    Unexpected(EnvType),
+    CouldNotFindBuiltinModule(String),
+    CouldNotFindEnv(String),
+    InValidStatement(String),
+}
+
+impl Debug for ProcessError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Unexpected(env) => write!(f, "{:?}", env),
+            Self::CouldNotFindBuiltinModule(line) => {
+                write!(f, "Could not find specified builtin module: {line}")
+            }
+            Self::CouldNotFindEnv(env) => {
+                write!(f, "Could not find specified env: {env}")
+            }
+            Self::InValidStatement(statement) => write!(f, "Invalid statement: {statement}"),
+        }
+    }
+}
+
 pub struct ShaderProcessor<'a> {
     shader: &'a str,
-    condition_envs: HashMap<&'a str, bool>,
+    envs: HashMap<&'a str, EnvType>,
     builtin: HashMap<&'a str, &'a str>,
     lines: Vec<String>,
     if_nest_order: Vec<IFStatement>,
@@ -19,30 +55,31 @@ impl<'a> ShaderProcessor<'a> {
     pub fn from_shader_str(shader: &'a str) -> Self {
         Self {
             shader,
-            condition_envs: HashMap::new(),
+            // TODO: implement this for setting MAX_LIGHT dynamically
+            envs: HashMap::new(),
             builtin: HashMap::new(),
             lines: vec![],
             if_nest_order: vec![],
         }
     }
 
-    pub fn insert_condition_env(&mut self, key: &'a str, val: bool) {
-        self.condition_envs.insert(key, val);
+    pub fn insert_env(&mut self, key: &'a str, val: EnvType) {
+        self.envs.insert(key, val);
     }
 
     pub fn insert_builtin(&mut self, key: &'a str, val: &'a str) {
         self.builtin.insert(key, val);
     }
 
-    pub fn process(&mut self) -> String {
+    pub fn process(&mut self) -> Result<String, ProcessError> {
         let lines = self.shader.lines();
-        self.process_lines(lines);
-        self.lines.concat()
+        self.process_lines(lines)?;
+        Ok(self.lines.concat())
     }
 
-    fn process_lines(&mut self, lines: Lines) {
+    fn process_lines(&mut self, lines: Lines) -> Result<(), ProcessError> {
         for (_, line) in lines.enumerate() {
-            if self.handle_ifdef_statement(line) {
+            if self.handle_ifdef_statement(line)? {
                 continue;
             }
             match self.if_nest_order.last() {
@@ -52,20 +89,35 @@ impl<'a> ShaderProcessor<'a> {
                 _ => {}
             };
 
-            if self.handle_include_statement(line) {
+            if self.handle_include_statement(line)? {
                 continue;
             }
 
+            let mut in_env_syntax = false;
+            let mut env_variable_names: Vec<String> = vec![];
+            let mut env_variable_name = String::new();
+            self.handle_chars(line, |ch, chars| {
+                if find_env_variable(&mut in_env_syntax, ch, chars, &mut env_variable_name) {
+                    env_variable_names.push(env_variable_name.clone());
+                    env_variable_name = String::new();
+                }
+
+                false
+            });
+
+            let line = self.handle_env_variable(line, env_variable_names)?;
+
             self.lines.push(format!("{}{}", line, "\n"));
         }
+        Ok(())
     }
 
-    fn handle_ifdef_statement(&mut self, line: &str) -> bool {
+    fn handle_ifdef_statement(&mut self, line: &str) -> Result<bool, ProcessError> {
         if line.starts_with("#ifdef") {
             match self.if_nest_order.last() {
                 Some(IFStatement::Ifdef(matched) | IFStatement::Else(matched)) if !*matched => {
                     self.if_nest_order.push(IFStatement::Ifdef(false));
-                    return true;
+                    return Ok(true);
                 }
                 _ => {}
             };
@@ -73,11 +125,20 @@ impl<'a> ShaderProcessor<'a> {
             let split = line.split(' ').collect::<Vec<&str>>();
             let env = split.get(1);
             let matched = match env {
-                Some(env) => self.condition_envs.get(env).map_or(false, |e| *e),
+                Some(env) => {
+                    let env = match self.envs.get(env) {
+                        Some(e) => e,
+                        None => &EnvType::Bool(false),
+                    };
+                    match env {
+                        EnvType::Bool(b) => *b,
+                        _ => return Err(ProcessError::Unexpected(env.clone())),
+                    }
+                }
                 None => false,
             };
             self.if_nest_order.push(IFStatement::Ifdef(matched));
-            return true;
+            return Ok(true);
         }
 
         if line.starts_with("#else") {
@@ -87,7 +148,7 @@ impl<'a> ShaderProcessor<'a> {
                 _ => unreachable!(),
             };
             self.if_nest_order.push(IFStatement::Else(matched));
-            return true;
+            return Ok(true);
         }
 
         if line.starts_with("#end") {
@@ -97,28 +158,28 @@ impl<'a> ShaderProcessor<'a> {
                 Some(IFStatement::Ifdef(_) | IFStatement::Else(_)) => {}
                 None => unreachable!(),
             };
-            return true;
+            return Ok(true);
         }
 
-        false
+        Ok(false)
     }
 
-    fn handle_include_statement(&mut self, line: &str) -> bool {
+    fn handle_include_statement(&mut self, line: &str) -> Result<bool, ProcessError> {
         if !line.starts_with("#include") {
-            return false;
+            return Ok(false);
         }
 
         let split_line = line.split(' ').collect::<Vec<&str>>();
         let mut path = match split_line.get(1) {
             Some(s) => *s,
-            None => panic!("Invalid #include statement"),
+            None => return Err(ProcessError::InValidStatement(line.to_owned())),
         };
 
         if path.starts_with("builtin") {
             let include = path.trim_start_matches("builtin::");
             match self.builtin.get(include) {
                 Some(s) => path = s,
-                None => panic!("Could not find {include} builtin module"),
+                None => return Err(ProcessError::CouldNotFindBuiltinModule(include.to_owned())),
             };
         }
 
@@ -128,10 +189,90 @@ impl<'a> ShaderProcessor<'a> {
         let mut contents = String::new();
         file.read_to_string(&mut contents)
             .unwrap_or_else(|_| panic!("Failed to read file {path}"));
-        self.process_lines(contents.lines());
+        self.process_lines(contents.lines())?;
 
-        true
+        Ok(true)
     }
+
+    fn handle_chars<F>(&mut self, line: &str, mut f: F)
+    where
+        F: FnMut(&char, &mut Peekable<Chars>) -> bool,
+    {
+        let mut chars = line.chars().peekable();
+        while let Some(ch) = chars.next() {
+            if f(&ch, &mut chars) {
+                break;
+            }
+        }
+    }
+
+    fn handle_env_variable(
+        &mut self,
+        line: &str,
+        env_variable_names: Vec<String>,
+    ) -> Result<String, ProcessError> {
+        let mut next_line = line.to_owned();
+        for env_variable_name in env_variable_names {
+            if env_variable_name.is_empty() {
+                return Ok(next_line);
+            }
+
+            let env_variable = self.envs.get(&env_variable_name[..]);
+            let var = match env_variable {
+                Some(var) => var,
+                None => return Err(ProcessError::CouldNotFindEnv(env_variable_name)),
+            };
+            let str_var_val = match var {
+                EnvType::Number(n) => n.to_string(),
+                EnvType::Str(n) => n.to_string(),
+                EnvType::Bool(n) => n.to_string(),
+            };
+
+            let split_line = next_line.split_once(&format!("#{{{env_variable_name}}}"));
+            next_line = match split_line {
+                Some((a, b)) => {
+                    let mut line = String::new();
+                    line.push_str(a);
+                    line.push_str(&str_var_val);
+                    line.push_str(b);
+                    line
+                }
+                None => unreachable!(),
+            };
+        }
+
+        Ok(next_line)
+    }
+}
+
+fn find_env_variable(
+    in_env_syntax: &mut bool,
+    ch: &char,
+    chars: &mut Peekable<Chars>,
+    env_variable_name: &mut String,
+) -> bool {
+    if ch == &'#' && !*in_env_syntax {
+        let ch = match chars.peek() {
+            Some(c) => c,
+            None => return false,
+        };
+        if ch == &'{' {
+            *in_env_syntax = true;
+            chars.next();
+            return false;
+        }
+    }
+
+    if *in_env_syntax && ch == &'}' {
+        *in_env_syntax = false;
+        return true;
+    }
+
+    if *in_env_syntax && (ch.is_uppercase() || ch == &'_') {
+        env_variable_name.push(*ch);
+        return false;
+    }
+    false
 }
 
 #[cfg(test)]
@@ -179,9 +320,9 @@ fn main(@location(0) pos: vec4<f32>) -> vec4<f32> {
 ";
         // Check only entity
         let mut p = ShaderProcessor::from_shader_str(IFDEF_SHADER_INPUT);
-        p.insert_condition_env("ENABLE_ENTITY", true);
+        p.insert_env("ENABLE_ENTITY", EnvType::Bool(true));
         assert_eq!(
-            &p.process(),
+            &p.process().unwrap(),
             r"
 struct Entity {
     pos: vec4<f32>,
@@ -200,10 +341,10 @@ fn main(@location(0) pos: vec4<f32>) -> vec4<f32> {
 
         // Check only entity
         let mut p = ShaderProcessor::from_shader_str(IFDEF_SHADER_INPUT);
-        p.insert_condition_env("ENABLE_ENTITY", true);
-        p.insert_condition_env("ENABLE_TEXTURE", false);
+        p.insert_env("ENABLE_ENTITY", EnvType::Bool(true));
+        p.insert_env("ENABLE_TEXTURE", EnvType::Bool(false));
         assert_eq!(
-            &p.process(),
+            &p.process().unwrap(),
             r"
 struct Entity {
     pos: vec4<f32>,
@@ -221,10 +362,10 @@ fn main(@location(0) pos: vec4<f32>) -> vec4<f32> {
         );
 
         let mut p = ShaderProcessor::from_shader_str(IFDEF_SHADER_INPUT);
-        p.insert_condition_env("ENABLE_ENTITY", true);
-        p.insert_condition_env("ENABLE_TEXTURE", true);
+        p.insert_env("ENABLE_ENTITY", EnvType::Bool(true));
+        p.insert_env("ENABLE_TEXTURE", EnvType::Bool(true));
         assert_eq!(
-            &p.process(),
+            &p.process().unwrap(),
             r"
 struct Entity {
     pos: vec4<f32>,
@@ -247,11 +388,11 @@ fn main(@location(0) pos: vec4<f32>) -> vec4<f32> {
         );
         // Check ubias
         let mut p = ShaderProcessor::from_shader_str(IFDEF_SHADER_INPUT);
-        p.insert_condition_env("ENABLE_ENTITY", false);
-        p.insert_condition_env("ENABLE_TEXTURE", true);
-        p.insert_condition_env("BIAS", true);
+        p.insert_env("ENABLE_ENTITY", EnvType::Bool(false));
+        p.insert_env("ENABLE_TEXTURE", EnvType::Bool(true));
+        p.insert_env("BIAS", EnvType::Bool(true));
         assert_eq!(
-            &p.process(),
+            &p.process().unwrap(),
             r"
 var<uniform> ubias: f32;
 var<uniform> upos: vec4<f32>;
@@ -261,6 +402,51 @@ fn main(@location(0) pos: vec4<f32>) -> vec4<f32> {
     var pos: vec4<f32> = pos;
     pos *= ubias;
     pos *= upos;
+    return pos;
+}
+"
+        );
+    }
+
+    #[test]
+    fn process_runtime_env() {
+        const ENV_SHADER_INPUT: &str = r"
+struct Entity {
+    pos: vec4<#{POSITION_TYPE}>,
+    lights: array<f32, #{MAX_LIGHT_NUM}>,
+}
+var<uniform> uentity: Entity;
+
+@vertex
+fn main(@location(0) pos: vec4<f32>) -> vec4<f32> {
+    var pos: vec4<f32> = pos;
+    for(var i = 0u; i < #{MAX_LIGHT_NUM}u; i += #{ADDITIONAL_NUM}u) {
+        pos *= uentity.lights[i];
+    }
+    return pos;
+}
+";
+        // Check only entity
+        let mut p = ShaderProcessor::from_shader_str(ENV_SHADER_INPUT);
+        p.insert_env("MAX_LIGHT_NUM", EnvType::Number(10));
+        p.insert_env("ADDITIONAL_NUM", EnvType::Number(1));
+        p.insert_env("POSITION_TYPE", EnvType::Str("f32".to_owned()));
+        p.insert_env("POSITION", EnvType::Number(100));
+        assert_eq!(
+            &p.process().unwrap(),
+            r"
+struct Entity {
+    pos: vec4<f32>,
+    lights: array<f32, 10>,
+}
+var<uniform> uentity: Entity;
+
+@vertex
+fn main(@location(0) pos: vec4<f32>) -> vec4<f32> {
+    var pos: vec4<f32> = pos;
+    for(var i = 0u; i < 10u; i += 1u) {
+        pos *= uentity.lights[i];
+    }
     return pos;
 }
 "
@@ -283,10 +469,10 @@ fn main() vec4<f32> {
 }
 "#;
         let mut p = ShaderProcessor::from_shader_str(INCLUDE_SHADER_INPUT);
-        p.insert_condition_env("USE_BIAS", false);
+        p.insert_env("USE_BIAS", EnvType::Bool(false));
         p.insert_builtin("light", "./assets/builtin/light");
         assert_eq!(
-            &p.process(),
+            &p.process().unwrap(),
             r#"
 fn calc_light() -> vec4<f32> {
     return vec4<f32>(5.0);
@@ -304,10 +490,11 @@ fn main() vec4<f32> {
 "#
         );
         let mut p = ShaderProcessor::from_shader_str(INCLUDE_SHADER_INPUT);
-        p.insert_condition_env("USE_BIAS", true);
+        p.insert_env("USE_BIAS", EnvType::Bool(true));
+        p.insert_env("BIAS_TYPE", EnvType::Str("f32".to_owned()));
         p.insert_builtin("light", "./assets/builtin/light");
         assert_eq!(
-            &p.process(),
+            &p.process().unwrap(),
             r#"
 fn calc_light() -> vec4<f32> {
     return vec4<f32>(5.0);

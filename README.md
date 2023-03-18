@@ -44,7 +44,7 @@ cargo run -p examples_{PROJECT_NAME}
   - [ ] Point light shadow
   - [ ] Spot light shadow
 - [x] Multi light/shadow
-- [ ] Reflection rate for entity
+- [x] Reflection rate for entity
 - [x] 2D texture
 - [ ] 3D texture(3D model)
 - [ ] Font

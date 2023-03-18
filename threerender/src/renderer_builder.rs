@@ -7,12 +7,12 @@ use crate::{
     ShadowOptions,
 };
 
-use super::scene::{CameraStyle, LightStyle, SceneStyle};
+use super::scene::{CameraStyle, LightStyle, Scene};
 
 pub struct RendererBuilder {
     pub(super) entities: Vec<EntityDescriptor>,
     pub(super) enable_forward_depth: bool,
-    pub(super) scene: Option<SceneStyle>,
+    pub(super) scene: Option<Scene>,
     pub(super) width: u32,
     pub(super) height: u32,
     pub(super) background: RGBA,

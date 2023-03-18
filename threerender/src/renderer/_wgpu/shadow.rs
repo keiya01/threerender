@@ -92,6 +92,7 @@ impl ShadowBaker {
                         ShaderProcessOption {
                             use_texture: false,
                             support_storage,
+                            max_light_num: scene.scene.max_light_num,
                         },
                     ),
                     mem::size_of::<Vertex>() as wgpu::BufferAddress,
@@ -103,6 +104,7 @@ impl ShadowBaker {
                         ShaderProcessOption {
                             use_texture: true,
                             support_storage,
+                            max_light_num: scene.scene.max_light_num,
                         },
                     ),
                     mem::size_of::<TextureVertex>() as wgpu::BufferAddress,

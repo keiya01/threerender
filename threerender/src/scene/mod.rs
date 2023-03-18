@@ -11,16 +11,31 @@ pub use light::*;
 
 use crate::unit::{Rotation, Translation};
 
-#[derive(Default, Getters, MutGetters)]
-pub struct SceneStyle {
+#[derive(Getters, MutGetters)]
+pub struct Scene {
     pub(super) lights: Vec<LightStyle>,
     #[getset(get = "pub", get_mut = "pub")]
     pub(super) camera: CameraStyle,
     #[getset(get = "pub", get_mut = "pub")]
     pub(super) shadow_options: Option<ShadowOptions>,
+    #[getset(get = "pub", get_mut = "pub")]
+    pub(super) max_light_num: u32,
 }
 
-impl SceneStyle {
+impl Default for Scene {
+    fn default() -> Self {
+        let lights = vec![LightStyle::default()];
+
+        Self {
+            lights,
+            camera: Default::default(),
+            shadow_options: Default::default(),
+            max_light_num: 10,
+        }
+    }
+}
+
+impl Scene {
     pub fn get_light(&self, id: &str) -> Option<&LightStyle> {
         self.lights.iter().find(|l| l.id() == id)
     }

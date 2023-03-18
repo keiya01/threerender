@@ -9,9 +9,7 @@ use threerender::mesh::{PolygonMode, Sphere, Square};
 use threerender::renderer::wgpu_builder::WGPURendererBuilder;
 use threerender::renderer::Updater;
 use threerender::unit::{Rotation, Scale, RGBA};
-use threerender::{
-    CameraStyle, LightBaseStyle, LightStyle, RendererBuilder, RendererState, SceneStyle,
-};
+use threerender::{CameraStyle, LightBaseStyle, LightStyle, RendererBuilder, RendererState, Scene};
 #[cfg(feature = "wgpu")]
 use wgpu::Features;
 
@@ -37,12 +35,7 @@ impl App {
 impl Updater for App {
     type Event = CustomEvent;
 
-    fn update(
-        &mut self,
-        entity_list: &mut dyn EntityList,
-        scene: &mut SceneStyle,
-        _event: Self::Event,
-    ) {
+    fn update(&mut self, entity_list: &mut dyn EntityList, scene: &mut Scene, _event: Self::Event) {
         // Rotate light
         let prev_light_rotate_y = scene.get_light("directional").unwrap().base().rotation_y();
         scene

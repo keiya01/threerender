@@ -658,8 +658,6 @@ impl<Event> Renderer<Event> {
             &scene.scene_uniform.bind_group_layout,
             &dynamic_renderer.rendered_entity.entity_bind_group_layout,
             &scene.light_uniform.bind_group_layout,
-            // TODO: To share shader source, it should be included even if shadow is not used.
-            //       But this is overhead, so I will improve this when we use modularized wgsl.
             &scene.shadow_uniform.bind_group_layout,
         ];
 
@@ -693,6 +691,7 @@ impl<Event> Renderer<Event> {
                         ShaderProcessOption {
                             use_texture: false,
                             support_storage,
+                            max_light_num: scene.scene.max_light_num,
                         },
                     ),
                     mem::size_of::<Vertex>() as wgpu::BufferAddress,
@@ -704,6 +703,7 @@ impl<Event> Renderer<Event> {
                         ShaderProcessOption {
                             use_texture: true,
                             support_storage,
+                            max_light_num: scene.scene.max_light_num,
                         },
                     ),
                     mem::size_of::<TextureVertex>() as wgpu::BufferAddress,
@@ -801,7 +801,7 @@ impl<Event> Renderer<Event> {
                 format: Self::DEPTH_FORMAT,
                 usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
                 label: None,
-                view_formats: &[]
+                view_formats: &[],
             });
 
         self.scene.forward_depth =
@@ -814,15 +814,15 @@ impl<Event> Renderer<Event> {
         self.config.height = height;
         self.surface
             .configure(&self.dynamic_renderer.device, &self.config);
-        self.scene.style.camera.set_width(width as f32);
-        self.scene.style.camera.set_height(height as f32);
+        self.scene.scene.camera.set_width(width as f32);
+        self.scene.scene.camera.set_height(height as f32);
         self.scene.update_scene(&self.dynamic_renderer.queue);
 
         self.set_depth_texture();
     }
 
     pub fn update(&mut self, updater: &mut dyn Updater<Event = Event>, ev: Event) {
-        updater.update(&mut self.dynamic_renderer, &mut self.scene.style, ev);
+        updater.update(&mut self.dynamic_renderer, &mut self.scene.scene, ev);
         self.update_scene();
     }
 
@@ -852,7 +852,7 @@ impl<Event> Renderer<Event> {
             // shadow pass
             encoder.push_debug_group("shadow pass");
             {
-                for (i, light) in self.scene.style.lights.iter().enumerate() {
+                for (i, light) in self.scene.scene.lights.iter().enumerate() {
                     let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                         label: None,
                         color_attachments: &[],

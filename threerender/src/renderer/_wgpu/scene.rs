@@ -10,7 +10,7 @@ use wgpu::{
 use crate::{
     entity::ReflectionStyle,
     unit::{Rotation, Translation},
-    HemisphereLightStyle, LightModel, LightStyle, SceneStyle, ShadowStyle,
+    HemisphereLightStyle, LightModel, LightStyle, Scene as AbstractedScene, ShadowStyle,
 };
 
 use super::unit::rgb_to_array;
@@ -284,7 +284,7 @@ impl ShadowUniform {
             format: Self::DEPTH_FORMAT,
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
             label: None,
-            view_formats: &[]
+            view_formats: &[],
         });
         let shadow_view = shadow_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
@@ -301,7 +301,7 @@ pub(super) struct SceneData {
 }
 
 impl SceneData {
-    pub(super) fn from_style(style: &SceneStyle) -> Self {
+    pub(super) fn from_style(style: &AbstractedScene) -> Self {
         Self {
             model: style.camera.transform().to_cols_array(),
             num_lights: style.lights.len() as u32,
@@ -366,15 +366,15 @@ pub struct Scene {
     pub(super) light_uniform: LightUniform,
     pub(super) shadow_uniform: ShadowUniform,
     pub(super) forward_depth: Option<TextureView>,
-    pub style: SceneStyle,
+    pub scene: AbstractedScene,
 }
 
 impl Scene {
-    pub(super) fn new(adapter: &Adapter, device: &Device, scene_style: SceneStyle) -> Self {
+    pub(super) fn new(adapter: &Adapter, device: &Device, scene: AbstractedScene) -> Self {
         let is_storage_supported = is_storage_supported(adapter, device);
-        let scene_uniform = SceneUniform::new(device, SceneData::from_style(&scene_style));
+        let scene_uniform = SceneUniform::new(device, SceneData::from_style(&scene));
         let mut has_shadow = false;
-        let light_data = scene_style
+        let light_data = scene
             .lights
             .iter()
             .map(|light| {
@@ -390,7 +390,7 @@ impl Scene {
         let shadow_uniform = ShadowUniform::new(
             device,
             has_shadow,
-            scene_style
+            scene
                 .shadow_options
                 .as_ref()
                 .map_or_else(|| ShadowStyle::DEFAULT_MAP_SIZE, |s| *s.map_size()),
@@ -401,18 +401,18 @@ impl Scene {
             light_uniform,
             shadow_uniform,
             forward_depth: None,
-            style: scene_style,
+            scene,
         }
     }
 
     pub(super) fn update_scene(&mut self, queue: &Queue) {
-        self.scene_uniform.data = SceneData::from_style(&self.style);
+        self.scene_uniform.data = SceneData::from_style(&self.scene);
         self.scene_uniform.update(queue);
     }
 
     pub(super) fn update_light(&mut self, queue: &Queue) {
         self.light_uniform.data = self
-            .style
+            .scene
             .lights
             .iter()
             .map(Light::from_light_style)

@@ -9,7 +9,7 @@ use threerender::mesh::traits::{EntityMesh, Mesh};
 use threerender::mesh::Sphere;
 use threerender::renderer::Updater;
 use threerender::unit::RGBA;
-use threerender::{CameraStyle, LightBaseStyle, LightStyle, RendererBuilder, SceneStyle};
+use threerender::{CameraStyle, LightBaseStyle, LightStyle, RendererBuilder, Scene};
 
 struct App {
     sphere: Rc<Mesh>,
@@ -19,12 +19,7 @@ struct App {
 impl Updater for App {
     type Event = CustomEvent;
 
-    fn update(
-        &mut self,
-        entity_list: &mut dyn EntityList,
-        _scene: &mut SceneStyle,
-        event: Self::Event,
-    ) {
+    fn update(&mut self, entity_list: &mut dyn EntityList, _scene: &mut Scene, event: Self::Event) {
         if let CustomEvent::MouseDown = event {
             let (x, y, z): (f32, f32, f32) = (
                 self.rng.gen_range((-2.)..3.),
