@@ -14,7 +14,7 @@ enum IFStatement {
 
 const EXTENSION: &str = "wgsl";
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum EnvType {
     Bool(bool),
     Number(u32),
@@ -45,36 +45,50 @@ impl Debug for ProcessError {
 
 pub struct ShaderProcessor<'a> {
     shader: &'a str,
+    result: Option<String>,
     envs: HashMap<&'a str, EnvType>,
-    builtin: HashMap<&'a str, &'a str>,
+    builtin: HashMap<&'a str, String>,
     lines: Vec<String>,
     if_nest_order: Vec<IFStatement>,
+    is_dirty: bool,
 }
 
 impl<'a> ShaderProcessor<'a> {
     pub fn from_shader_str(shader: &'a str) -> Self {
         Self {
             shader,
+            result: None,
             // TODO: implement this for setting MAX_LIGHT dynamically
             envs: HashMap::new(),
             builtin: HashMap::new(),
             lines: vec![],
             if_nest_order: vec![],
+            is_dirty: true,
         }
     }
 
     pub fn insert_env(&mut self, key: &'a str, val: EnvType) {
+        self.is_dirty = self.envs.get(key).map_or(true, |v| v != &val);
         self.envs.insert(key, val);
     }
 
-    pub fn insert_builtin(&mut self, key: &'a str, val: &'a str) {
+    pub fn insert_builtin(&mut self, key: &'a str, val: String) {
+        self.is_dirty = self.builtin.get(key).map_or(true, |v| v != &val);
         self.builtin.insert(key, val);
     }
 
     pub fn process(&mut self) -> Result<String, ProcessError> {
+        if !self.is_dirty {
+            return Ok(self.result.as_ref().unwrap().clone());
+        }
+
         let lines = self.shader.lines();
         self.process_lines(lines)?;
-        Ok(self.lines.concat())
+        self.is_dirty = false;
+        self.result = Some(self.lines.concat());
+        self.lines.clear();
+
+        Ok(self.result.as_ref().unwrap().clone())
     }
 
     fn process_lines(&mut self, lines: Lines) -> Result<(), ProcessError> {
@@ -470,7 +484,7 @@ fn main() vec4<f32> {
 "#;
         let mut p = ShaderProcessor::from_shader_str(INCLUDE_SHADER_INPUT);
         p.insert_env("USE_BIAS", EnvType::Bool(false));
-        p.insert_builtin("light", "./assets/builtin/light");
+        p.insert_builtin("light", "./assets/builtin/light".to_owned());
         assert_eq!(
             &p.process().unwrap(),
             r#"
@@ -492,7 +506,7 @@ fn main() vec4<f32> {
         let mut p = ShaderProcessor::from_shader_str(INCLUDE_SHADER_INPUT);
         p.insert_env("USE_BIAS", EnvType::Bool(true));
         p.insert_env("BIAS_TYPE", EnvType::Str("f32".to_owned()));
-        p.insert_builtin("light", "./assets/builtin/light");
+        p.insert_builtin("light", "./assets/builtin/light".to_owned());
         assert_eq!(
             &p.process().unwrap(),
             r#"
@@ -500,6 +514,108 @@ fn calc_light() -> vec4<f32> {
     return vec4<f32>(5.0);
 }
 fn calc_test_bias() -> f32 {
+    return 3.0;
+}
+
+fn calc_test() -> vec4<f32> {
+    return vec4<f32>(3.0);
+}
+
+@vertex
+fn main() vec4<f32> {
+    var bias: f32 = 0.0;
+    bias = calc_bias();
+    return calc_light() * calc_test() * bias; 
+}
+"#
+        );
+    }
+
+    #[test]
+    fn check_dirty() {
+        const SHADER_INPUT: &str = r#"
+#include builtin::light
+#include ./assets/test
+
+@vertex
+fn main() vec4<f32> {
+    var bias: f32 = 0.0;
+#ifdef USE_BIAS
+    bias = calc_bias();
+#end
+    return calc_light() * calc_test() * bias; 
+}
+"#;
+        let mut p = ShaderProcessor::from_shader_str(SHADER_INPUT);
+        p.insert_env("USE_BIAS", EnvType::Bool(false));
+        p.insert_builtin("light", "./assets/builtin/light".to_owned());
+        assert_eq!(
+            &p.process().unwrap(),
+            r#"
+fn calc_light() -> vec4<f32> {
+    return vec4<f32>(5.0);
+}
+
+fn calc_test() -> vec4<f32> {
+    return vec4<f32>(3.0);
+}
+
+@vertex
+fn main() vec4<f32> {
+    var bias: f32 = 0.0;
+    return calc_light() * calc_test() * bias; 
+}
+"#
+        );
+
+        assert_eq!(p.is_dirty, false);
+        
+        p.insert_builtin("light", "./assets/builtin/light".to_owned());
+        assert_eq!(p.is_dirty, false);
+
+        p.insert_env("USE_BIAS", EnvType::Bool(true));
+        p.insert_env("BIAS_TYPE", EnvType::Str("u32".to_owned()));
+        assert_eq!(p.is_dirty, true);
+
+        assert_eq!(
+            &p.process().unwrap(),
+            r#"
+fn calc_light() -> vec4<f32> {
+    return vec4<f32>(5.0);
+}
+fn calc_test_bias() -> u32 {
+    return 3.0;
+}
+
+fn calc_test() -> vec4<f32> {
+    return vec4<f32>(3.0);
+}
+
+@vertex
+fn main() vec4<f32> {
+    var bias: f32 = 0.0;
+    bias = calc_bias();
+    return calc_light() * calc_test() * bias; 
+}
+"#
+        );
+
+        assert_eq!(p.is_dirty, false);
+        
+        p.insert_env("USE_BIAS", EnvType::Bool(true));
+        p.insert_env("BIAS_TYPE", EnvType::Str("u32".to_owned()));
+        assert_eq!(p.is_dirty, false);
+        
+        p.insert_builtin("light", "./assets/builtin/light2".to_owned());
+        assert_eq!(p.is_dirty, true);
+
+        assert_eq!(
+            &p.process().unwrap(),
+            r#"
+fn calc_light() -> vec4<f32> {
+    return vec4<f32>(10.0);
+}
+fn calc_test_bias() -> u32 {
     return 3.0;
 }
 

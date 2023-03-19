@@ -40,7 +40,7 @@
 //! }
 //! ");
 //! p.insert_env("USE_SHADOW", EnvType::Bool(true));
-//! p.insert_builtin("light", "./assets/builtin/light");
+//! p.insert_builtin("light", "./assets/builtin/light".to_owned());
 //! p.process(); // Return processed string
 //! ```
 //!

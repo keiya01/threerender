@@ -16,7 +16,7 @@ use crate::{
 };
 
 use super::{
-    processor::{process_shader, ShaderProcessOption},
+    processor::{ProcessOption, Processor},
     scene::{is_storage_supported, Scene},
     RenderedEntity,
 };
@@ -55,12 +55,13 @@ impl ShadowBaker {
             push_constant_ranges: &[],
         });
 
-        let lazy_load_shader =
-            |shader: &mut Option<Rc<ShaderModule>>, option: ShaderProcessOption| match shader {
+        let mut processor = Processor::new(include_str!("shaders/shadow.wgsl"));
+
+        let mut lazy_load_shader =
+            |shader: &mut Option<Rc<ShaderModule>>, option: ProcessOption| match shader {
                 Some(ref s) => s.clone(),
                 None => {
-                    // TODO: Cache source
-                    let source = process_shader(include_str!("shaders/shadow.wgsl"), option);
+                    let source = processor.process(option);
                     let s = Rc::new(device.create_shader_module(wgpu::ShaderModuleDescriptor {
                         label: None,
                         source: wgpu::ShaderSource::Wgsl(Cow::Owned(source)),
@@ -89,7 +90,7 @@ impl ShadowBaker {
                 MeshType::Entity => (
                     lazy_load_shader(
                         &mut entity_shader,
-                        ShaderProcessOption {
+                        ProcessOption {
                             use_texture: false,
                             support_storage,
                             max_light_num: scene.scene.max_light_num,
@@ -101,7 +102,7 @@ impl ShadowBaker {
                 MeshType::Texture => (
                     lazy_load_shader(
                         &mut texture_shader,
-                        ShaderProcessOption {
+                        ProcessOption {
                             use_texture: true,
                             support_storage,
                             max_light_num: scene.scene.max_light_num,

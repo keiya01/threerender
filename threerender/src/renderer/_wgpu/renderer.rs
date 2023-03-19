@@ -21,7 +21,7 @@ use crate::{
 };
 
 use super::{
-    processor::{process_shader, ShaderProcessOption},
+    processor::{ProcessOption, Processor},
     scene::{is_storage_supported, Reflection, Scene},
     shadow::ShadowBaker,
     uniform::{EntityUniformBuffer, TextureInfoUniformBuffer},
@@ -637,12 +637,13 @@ impl<Event> Renderer<Event> {
         let mut entity_shader: Option<Rc<ShaderModule>> = None;
         let mut texture_shader: Option<Rc<ShaderModule>> = None;
 
-        let lazy_load_shader =
-            |shader: &mut Option<Rc<ShaderModule>>, option: ShaderProcessOption| match shader {
+        let mut processor = Processor::new(include_str!("shaders/entity.wgsl"));
+
+        let mut lazy_load_shader =
+            |shader: &mut Option<Rc<ShaderModule>>, option: ProcessOption| match shader {
                 Some(ref s) => s.clone(),
                 None => {
-                    // TODO: Cache source
-                    let source = process_shader(include_str!("shaders/entity.wgsl"), option);
+                    let source = processor.process(option);
                     let s = Rc::new(dynamic_renderer.device.create_shader_module(
                         wgpu::ShaderModuleDescriptor {
                             label: None,
@@ -688,7 +689,7 @@ impl<Event> Renderer<Event> {
                 MeshType::Entity => (
                     lazy_load_shader(
                         &mut entity_shader,
-                        ShaderProcessOption {
+                        ProcessOption {
                             use_texture: false,
                             support_storage,
                             max_light_num: scene.scene.max_light_num,
@@ -700,7 +701,7 @@ impl<Event> Renderer<Event> {
                 MeshType::Texture => (
                     lazy_load_shader(
                         &mut texture_shader,
-                        ShaderProcessOption {
+                        ProcessOption {
                             use_texture: true,
                             support_storage,
                             max_light_num: scene.scene.max_light_num,

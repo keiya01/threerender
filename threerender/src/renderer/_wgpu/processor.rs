@@ -1,51 +1,59 @@
 use shader_processor::{EnvType, ShaderProcessor};
 
 #[derive(Default)]
-pub(super) struct ShaderProcessOption {
+pub(super) struct ProcessOption {
     pub(super) use_texture: bool,
     pub(super) support_storage: bool,
     pub(super) max_light_num: u32,
 }
 
-pub(super) fn process_shader(shader: &str, option: ShaderProcessOption) -> String {
-    let mut s = ShaderProcessor::from_shader_str(shader);
+pub(super) struct Processor<'a>(ShaderProcessor<'a>);
 
-    // math builtin modules
-    let p = make_builtin_path("math/affine");
-    s.insert_builtin("math::affine", &p);
-    let p = make_builtin_path("math/mod");
-    s.insert_builtin("math", &p);
+impl<'a> Processor<'a> {
+    pub(super) fn new(shader: &'a str) -> Self {
+        Self(ShaderProcessor::from_shader_str(shader))
+    }
 
-    // light builtin modules
-    let p = make_builtin_path("light/uniforms");
-    s.insert_builtin("light::uniforms", &p);
-    let p = make_builtin_path("light/types");
-    s.insert_builtin("light::types", &p);
-    let p = make_builtin_path("light/directional");
-    s.insert_builtin("light::directional", &p);
-    let p = make_builtin_path("light/hemisphere");
-    s.insert_builtin("light::hemisphere", &p);
-    let p = make_builtin_path("light/mod");
-    s.insert_builtin("light", &p);
+    pub(super) fn process(&mut self, option: ProcessOption) -> String {
+        // math builtin modules
+        let s = &mut self.0;
 
-    // reflection
-    let p = make_builtin_path("reflection");
-    s.insert_builtin("reflection", &p);
+        let p = make_builtin_path("math/affine");
+        s.insert_builtin("math::affine", p);
+        let p = make_builtin_path("math/mod");
+        s.insert_builtin("math", p);
 
-    // shadow builtin modules
-    let p = make_builtin_path("light/shadow/uniforms");
-    s.insert_builtin("light::shadow::uniforms", &p);
-    let p = make_builtin_path("light/shadow/directional");
-    s.insert_builtin("light::shadow::directional", &p);
-    let p = make_builtin_path("light/shadow/mod");
-    s.insert_builtin("light::shadow", &p);
+        // light builtin modules
+        let p = make_builtin_path("light/uniforms");
+        s.insert_builtin("light::uniforms", p);
+        let p = make_builtin_path("light/types");
+        s.insert_builtin("light::types", p);
+        let p = make_builtin_path("light/directional");
+        s.insert_builtin("light::directional", p);
+        let p = make_builtin_path("light/hemisphere");
+        s.insert_builtin("light::hemisphere", p);
+        let p = make_builtin_path("light/mod");
+        s.insert_builtin("light", p);
 
-    // condition envs
-    s.insert_env("USE_TEXTURE", EnvType::Bool(option.use_texture));
-    s.insert_env("SUPPORT_STORAGE", EnvType::Bool(option.support_storage));
-    s.insert_env("MAX_LIGHT_NUM", EnvType::Number(option.max_light_num));
+        // reflection
+        let p = make_builtin_path("reflection");
+        s.insert_builtin("reflection", p);
 
-    s.process().unwrap()
+        // shadow builtin modules
+        let p = make_builtin_path("light/shadow/uniforms");
+        s.insert_builtin("light::shadow::uniforms", p);
+        let p = make_builtin_path("light/shadow/directional");
+        s.insert_builtin("light::shadow::directional", p);
+        let p = make_builtin_path("light/shadow/mod");
+        s.insert_builtin("light::shadow", p);
+
+        // condition envs
+        s.insert_env("USE_TEXTURE", EnvType::Bool(option.use_texture));
+        s.insert_env("SUPPORT_STORAGE", EnvType::Bool(option.support_storage));
+        s.insert_env("MAX_LIGHT_NUM", EnvType::Number(option.max_light_num));
+
+        s.process().unwrap()
+    }
 }
 
 fn make_builtin_path(path: &str) -> String {
