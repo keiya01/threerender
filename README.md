@@ -20,7 +20,7 @@ You can run these examples by below command.
 cargo run -p examples_{PROJECT_NAME}
 ```
 
-## Status
+## Development road map
 
 - [x] 3D entities
   - [x] Square
@@ -46,16 +46,17 @@ cargo run -p examples_{PROJECT_NAME}
 - [x] Multi light/shadow
 - [x] Reflection rate for entity
 - [x] 2D texture
-- [ ] 3D texture(3D model)
-- [ ] Font
 - [x] Override shader
+- [ ] Model loader
+- [ ] Normal mapping
+- [ ] Model transparency
 - [ ] Extendable shader by user
 - [ ] Performance improvement
     - [ ] dirty check
     - [ ] multi threading
     - [ ] Optimize image loading. Eg. We should not draw image if image is not visible.
+- [ ] Font
 - [ ] Integration with 2D library like egui
 - [ ] Web support
 - [ ] Convenient Math API for 3D development
 - [ ] OpenGL Support
-- [ ] Light variation
