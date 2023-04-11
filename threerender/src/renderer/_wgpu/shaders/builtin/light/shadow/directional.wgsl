@@ -39,6 +39,7 @@ fn calc_directional_shadow(
         ushadow,
         t_shadow,
         sampler_shadow
-      ) * d.color.xyz, 1.0
+      ) * d.color.xyz * ushadow.alpha,
+      1.
     );
 }

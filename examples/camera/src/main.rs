@@ -76,6 +76,7 @@ fn main() {
         ..Default::default()
     });
 
+    // TODO: This should be able to set by each light's shadow setting
     renderer_builder.set_shadow_options(ShadowOptions {
         map_size: (1028, 1028),
     });
@@ -89,6 +90,7 @@ fn main() {
         Some(ShadowStyle {
             far: 1000.,
             fov: 65.,
+            alpha: 0.9,
             ..Default::default()
         }),
     ));

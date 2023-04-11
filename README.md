@@ -51,10 +51,17 @@ cargo run -p examples_{PROJECT_NAME}
 - [ ] Normal mapping
 - [ ] Model transparency
 - [ ] Extendable shader by user
+- [ ] Custom render process by implementing trait
+  - [ ] Shadow rendering(PSM, LSPSM, Blur)
+  - [ ] Ray tracing
 - [ ] Performance improvement
     - [ ] dirty check
+    - [ ] Optimize multi object like cloning object and transfer vertex more efficiently
+    - [ ] Mip map for texture
+      - Provide some functionality to be able to define mip map.
     - [ ] multi threading
     - [ ] Optimize image loading. Eg. We should not draw image if image is not visible.
+    - [ ] Level of details for polygon(LOD)
 - [ ] Font
 - [ ] Integration with 2D library like egui
 - [ ] Web support

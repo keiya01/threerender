@@ -53,10 +53,12 @@ pub struct ShadowStyle {
     pub near: f32,
     #[getset(get = "pub", get_mut = "pub")]
     pub far: f32,
-    #[getset(get = "pub")]
+    #[getset(get = "pub", get_mut = "pub")]
     pub center: CameraCenter,
-    #[getset(get = "pub")]
+    #[getset(get = "pub", get_mut = "pub")]
     pub up: CameraUp,
+    #[getset(get = "pub", get_mut = "pub")]
+    pub alpha: f32,
 }
 
 impl Default for ShadowStyle {
@@ -67,6 +69,7 @@ impl Default for ShadowStyle {
             far: 1000.,
             center: CameraCenter::default(),
             up: CameraUp::default(),
+            alpha: 1.,
         }
     }
 }

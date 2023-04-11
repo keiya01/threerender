@@ -179,21 +179,22 @@ pub struct Shadow {
     // The alpha chanel is always ignored. This is to align buffer for wgsl.
     projection: [[f32; 4]; 4],
     use_shadow: u32,
+    alpha: f32,
 
-    _padding: [f32; 3],
+    _padding: [f32; 2],
 }
 
 impl Shadow {
     fn from_shadow_style(light: &LightStyle) -> Self {
+        let shadow = light.shadow().as_ref();
         Self {
-            projection: light
-                .shadow()
-                .as_ref()
+            projection: shadow
                 .map_or_else(|| Mat4::ZERO, |s| s.transform(light))
                 .to_cols_array_2d(),
-            use_shadow: light.shadow().is_some() as u32,
+            use_shadow: shadow.is_some() as u32,
+            alpha: shadow.map(|s| s.alpha).unwrap_or(1.),
 
-            _padding: [0., 0., 0.],
+            _padding: [0., 0.],
         }
     }
 }

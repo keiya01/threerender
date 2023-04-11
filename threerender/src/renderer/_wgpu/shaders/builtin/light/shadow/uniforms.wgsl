@@ -2,6 +2,7 @@ struct UniformShadow {
     projection: mat4x4<f32>,
     // 0 or 1
     use_shadow: u32,
+    alpha: f32,
 }
 
 fn fetch_shadow(light_id: u32, homogeneous_coords: vec4<f32>, t_shadow: texture_depth_2d_array, sampler_shadow: sampler_comparison) -> f32 {
