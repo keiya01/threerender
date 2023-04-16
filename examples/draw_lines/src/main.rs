@@ -55,7 +55,7 @@ fn main() {
         topology: Topology::LineList,
         ..Default::default()
     });
-    
+
     // TODO: Create this renderer automatically
     // Create point list renderer
     renderer_builder.push_state(RendererState {
