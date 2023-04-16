@@ -3,8 +3,8 @@ use std::rc::Rc;
 use examples_common::CustomEvent;
 use threerender::entity::{EntityDescriptor, EntityList, EntityRendererState};
 use threerender::math::vec::Vec3;
-use threerender::mesh::EntityMesh;
-use threerender::mesh::{PointList, PointTopology, Topology};
+use threerender::mesh::{EntityMesh, Line};
+use threerender::mesh::{Point, Topology};
 use threerender::renderer::Updater;
 use threerender::unit::{Rotation, RGBA};
 use threerender::{CameraPosition, CameraStyle, RendererBuilder, RendererState, Scene};
@@ -49,12 +49,14 @@ fn main() {
         ..Default::default()
     });
 
+    // TODO: Create this renderer automatically
     // Create line list renderer
     renderer_builder.push_state(RendererState {
         topology: Topology::LineList,
         ..Default::default()
     });
-
+    
+    // TODO: Create this renderer automatically
     // Create point list renderer
     renderer_builder.push_state(RendererState {
         topology: Topology::PointList,
@@ -70,7 +72,7 @@ fn main() {
         Vec3::new(-2., -2., 1.),
     ];
 
-    let lines = PointList::new(points, PointTopology::Line);
+    let lines = Line::new(points);
     let lines = Rc::new(lines.use_entity());
     renderer_builder.push(EntityDescriptor {
         id: "lines".to_owned(),
@@ -95,7 +97,7 @@ fn main() {
         circles.push(Vec3::new(x, y, 1.));
     }
 
-    let points = PointList::new(circles, PointTopology::Point);
+    let points = Point::new(circles);
     let points = Rc::new(points.use_entity());
     renderer_builder.push(EntityDescriptor {
         id: "circle".to_owned(),

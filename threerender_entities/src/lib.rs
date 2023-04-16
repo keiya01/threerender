@@ -1,5 +1,13 @@
-mod entity2d;
-mod entity3d;
+mod line;
+mod plane;
+mod point;
+mod polygon;
+mod sphere;
+mod square;
 
-pub use entity2d::*;
-pub use entity3d::*;
+pub use line::*;
+pub use plane::*;
+pub use point::*;
+pub use polygon::*;
+pub use sphere::*;
+pub use square::*;
