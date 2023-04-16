@@ -1,4 +1,4 @@
-use crate::{math::Vec3, ShadowStyle};
+use crate::{math::vec::Vec3, ShadowStyle};
 use getset::{Getters, MutGetters, Setters};
 
 use crate::unit::{Rotation, Translation, RGB};

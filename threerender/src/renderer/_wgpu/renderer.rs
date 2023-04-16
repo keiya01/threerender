@@ -11,9 +11,7 @@ use wgpu::{
 use crate::{
     entity::{Entity, EntityDescriptor, EntityList, EntityRendererState},
     mesh::{
-        traits::{Mesh, TextureMesh},
-        util::{TextureVertex, Vertex},
-        MeshType, PolygonMode, TextureFormat, Topology,
+        Mesh, MeshType, PolygonMode, TextureFormat, TextureMesh, TextureVertex, Topology, Vertex,
     },
     renderer::Updater,
     unit::Rotation,

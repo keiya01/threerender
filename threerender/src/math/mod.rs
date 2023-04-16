@@ -1,3 +1,1 @@
-mod vec;
-
-pub use vec::*;
+pub use threerender_math::*;

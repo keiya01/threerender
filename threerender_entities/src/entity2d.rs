@@ -1,10 +1,8 @@
-use crate::math::Vec3;
+use threerender_math::vec::Vec3;
 
-use super::{
-    traits::{EntityMesh, Mesh, TextureMesh},
-    types::Topology,
-    util::{texture, texture_vertex, vertex, TextureVertex, Vertex},
-    TextureDescriptor, TextureFormat,
+use threerender_traits::mesh::{
+    texture, texture_vertex, vertex, EntityMesh, Mesh, TextureDescriptor, TextureFormat,
+    TextureMesh, TextureVertex, Topology, Vertex,
 };
 
 pub struct TriangleList {

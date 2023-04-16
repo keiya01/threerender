@@ -8,10 +8,7 @@ use wgpu::{
 
 use crate::{
     entity::EntityRendererState,
-    mesh::{
-        util::{TextureVertex, Vertex},
-        MeshType, PolygonMode, Topology,
-    },
+    mesh::{MeshType, PolygonMode, TextureVertex, Topology, Vertex},
     RendererState,
 };
 

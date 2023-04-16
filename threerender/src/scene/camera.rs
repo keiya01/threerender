@@ -1,6 +1,6 @@
 use std::f32::consts;
 
-use crate::math::Vec3;
+use crate::math::vec::Vec3;
 use getset::{Getters, MutGetters, Setters};
 use glam::Mat4;
 

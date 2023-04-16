@@ -3,8 +3,8 @@ use std::rc::Rc;
 use examples_common::CustomEvent;
 use image::EncodableLayout;
 use threerender::entity::{EntityDescriptor, EntityList, EntityRendererState};
-use threerender::math::Vec3;
-use threerender::mesh::traits::{EntityMesh, TextureMesh};
+use threerender::math::vec::Vec3;
+use threerender::mesh::{EntityMesh, TextureMesh};
 use threerender::mesh::{MeshType, Plane, Sphere, Square, TextureDescriptor, TextureFormat};
 #[cfg(feature = "wgpu")]
 use threerender::renderer::builder::WGPURendererBuilder;

@@ -2,8 +2,8 @@ use std::rc::Rc;
 
 use examples_common::CustomEvent;
 use threerender::entity::{EntityDescriptor, EntityList, EntityRendererState};
-use threerender::math::Vec3;
-use threerender::mesh::traits::EntityMesh;
+use threerender::math::vec::Vec3;
+use threerender::mesh::EntityMesh;
 use threerender::mesh::{PointList, PointTopology, Topology};
 use threerender::renderer::Updater;
 use threerender::unit::{Rotation, RGBA};

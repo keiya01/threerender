@@ -6,8 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["wgpu", "wgsl"]
+default = ["wgpu", "wgsl", "builtin_entities"]
 wgsl = ["shader_processor/wgsl"]
+builtin_entities = ["threerender_entities"]
 
 [dependencies]
 bytemuck = { version = "1.12.3", features = ["derive"]}
@@ -15,5 +16,8 @@ glam = "0.22.0"
 pollster = "0.2.5"
 raw-window-handle = "0.5.0"
 wgpu = { git = "https://github.com/gfx-rs/wgpu", optional = true }
+threerender_traits = { path = "../threerender_traits" }
+threerender_math = { path = "../threerender_math" }
+threerender_entities = { path = "../threerender_entities", optional = true }
 shader_processor = { path = "../shader_processor", optional = true }
 getset = "0.1.2"

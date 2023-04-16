@@ -3,9 +3,9 @@
 // So we are using this struct for proxy.
 #[derive(Default, Debug, Clone, Copy)]
 pub struct Vec3 {
-    pub(crate) x: f32,
-    pub(crate) y: f32,
-    pub(crate) z: f32,
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
 }
 
 impl Vec3 {

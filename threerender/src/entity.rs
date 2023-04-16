@@ -1,10 +1,10 @@
 use std::rc::Rc;
 
-use crate::math::Vec3;
+use crate::math::vec::Vec3;
 use getset::{Getters, MutGetters, Setters};
 
 use crate::{
-    mesh::{traits::Mesh, MeshType, PolygonMode, Topology},
+    mesh::{Mesh, MeshType, PolygonMode, Topology},
     unit::{Rotation, Scale, Translation, RGBA},
     RendererState,
 };

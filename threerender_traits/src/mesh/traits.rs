@@ -1,6 +1,6 @@
 use super::{
     types::Topology,
-    util::{TextureVertex, Vertex},
+    utils::{TextureVertex, Vertex},
     MeshType, TextureDescriptor, TextureFormat,
 };
 

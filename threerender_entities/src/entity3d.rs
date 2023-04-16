@@ -1,9 +1,8 @@
 use std::f32::consts::PI;
 
-use super::{
-    traits::{EntityMesh, Mesh, TextureMesh},
-    util::{texture, texture_vertex, vertex, TextureVertex, Vertex},
-    TextureDescriptor, TextureFormat,
+use threerender_traits::mesh::{
+    texture, texture_vertex, vertex, EntityMesh, Mesh, TextureDescriptor, TextureFormat,
+    TextureMesh, TextureVertex, Vertex,
 };
 
 pub struct Square {

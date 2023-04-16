@@ -1,4 +1,4 @@
-use crate::math::Vec3;
+use crate::math::vec::Vec3;
 
 pub trait Translation {
     fn translation(&self) -> &Vec3;

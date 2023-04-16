@@ -1,6 +1,9 @@
 [workspace]
 members = [
   "threerender",
+  "threerender_entities",
+  "threerender_traits",
+  "threerender_math",
   "shader_processor",
   "examples/*",
 ]
