@@ -16,6 +16,7 @@ pub enum CustomEvent {
     MouseMove(PhysicalPosition<f64>),
     MouseWheel(PhysicalPosition<f64>),
     MouseDown,
+    MouseUp,
     Resize(u32, u32),
 }
 
@@ -54,6 +55,19 @@ fn run(
                 ..
             } => {
                 cur_event = CustomEvent::MouseDown;
+                window.request_redraw();
+            }
+            Event::WindowEvent {
+                event:
+                    WindowEvent::MouseInput {
+                        device_id: _,
+                        state: ElementState::Released,
+                        button: MouseButton::Left,
+                        ..
+                    },
+                ..
+            } => {
+                cur_event = CustomEvent::MouseUp;
                 window.request_redraw();
             }
             Event::WindowEvent {

@@ -306,7 +306,7 @@ impl SceneData {
         Self {
             model: style.camera.transform().to_cols_array(),
             num_lights: style.lights.len() as u32,
-            eye: style.camera.position.0.as_glam().to_array(),
+            eye: style.camera.calc_position_vec3().as_glam().to_array(),
         }
     }
 }

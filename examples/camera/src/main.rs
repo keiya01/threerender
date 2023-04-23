@@ -6,20 +6,38 @@ use threerender::math::vec::Vec3;
 use threerender::mesh::EntityMesh;
 use threerender::mesh::{Plane, Sphere, Square};
 use threerender::renderer::Updater;
-use threerender::unit::{Rotation, Translation, RGB, RGBA};
+use threerender::unit::{Rotation, Scale, Translation, RGB, RGBA};
 use threerender::{
     CameraStyle, HemisphereLightStyle, LightBaseStyle, LightStyle, RendererBuilder, Scene,
     ShadowOptions, ShadowStyle,
 };
 
+fn normalize(n: f32, v: f32) -> f32 {
+    if n == 0. {
+        return 0.;
+    }
+    if n > 0. {
+        v
+    } else {
+        -v
+    }
+}
+
 struct App {
     width: f64,
     height: f64,
+    dragging: bool,
+    prev_click_pos: (f64, f64),
 }
 
 impl App {
     fn new(width: f64, height: f64) -> Self {
-        Self { width, height }
+        Self {
+            width,
+            height,
+            dragging: false,
+            prev_click_pos: (0., 0.),
+        }
     }
 }
 
@@ -28,18 +46,33 @@ impl Updater for App {
 
     fn update(&mut self, entity_list: &mut dyn EntityList, scene: &mut Scene, event: Self::Event) {
         match event {
+            CustomEvent::MouseDown => self.dragging = true,
+            CustomEvent::MouseUp => self.dragging = false,
             CustomEvent::MouseMove(pos) => {
-                let distance_x = (pos.x / self.width * 10.) as f32;
-                let distance_y = (pos.y / self.height * 10.) as f32;
-                scene.camera_mut().position_mut().translate_x(distance_x);
-                scene.camera_mut().position_mut().translate_y(distance_y);
+                if self.dragging {
+                    if self.prev_click_pos != (0., 0.) {
+                        let distance_x = normalize((pos.x - self.prev_click_pos.0) as f32, 0.05);
+                        let distance_y = normalize((pos.y - self.prev_click_pos.1) as f32, 0.5);
+                        let prev_rotate_y = scene.camera().position.rotation_y();
+                        let prev_translate_y = scene.camera().position.translation_y();
+                        scene
+                            .camera_mut()
+                            .position_mut()
+                            .rotate_y(prev_rotate_y + distance_x);
+                        scene
+                            .camera_mut()
+                            .position_mut()
+                            .translate_y(prev_translate_y + distance_y);
+                    }
+                    self.prev_click_pos = (pos.x, pos.y);
+                }
             }
             CustomEvent::MouseWheel(pos) => {
-                let prev = scene.camera().position().translation_z();
-                scene
-                    .camera_mut()
-                    .position_mut()
-                    .translate_z(prev + if pos.y > 0. { 0.1 } else { -0.1 });
+                let prev = scene.camera().position.scale_x();
+                let next = prev + if pos.y > 0. { 0.1 } else { -0.1 };
+                scene.camera_mut().position.scale_to_x(next);
+                scene.camera_mut().position.scale_to_y(next);
+                scene.camera_mut().position.scale_to_z(next);
             }
             CustomEvent::Resize(w, h) => {
                 self.width = w as f64;
