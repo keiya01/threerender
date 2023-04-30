@@ -51,8 +51,8 @@ impl Updater for App {
             CustomEvent::MouseMove(pos) => {
                 if self.dragging {
                     if self.prev_click_pos != (0., 0.) {
-                        let distance_x = normalize((pos.x - self.prev_click_pos.0) as f32, 0.05);
-                        let distance_y = normalize((pos.y - self.prev_click_pos.1) as f32, 0.5);
+                        let distance_x = normalize((pos.x - self.prev_click_pos.0) as f32, -0.03);
+                        let distance_y = normalize((pos.y - self.prev_click_pos.1) as f32, 0.3);
                         let prev_rotate_y = scene.camera().position.rotation_y();
                         let prev_translate_y = scene.camera().position.translation_y();
                         scene
@@ -69,7 +69,7 @@ impl Updater for App {
             }
             CustomEvent::MouseWheel(pos) => {
                 let prev = scene.camera().position.scale_x();
-                let next = prev + if pos.y > 0. { 0.1 } else { -0.1 };
+                let next = prev + if pos.y > 0. { 0.05 } else { -0.05 };
                 scene.camera_mut().position.scale_to_x(next);
                 scene.camera_mut().position.scale_to_y(next);
                 scene.camera_mut().position.scale_to_z(next);
