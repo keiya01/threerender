@@ -1,0 +1,19 @@
+[package]
+name = "threerender_loader"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = ["gltf_loader"]
+gltf_loader = ["gltf"]
+
+[dependencies]
+threerender_traits = { path = "../threerender_traits" }
+threerender_math = { path = "../threerender_math" }
+gltf = { version = "1.1.0", optional = true }
+anyhow = "1.0.71"
+thiserror = "1.0.40"
+base64 = "0.21.0"
+percent-encoding = "2.2.0"

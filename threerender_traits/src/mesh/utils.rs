@@ -4,8 +4,8 @@ use threerender_math::vec::Vec3;
 #[repr(C)]
 #[derive(Debug, Clone, Copy, Pod, Zeroable)]
 pub struct Vertex {
-    pos: [f32; 4],
-    normal: [f32; 3],
+    pub pos: [f32; 4],
+    pub normal: [f32; 3],
 }
 
 impl Vertex {

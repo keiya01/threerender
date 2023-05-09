@@ -46,23 +46,41 @@ impl Mesh {
     }
 }
 
+/// Define an entity. Entity will be used to draw mesh.
 pub trait EntityMesh {
+    /// Required to return vertices.
     fn vertex(&self) -> &[Vertex];
+    /// Define indices to draw an entity more efficiently.
     fn index(&self) -> Option<&[u16]>;
+    /// Set topology type. Default is `TriangleList`.
     fn topology(&self) -> Topology {
         Default::default()
     }
-    fn use_entity(self) -> Mesh;
+    /// Make mesh from entity.
+    fn use_entity(self) -> Mesh
+    where
+        Self: Sized + 'static,
+    {
+        Mesh::Entity(Box::new(self))
+    }
 }
 
+/// Define an entity that has a texture.
 pub trait TextureMesh: EntityMesh {
+    /// Define vertex for texture
     fn texture(&self) -> Option<&[TextureVertex]>;
+    /// Texture width
     fn width(&self) -> u32;
+    /// Texture height
     fn height(&self) -> u32;
+    /// Texture bytes per pixel
     fn bytes_per_pixel(&self) -> u32 {
         4
     }
+    /// Texture format
     fn format(&self) -> &TextureFormat;
+    /// Texture data
     fn data(&self) -> &[u8];
+    /// Make mesh from texture entity.
     fn use_texture(self, descriptor: TextureDescriptor) -> Mesh;
 }
