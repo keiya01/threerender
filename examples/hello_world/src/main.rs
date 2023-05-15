@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use examples_common::CustomEvent;
 use threerender::entity::{EntityDescriptor, EntityList};
-use threerender::math::vec::Vec3;
+use threerender::math::{Vec3, Quat};
 use threerender::mesh::EntityMesh;
 use threerender::mesh::{Sphere, Square};
 use threerender::renderer::Updater;
@@ -33,12 +33,11 @@ impl Updater for App {
 
     fn update(&mut self, entity_list: &mut dyn EntityList, scene: &mut Scene, _event: Self::Event) {
         // Rotate light
-        let prev_light_rotate_y = scene.get_light("directional").unwrap().base().rotation_y();
         scene
             .get_light_mut("directional")
             .unwrap()
             .base_mut()
-            .rotate_y(prev_light_rotate_y - 0.05);
+            .rotate_y(-0.05);
 
         for entity in entity_list.items_mut() {
             // Scale sphere
@@ -73,12 +72,10 @@ impl Updater for App {
 
             // Rotate square
             if entity.id() == "square1" {
-                let prev = entity.rotation_z();
-                entity.rotate_z(prev + 0.01);
+                entity.rotate_z(0.01);
             }
             if entity.id() == "square2" {
-                let prev = entity.rotation_y();
-                entity.rotate_y(prev + 0.01);
+                entity.rotate_y(0.01);
             }
         }
     }
@@ -111,7 +108,7 @@ fn main() {
         fill_color: RGBA::new(255, 255, 255, 255),
         position: Vec3::ZERO,
         dimension: Vec3::ONE,
-        rotation: Vec3::ZERO,
+        rotation: Quat::default(),
         state: Default::default(),
         reflection: Default::default(),
     });
@@ -123,7 +120,7 @@ fn main() {
         fill_color: RGBA::new(0, 255, 0, 255),
         position: Vec3::new(0., 0., -3.),
         dimension: Vec3::ONE,
-        rotation: Vec3::ZERO,
+        rotation: Quat::default(),
         state: Default::default(),
         reflection: Default::default(),
     });
@@ -133,7 +130,7 @@ fn main() {
         fill_color: RGBA::new(255, 0, 0, 255),
         position: Vec3::new(-3., 0., -1.),
         dimension: Vec3::ONE,
-        rotation: Vec3::ZERO,
+        rotation: Quat::default(),
         state: Default::default(),
         reflection: Default::default(),
     });

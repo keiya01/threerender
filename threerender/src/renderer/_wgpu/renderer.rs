@@ -1,6 +1,5 @@
 use std::{borrow::Cow, collections::HashMap, marker::PhantomData, mem, num::NonZeroU32, rc::Rc};
 
-use glam::{Mat4, Quat};
 use wgpu::{
     util::{align_to, DeviceExt},
     vertex_attr_array, BindGroup, BindGroupLayout, Buffer, BufferAddress, Device, Features,
@@ -14,8 +13,8 @@ use crate::{
         Mesh, MeshType, PolygonMode, TextureFormat, TextureMesh, TextureVertex, Topology, Vertex,
     },
     renderer::Updater,
-    unit::Rotation,
     RendererBuilder,
+    math::Mat4
 };
 
 use super::{
@@ -1017,9 +1016,7 @@ impl<Event> Renderer<Event> {
         let buf = EntityUniformBuffer {
             transform: Mat4::from_scale_rotation_translation(
                 entity.dimension().as_glam(),
-                Quat::from_rotation_x(entity.rotation_x())
-                    .mul_quat(Quat::from_rotation_y(entity.rotation_y()))
-                    .mul_quat(Quat::from_rotation_z(entity.rotation_z())),
+                entity.rotation().as_glam(),
                 entity.position().as_glam(),
             )
             .to_cols_array_2d(),
@@ -1048,9 +1045,7 @@ impl<Event> Renderer<Event> {
         let buf = EntityUniformBuffer {
             transform: Mat4::from_scale_rotation_translation(
                 entity.dimension().as_glam(),
-                Quat::from_rotation_x(entity.rotation_x())
-                    .mul_quat(Quat::from_rotation_y(entity.rotation_y()))
-                    .mul_quat(Quat::from_rotation_z(entity.rotation_z())),
+                entity.rotation().as_glam(),
                 entity.position().as_glam(),
             )
             .to_cols_array_2d(),

@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use examples_common::CustomEvent;
 use threerender::entity::{EntityDescriptor, EntityList, EntityRendererState};
-use threerender::math::vec::Vec3;
+use threerender::math::{Vec3, Quat};
 use threerender::mesh::{EntityMesh, Line};
 use threerender::mesh::{Point, Topology};
 use threerender::renderer::Updater;
@@ -29,8 +29,7 @@ impl Updater for App {
         for entity in entity_list.items_mut() {
             // Rotate lines
             if entity.id() == "lines" {
-                let prev = entity.rotation_y();
-                entity.rotate_y(prev + 0.01);
+                entity.rotate_y(0.01);
             }
         }
     }
@@ -80,7 +79,7 @@ fn main() {
         fill_color: RGBA::new(255, 0, 0, 255),
         position: Vec3::new(0., 0., 0.),
         dimension: Vec3::ONE,
-        rotation: Vec3::ZERO,
+        rotation: Quat::default(),
         state: EntityRendererState {
             topology: lines.topology(),
             ..Default::default()
@@ -105,7 +104,7 @@ fn main() {
         fill_color: RGBA::new(0, 0, 0, 255),
         position: Vec3::new(0., 0., 0.),
         dimension: Vec3::ONE,
-        rotation: Vec3::ZERO,
+        rotation: Quat::default(),
         state: EntityRendererState {
             topology: points.topology(),
             ..Default::default()

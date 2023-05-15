@@ -3,14 +3,14 @@ use std::rc::Rc;
 
 use examples_common::CustomEvent;
 use threerender::entity::{EntityDescriptor, EntityList, ReflectionStyle};
-use threerender::math::vec::Vec3;
+use threerender::math::{Vec3, Quat};
 use threerender::mesh::EntityMesh;
-use threerender::mesh::{Plane};
+use threerender::mesh::Plane;
 use threerender::renderer::Updater;
 use threerender::unit::{Rotation, Scale, Translation, RGB, RGBA};
 use threerender::{
     CameraStyle, HemisphereLightStyle, LightBaseStyle, LightStyle, RendererBuilder, Scene,
-    ShadowOptions, ShadowStyle,
+    ShadowOptions, ShadowStyle, CameraPosition,
 };
 use threerender_loader::fetcher::DefaultFileSystemBasedFetcher;
 use threerender_loader::gltf::GltfLoader;
@@ -47,7 +47,7 @@ impl App {
 impl Updater for App {
     type Event = CustomEvent;
 
-    fn update(&mut self, entity_list: &mut dyn EntityList, scene: &mut Scene, event: Self::Event) {
+    fn update(&mut self, _entity_list: &mut dyn EntityList, scene: &mut Scene, event: Self::Event) {
         match event {
             CustomEvent::MouseDown => self.dragging = true,
             CustomEvent::MouseUp => self.dragging = false,
@@ -55,13 +55,12 @@ impl Updater for App {
                 if self.dragging {
                     if self.prev_click_pos != (0., 0.) {
                         let distance_x = normalize((pos.x - self.prev_click_pos.0) as f32, -0.03);
-                        let distance_y = normalize((pos.y - self.prev_click_pos.1) as f32, 0.3);
-                        let prev_rotate_y = scene.camera().position.rotation_y();
+                        let distance_y = normalize((pos.y - self.prev_click_pos.1) as f32, 10.);
                         let prev_translate_y = scene.camera().position.translation_y();
                         scene
                             .camera_mut()
                             .position_mut()
-                            .rotate_y(prev_rotate_y + distance_x);
+                            .rotate_y(distance_x);
                         scene
                             .camera_mut()
                             .position_mut()
@@ -83,14 +82,6 @@ impl Updater for App {
             }
             _ => {}
         }
-
-        for entity in entity_list.items_mut() {
-            // Rotate square
-            if entity.id() == "model1" {
-                let prev = entity.rotation_z();
-                entity.rotate_z(prev + 0.01);
-            }
-        }
     }
 }
 
@@ -104,7 +95,8 @@ fn main() {
     renderer_builder.set_camera(CameraStyle {
         width: width as f32,
         height: height as f32,
-        far: 1000.,
+        far: 10000.,
+        position: CameraPosition::new(0., 800., -1000.),
         ..Default::default()
     });
 
@@ -116,7 +108,7 @@ fn main() {
     renderer_builder.add_light(LightStyle::with_directional(
         "directional1".to_owned(),
         LightBaseStyle {
-            position: Vec3::new(5., 6., 5.),
+            position: Vec3::new(5., 30., 20.),
             ..Default::default()
         },
         Some(ShadowStyle {
@@ -130,7 +122,7 @@ fn main() {
     renderer_builder.add_light(LightStyle::with_directional(
         "directional2".to_owned(),
         LightBaseStyle {
-            position: Vec3::new(-5., 6., 5.),
+            position: Vec3::new(-5., 30., 20.),
             ..Default::default()
         },
         Some(ShadowStyle {
@@ -157,22 +149,40 @@ fn main() {
         fill_color: RGBA::new(163, 104, 64, 255),
         position: Vec3::new(-3., -2., -3.),
         dimension: Vec3::new(30., 30., 30.),
-        rotation: Vec3::new(0., -1., 0.),
+        rotation: Quat::from_axis_angle(0., -1., 0., 1.),
         state: Default::default(),
         reflection: Default::default(),
     });
 
-    let mut gltf_loader = GltfLoader::from_byte(include_bytes!("../assets/Box.gltf"), DefaultFileSystemBasedFetcher::with_resolve_path(canonicalize("./examples/gltf/assets").unwrap())).unwrap();
+    let gltf_loader = GltfLoader::from_byte(
+        include_bytes!("../assets/cylinderEngine/2CylinderEngine.gltf"),
+        DefaultFileSystemBasedFetcher::with_resolve_path(
+            canonicalize("./examples/gltf/assets/cylinderEngine").unwrap(),
+        ),
+    )
+    .unwrap();
     let mut idx = 1;
-    while let Some(entity) = gltf_loader.entities.pop() {
+    for entity in gltf_loader.entities {
+        let color = entity.material.map_or_else(
+            || RGBA::new(255, 255, 255, 255),
+            |m| {
+                RGBA::from_f32(
+                    m.base_color[0],
+                    m.base_color[1],
+                    m.base_color[2],
+                    m.base_color[3],
+                )
+            },
+        );
+        let trs = &entity.transform.clone();
         let model = Rc::new(entity.use_entity());
         renderer_builder.push(EntityDescriptor {
             id: format!("model{}", idx),
             mesh: model.clone(),
-            fill_color: RGBA::new(255, 255, 255, 255),
-            position: Vec3::new(0., 0., -3.),
-            dimension: Vec3::ONE,
-            rotation: Vec3::ZERO,
+            fill_color: color,
+            position: trs.translation,
+            dimension: trs.scale,
+            rotation: trs.rotation,
             state: Default::default(),
             reflection: ReflectionStyle {
                 brightness: 10.,

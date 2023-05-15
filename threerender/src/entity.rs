@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::math::vec::Vec3;
+use crate::math::{Vec3, Quat};
 use getset::{Getters, MutGetters, Setters};
 
 use crate::{
@@ -15,7 +15,7 @@ pub struct EntityDescriptor {
     pub fill_color: RGBA,
     pub position: Vec3,
     pub dimension: Vec3,
-    pub rotation: Vec3,
+    pub rotation: Quat,
     pub reflection: ReflectionStyle,
     pub state: EntityRendererState,
 }
@@ -31,7 +31,7 @@ pub struct Entity {
     #[getset(get = "pub", set = "pub")]
     pub(crate) dimension: Vec3,
     #[getset(get = "pub", set = "pub")]
-    pub(crate) rotation: Vec3,
+    pub(crate) rotation: Quat,
     #[getset(get = "pub", get_mut = "pub")]
     pub(crate) reflection: ReflectionStyle,
     pub(super) state: EntityRendererState,
@@ -47,10 +47,10 @@ impl Translation for Entity {
 }
 
 impl Rotation for Entity {
-    fn rotation(&self) -> &Vec3 {
+    fn rotation(&self) -> &Quat {
         &self.rotation
     }
-    fn rotation_mut(&mut self) -> &mut Vec3 {
+    fn rotation_mut(&mut self) -> &mut Quat {
         &mut self.rotation
     }
 }

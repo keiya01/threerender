@@ -1,5 +1,5 @@
 use bytemuck::{Pod, Zeroable};
-use threerender_math::vec::Vec3;
+use threerender_math::Vec3;
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, Pod, Zeroable)]

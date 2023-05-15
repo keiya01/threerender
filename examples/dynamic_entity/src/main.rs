@@ -4,7 +4,7 @@ use examples_common::CustomEvent;
 use rand::rngs::ThreadRng;
 use rand::{thread_rng, Rng};
 use threerender::entity::{EntityDescriptor, EntityList};
-use threerender::math::vec::Vec3;
+use threerender::math::{Vec3, Quat};
 use threerender::mesh::Sphere;
 use threerender::mesh::{EntityMesh, Mesh};
 use threerender::renderer::Updater;
@@ -33,7 +33,7 @@ impl Updater for App {
                 fill_color: RGBA::new(r, g, b, 255),
                 position: Vec3::new(x, y, z),
                 dimension: Vec3::ONE,
-                rotation: Vec3::ZERO,
+                rotation: Quat::default(),
                 state: Default::default(),
                 reflection: Default::default(),
             })
@@ -67,7 +67,7 @@ fn main() {
         fill_color: RGBA::new(255, 255, 255, 255),
         position: Vec3::ZERO,
         dimension: Vec3::ONE,
-        rotation: Vec3::ZERO,
+        rotation: Quat::default(),
         state: Default::default(),
         reflection: Default::default(),
     });

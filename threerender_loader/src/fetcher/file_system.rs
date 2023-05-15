@@ -1,4 +1,8 @@
-use std::{fs::File, io::Read, path::{Path, PathBuf}};
+use std::{
+    fs::File,
+    io::Read,
+    path::{Path, PathBuf},
+};
 
 use base64::Engine;
 
@@ -7,13 +11,13 @@ use crate::gltf::fetcher::GltfFetcher;
 use super::LoaderFetcher;
 
 pub struct DefaultFileSystemBasedFetcher {
-  resolve_path: PathBuf,
+    resolve_path: PathBuf,
 }
 
 impl DefaultFileSystemBasedFetcher {
-  pub fn with_resolve_path(resolve_path: PathBuf) -> Self {
-    Self { resolve_path }
-  }
+    pub fn with_resolve_path(resolve_path: PathBuf) -> Self {
+        Self { resolve_path }
+    }
 }
 
 impl LoaderFetcher for DefaultFileSystemBasedFetcher {}
@@ -50,7 +54,7 @@ impl GltfFetcher for DefaultFileSystemBasedFetcher {
         };
 
         if is_base64 {
-            match base64::engine::general_purpose::STANDARD_NO_PAD.decode(data) {
+            match base64::engine::general_purpose::STANDARD.decode(data) {
                 Ok(v) => Ok(v),
                 // FIXME(@keiya01): logging for base64 parsing error
                 Err(_) => Err(std::io::Error::from(std::io::ErrorKind::InvalidData)),

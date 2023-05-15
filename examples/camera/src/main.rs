@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use examples_common::CustomEvent;
 use threerender::entity::{EntityDescriptor, EntityList, ReflectionStyle};
-use threerender::math::vec::Vec3;
+use threerender::math::{Vec3, Quat};
 use threerender::mesh::EntityMesh;
 use threerender::mesh::{Plane, Sphere, Square};
 use threerender::renderer::Updater;
@@ -53,12 +53,11 @@ impl Updater for App {
                     if self.prev_click_pos != (0., 0.) {
                         let distance_x = normalize((pos.x - self.prev_click_pos.0) as f32, -0.03);
                         let distance_y = normalize((pos.y - self.prev_click_pos.1) as f32, 0.3);
-                        let prev_rotate_y = scene.camera().position.rotation_y();
                         let prev_translate_y = scene.camera().position.translation_y();
                         scene
                             .camera_mut()
                             .position_mut()
-                            .rotate_y(prev_rotate_y + distance_x);
+                            .rotate_y(distance_x);
                         scene
                             .camera_mut()
                             .position_mut()
@@ -84,12 +83,10 @@ impl Updater for App {
         for entity in entity_list.items_mut() {
             // Rotate square
             if entity.id() == "square1" {
-                let prev = entity.rotation_z();
-                entity.rotate_z(prev + 0.01);
+                entity.rotate_z(0.01);
             }
             if entity.id() == "square2" {
-                let prev = entity.rotation_y();
-                entity.rotate_y(prev + 0.01);
+                entity.rotate_y(0.01);
             }
         }
     }
@@ -158,7 +155,7 @@ fn main() {
         fill_color: RGBA::new(163, 104, 64, 255),
         position: Vec3::new(-3., -2., -3.),
         dimension: Vec3::new(30., 30., 30.),
-        rotation: Vec3::new(0., -1., 0.),
+        rotation: Quat::from_axis_angle(0., -1., 0., 1.),
         state: Default::default(),
         reflection: Default::default(),
     });
@@ -170,7 +167,7 @@ fn main() {
         fill_color: RGBA::new(255, 25, 255, 255),
         position: Vec3::ZERO,
         dimension: Vec3::ONE,
-        rotation: Vec3::ZERO,
+        rotation: Quat::default(),
         state: Default::default(),
         reflection: ReflectionStyle {
             brightness: 10.,
@@ -186,7 +183,7 @@ fn main() {
         fill_color: RGBA::new(0, 255, 0, 255),
         position: Vec3::new(0., 0., -3.),
         dimension: Vec3::ONE,
-        rotation: Vec3::ZERO,
+        rotation: Quat::default(),
         state: Default::default(),
         reflection: ReflectionStyle {
             brightness: 10.,
@@ -200,7 +197,7 @@ fn main() {
         fill_color: RGBA::new(255, 0, 0, 255),
         position: Vec3::new(-3., 0., -1.),
         dimension: Vec3::ONE,
-        rotation: Vec3::ZERO,
+        rotation: Quat::default(),
         state: Default::default(),
         reflection: ReflectionStyle {
             brightness: 0.,

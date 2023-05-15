@@ -1,4 +1,4 @@
-use crate::{math::vec::Vec3, ShadowStyle};
+use crate::{math::{Vec3, Quat}, ShadowStyle};
 use getset::{Getters, MutGetters, Setters};
 
 use crate::unit::{Rotation, Translation, RGB};
@@ -34,7 +34,7 @@ pub struct LightBaseStyle {
     #[getset(get = "pub", set = "pub")]
     pub ambient: RGB,
     pub position: Vec3,
-    pub rotation: Vec3,
+    pub rotation: Quat,
     #[getset(get = "pub", set = "pub")]
     pub brightness: f32,
 }
@@ -49,10 +49,10 @@ impl Translation for LightBaseStyle {
 }
 
 impl Rotation for LightBaseStyle {
-    fn rotation(&self) -> &Vec3 {
+    fn rotation(&self) -> &Quat {
         &self.rotation
     }
-    fn rotation_mut(&mut self) -> &mut Vec3 {
+    fn rotation_mut(&mut self) -> &mut Quat {
         &mut self.rotation
     }
 }
@@ -63,7 +63,7 @@ impl Default for LightBaseStyle {
             color: RGB::new(255, 255, 255),
             ambient: RGB::new(0, 0, 0),
             position: Vec3::new(0., 3., 2.),
-            rotation: Vec3::ZERO,
+            rotation: Quat::default(),
             brightness: 1.,
         }
     }

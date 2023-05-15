@@ -1,7 +1,7 @@
 use std::mem;
 
 use bytemuck::{Pod, Zeroable};
-use glam::{Affine3A, Mat4, Quat};
+use glam::{Affine3A, Mat4};
 use wgpu::{
     util::DeviceExt, Adapter, BindGroup, BindGroupLayout, Buffer, BufferAddress, Device, Queue,
     Sampler, Texture, TextureView,
@@ -9,7 +9,7 @@ use wgpu::{
 
 use crate::{
     entity::ReflectionStyle,
-    unit::{Rotation, Translation},
+    unit::{Translation},
     HemisphereLightStyle, LightModel, LightStyle, Scene as AbstractedScene, ShadowStyle,
 };
 
@@ -81,9 +81,7 @@ impl Light {
             color: [color[0], color[1], color[2], 1.],
             ambient: [ambient[0], ambient[1], ambient[2], 1.],
             position: Affine3A::from_rotation_translation(
-                Quat::from_rotation_x(style.base().rotation_x())
-                    .mul_quat(Quat::from_rotation_y(style.base().rotation_y()))
-                    .mul_quat(Quat::from_rotation_z(style.base().rotation_z())),
+                style.base().rotation.as_glam(),
                 style.base().translation().as_glam(),
             )
             .transform_vector3(style.base().translation().as_glam())
