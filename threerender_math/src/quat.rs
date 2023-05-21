@@ -11,20 +11,30 @@ pub struct Quat {
 impl Quat {
     pub fn from_axis_angle(x: f32, y: f32, z: f32, w: f32) -> Self {
         let a = glam::Quat::from_axis_angle(glam::vec3(x, y, z), w).to_array();
-        Self { x: a[0], y: a[1], z: a[2], w: a[3], }
+        Self {
+            x: a[0],
+            y: a[1],
+            z: a[2],
+            w: a[3],
+        }
     }
 
     pub fn from_array(a: [f32; 4]) -> Self {
-      let a = glam::Quat::from_array(a).to_array();
-      Self { x: a[0], y: a[1], z: a[2], w: a[3], }
+        let a = glam::Quat::from_array(a).to_array();
+        Self {
+            x: a[0],
+            y: a[1],
+            z: a[2],
+            w: a[3],
+        }
     }
 
     pub fn mul(&self, a: Self) -> Self {
-       Self::from_array(self.as_glam().mul_quat(a.as_glam()).to_array())
+        Self::from_array(self.as_glam().mul_quat(a.as_glam()).to_array())
     }
 
     pub fn mul_vec3(&self, a: Vec3) -> Vec3 {
-      Vec3::from_array(&self.as_glam().mul_vec3(a.as_glam()).to_array())
+        Vec3::from_array(&self.as_glam().mul_vec3(a.as_glam()).to_array())
     }
 
     pub fn as_glam(&self) -> glam::Quat {
@@ -33,8 +43,13 @@ impl Quat {
 }
 
 impl Default for Quat {
-  fn default() -> Self {
-    let a = glam::Quat::default().to_array();
-    Self { x: a[0], y: a[1], z: a[2], w: a[3] }
-  }
+    fn default() -> Self {
+        let a = glam::Quat::default().to_array();
+        Self {
+            x: a[0],
+            y: a[1],
+            z: a[2],
+            w: a[3],
+        }
+    }
 }

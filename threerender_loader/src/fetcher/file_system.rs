@@ -42,7 +42,7 @@ impl GltfFetcher for DefaultFileSystemBasedFetcher {
             Some(uri) => uri,
             None => return Err(std::io::Error::from(std::io::ErrorKind::InvalidInput)),
         };
-        let mut iter = uri.splitn(2, ",");
+        let mut iter = uri.splitn(2, ',');
         let (mime_type, data) = match (iter.next(), iter.next()) {
             (Some(a), Some(b)) => (a, b),
             _ => return Err(std::io::Error::from(std::io::ErrorKind::InvalidInput)),

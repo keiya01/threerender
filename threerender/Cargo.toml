@@ -18,6 +18,7 @@ raw-window-handle = "0.5.0"
 wgpu = { git = "https://github.com/gfx-rs/wgpu", optional = true }
 threerender_traits = { path = "../threerender_traits" }
 threerender_math = { path = "../threerender_math" }
+threerender_color = { path = "../threerender_color" }
 threerender_entities = { path = "../threerender_entities", optional = true }
 shader_processor = { path = "../shader_processor", optional = true }
 getset = "0.1.2"

@@ -2,16 +2,17 @@ use std::rc::Rc;
 
 use examples_common::CustomEvent;
 use image::EncodableLayout;
-use threerender::entity::{EntityDescriptor, EntityList, EntityRendererState};
-use threerender::math::{Vec3, Quat};
+use threerender::color::rgb::RGBA;
+use threerender::math::trs::Rotation;
+use threerender::math::{Quat, Transform, Vec3};
 use threerender::mesh::{EntityMesh, TextureMesh};
 use threerender::mesh::{MeshType, Plane, Sphere, Square, TextureDescriptor, TextureFormat};
 #[cfg(feature = "wgpu")]
 use threerender::renderer::builder::WGPURendererBuilder;
 use threerender::renderer::Updater;
-use threerender::unit::{Rotation, RGBA};
+use threerender::traits::entity::{EntityDescriptor, EntityRendererState, RendererState};
 use threerender::{
-    CameraStyle, LightBaseStyle, LightStyle, RendererBuilder, RendererState, Scene, ShadowStyle,
+    CameraStyle, EntityList, LightBaseStyle, LightStyle, RendererBuilder, Scene, ShadowStyle,
 };
 #[cfg(feature = "wgpu")]
 use wgpu::Features;
@@ -30,10 +31,10 @@ impl Updater for App {
         for entity in entity_list.items_mut() {
             // Rotate square
             // Rotate square
-            if entity.id() == "square1" {
+            if entity.id == "square1" {
                 entity.rotate_z(0.01);
             }
-            if entity.id() == "square2" {
+            if entity.id == "square2" {
                 entity.rotate_y(0.01);
             }
         }
@@ -73,13 +74,16 @@ fn main() {
     let plane = Rc::new(plane.use_entity());
     renderer_builder.push(EntityDescriptor {
         id: "plane".to_owned(),
-        mesh: plane,
+        mesh: Some(plane),
         fill_color: RGBA::new(255, 255, 255, 255),
-        position: Vec3::new(-3., -5., -3.),
-        dimension: Vec3::new(10., 10., 10.),
-        rotation: Quat::default(),
+        transform: Transform::from_translation_rotation_scale(
+            Vec3::new(-3., -5., -3.),
+            Quat::default(),
+            Vec3::new(10., 10., 10.),
+        ),
         state: Default::default(),
         reflection: Default::default(),
+        ..Default::default()
     });
 
     let im = image::load_from_memory(include_bytes!("../sample.jpg")).unwrap();
@@ -95,16 +99,19 @@ fn main() {
     }));
     renderer_builder.push(EntityDescriptor {
         id: "square".to_owned(),
-        mesh: square,
+        mesh: Some(square),
         fill_color: RGBA::new(255, 255, 0, 255),
-        position: Vec3::new(-1., 0., -2.),
-        dimension: Vec3::ONE,
-        rotation: Quat::default(),
+        transform: Transform::from_translation_rotation_scale(
+            Vec3::new(-1., 0., -2.),
+            Quat::default(),
+            Vec3::ONE,
+        ),
         state: EntityRendererState {
             mesh_type: MeshType::Texture,
             ..Default::default()
         },
         reflection: Default::default(),
+        ..Default::default()
     });
 
     let plane = Plane::new([0, 1, 0]);
@@ -116,16 +123,19 @@ fn main() {
     }));
     renderer_builder.push(EntityDescriptor {
         id: "plane".to_owned(),
-        mesh: plane,
+        mesh: Some(plane),
         fill_color: RGBA::new(0, 255, 255, 255),
-        position: Vec3::new(-1., 0., 1.),
-        dimension: Vec3::ONE,
-        rotation: Quat::from_axis_angle(0., 0.5, 0., 1.),
+        transform: Transform::from_translation_rotation_scale(
+            Vec3::new(-1., 0., 1.),
+            Quat::from_axis_angle(0., 0.5, 0., 1.),
+            Vec3::ONE,
+        ),
         state: EntityRendererState {
             mesh_type: MeshType::Texture,
             ..Default::default()
         },
         reflection: Default::default(),
+        ..Default::default()
     });
 
     let globe_im = image::load_from_memory(include_bytes!("../globe.jpg")).unwrap();
@@ -141,16 +151,19 @@ fn main() {
     }));
     renderer_builder.push(EntityDescriptor {
         id: "sphere".to_owned(),
-        mesh: sphere,
+        mesh: Some(sphere),
         fill_color: RGBA::new(255, 255, 255, 255),
-        position: Vec3::new(2., 0., 1.),
-        dimension: Vec3::ONE,
-        rotation: Quat::from_axis_angle(0., 0.5, 0., 1.),
+        transform: Transform::from_translation_rotation_scale(
+            Vec3::new(2., 0., 1.),
+            Quat::from_axis_angle(0., 0.5, 0., 1.),
+            Vec3::ONE,
+        ),
         state: EntityRendererState {
             mesh_type: MeshType::Texture,
             ..Default::default()
         },
         reflection: Default::default(),
+        ..Default::default()
     });
     examples_common::start(renderer_builder, Box::new(App));
 }

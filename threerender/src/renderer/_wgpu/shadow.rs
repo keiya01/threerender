@@ -1,16 +1,13 @@
 use std::{borrow::Cow, collections::HashMap, mem, rc::Rc};
 
 use glam::Mat4;
+use threerender_traits::entity::{EntityRendererState, RendererState};
 use wgpu::{
     util::align_to, vertex_attr_array, Adapter, BindGroup, BindGroupLayout, Buffer, Device,
     PrimitiveTopology, Queue, RenderPipeline, ShaderModule, TextureView,
 };
 
-use crate::{
-    entity::EntityRendererState,
-    mesh::{MeshType, PolygonMode, TextureVertex, Topology, Vertex},
-    RendererState,
-};
+use crate::mesh::{MeshType, PolygonMode, TextureVertex, Topology, Vertex};
 
 use super::{
     processor::{ProcessOption, Processor},

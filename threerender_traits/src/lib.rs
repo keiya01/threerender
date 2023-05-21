@@ -1,2 +1,2 @@
-#[cfg(feature = "mesh")]
+pub mod entity;
 pub mod mesh;

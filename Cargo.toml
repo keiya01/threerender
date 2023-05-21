@@ -4,6 +4,7 @@ members = [
   "threerender_entities",
   "threerender_traits",
   "threerender_math",
+  "threerender_color",
   "threerender_loader",
   "shader_processor",
   "examples/*",

@@ -1,7 +1,13 @@
+use std::rc::Rc;
+
 use anyhow::Result;
 use gltf::mesh::util::ReadIndices;
-use threerender_math::{Mat4, Quat, Vec3};
-use threerender_traits::mesh::{vertex, EntityMesh, Vertex};
+use threerender_color::rgb::RGBA;
+use threerender_math::Transform;
+use threerender_traits::{
+    entity::{EntityDescriptor, EntityRendererState, ReflectionStyle},
+    mesh::{vertex, EntityMesh, Mesh, Vertex},
+};
 
 use super::{
     err::GltfError,
@@ -10,25 +16,23 @@ use super::{
 
 // TODO: Support texture
 #[derive(Debug, Clone)]
-pub struct GltfEntity {
+pub struct GltfMesh {
     pub vertices: Vec<Vertex>,
     pub indices: Option<Vec<u16>>,
     pub material: Option<Material>,
-    pub transform: Transform,
 }
 
-impl GltfEntity {
+impl GltfMesh {
     fn new() -> Self {
         Self {
             vertices: vec![],
             indices: None,
             material: None,
-            transform: Transform::default(),
         }
     }
 }
 
-impl EntityMesh for GltfEntity {
+impl EntityMesh for GltfMesh {
     fn vertex(&self) -> &[Vertex] {
         &self.vertices
     }
@@ -42,24 +46,24 @@ impl EntityMesh for GltfEntity {
 }
 
 pub struct GltfLoader {
-    pub entities: Vec<GltfEntity>,
+    pub entities: Vec<EntityDescriptor>,
 }
 
 impl GltfLoader {
-    pub fn from_byte<F>(bytes: &[u8], fetcher: F) -> Result<Self, GltfError>
+    pub fn from_byte<F>(name: &str, bytes: &[u8], fetcher: F) -> Result<Self, GltfError>
     where
         F: GltfFetcher,
     {
-        Ok(Self::load(gltf::Gltf::from_slice(bytes)?, fetcher)?)
+        Self::load(name, gltf::Gltf::from_slice(bytes)?, fetcher)
     }
 
     // TODO: Support animation, material, skin, camera and so on.
-    fn load<F>(data: gltf::Gltf, fetcher: F) -> Result<Self, GltfError>
+    fn load<F>(name: &str, data: gltf::Gltf, fetcher: F) -> Result<Self, GltfError>
     where
         F: GltfFetcher,
     {
         let buffers = Self::load_buffers(&data, fetcher)?;
-        let mut mesh_entities = vec![];
+        let mut temp_meshes = vec![];
 
         let mut materials = vec![];
         for material in data.materials() {
@@ -67,7 +71,7 @@ impl GltfLoader {
         }
 
         for mesh in data.meshes() {
-            let mut entity = GltfEntity::new();
+            let mut entity = GltfMesh::new();
 
             for prim in mesh.primitives() {
                 let reader = prim.reader(|b| buffers.get(b.index()).map(|v| &v[..]));
@@ -137,45 +141,73 @@ impl GltfLoader {
                 entity.material = prim
                     .material()
                     .index()
-                    .and_then(|i| materials.get(i).and_then(|v| Some(v.clone())));
+                    .and_then(|i| materials.get(i).copied());
             }
 
-            mesh_entities.push(entity);
+            temp_meshes.push(entity);
         }
 
         // Flatting glTF children of node with mesh index.
-        fn search_node(
-            nodes: &mut Vec<(usize, Node)>,
-            node: gltf::Node,
-            parent: Option<Node>,
-        ) {
-            let child_mesh = node.mesh();
-            let children = node.children();
-            let own_node = Node::from_node(node, parent);
-
-            if let Some(child_mesh) = child_mesh {
-                nodes.push((child_mesh.index(), own_node.clone()));
+        fn search_node<F>(nodes: Vec<gltf::Node>, f: &F) -> Vec<EntityDescriptor>
+        where
+            F: Fn(&gltf::Node, Vec<EntityDescriptor>) -> EntityDescriptor,
+        {
+            let mut entities = vec![];
+            for node in nodes {
+                entities.push(f(&node, search_node(node.children().collect(), f)));
             }
-
-            for child in children {
-                search_node(nodes, child, Some(own_node.clone()));
-            }
+            entities
         }
 
-        let mut nodes = vec![];
-        for scene in data.scenes() {
-            // FIXME(@keiya01): Handle camera transform
-            for node in scene.nodes() {
-                search_node(&mut nodes, node, None);
+        let f = |node: &gltf::Node, children: Vec<EntityDescriptor>| {
+            let mesh = node.mesh();
+            let node_idx = node.index();
+            let node = GltfNode::from_node(node);
+            match mesh {
+                Some(mesh) => {
+                    let mesh_idx = mesh.index();
+                    let mesh = temp_meshes
+                        .get(mesh_idx)
+                        .expect("Mesh length hos to match with node index");
+                    let mesh = mesh.clone();
+                    #[allow(unused_parens)]
+                    let (color) = mesh
+                        .material
+                        .map_or_else(Default::default, |m| (m.base_color));
+                    EntityDescriptor {
+                        id: format!("{name}:{node_idx}"),
+                        // FIXME(@keiya01): Check texture
+                        mesh: Some(Rc::new(Mesh::Entity(Box::new(mesh)))),
+                        fill_color: RGBA::from_f32(color[0], color[1], color[2], color[3]),
+                        transform: node.local_transform,
+                        reflection: ReflectionStyle::default(),
+                        children,
+                        state: EntityRendererState::default(),
+                    }
+                }
+                None => EntityDescriptor {
+                    id: format!("{name}:{node_idx}"),
+                    mesh: None,
+                    fill_color: RGBA::default(),
+                    transform: node.local_transform,
+                    reflection: ReflectionStyle::default(),
+                    children,
+                    state: EntityRendererState::default(),
+                },
             }
-        }
+        };
 
         let mut entities = vec![];
-        for (mesh, node) in nodes {
-            mesh_entities.get(mesh).map(|entity| {
-                let mut entity = entity.clone();
-                entity.transform = node.global_transform;
-                entities.push(entity);
+        for scene in data.scenes() {
+            entities.push(EntityDescriptor {
+                id: format!("{name}:scene:{}", scene.index()),
+                mesh: None,
+                fill_color: RGBA::default(),
+                transform: Transform::default(),
+                reflection: ReflectionStyle::default(),
+                // FIXME(@keiya01): Handle camera transform
+                children: search_node(scene.nodes().collect(), &f),
+                state: EntityRendererState::default(),
             });
         }
 
@@ -225,81 +257,24 @@ impl Material {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct Node {
+pub struct GltfNode {
     pub local_transform: Transform,
-    pub global_transform: Transform,
 }
 
-impl Node {
-    fn from_node(node: gltf::Node, parent: Option<Node>) -> Self {
+impl GltfNode {
+    fn from_node(node: &gltf::Node) -> Self {
         let trs = match node.transform() {
             gltf::scene::Transform::Matrix { matrix } => Transform::from_cols_array_2d(matrix),
             gltf::scene::Transform::Decomposed {
                 translation,
                 rotation,
                 scale,
-            } => Transform::from_translation_rotation_scale(translation, rotation, scale),
+            } => Transform::from_translation_rotation_scale_array(translation, rotation, scale),
         };
 
-        let parent = parent.unwrap_or_default();
-
         Self {
-            local_transform: trs.clone(),
-            global_transform: parent.global_transform.mul(&trs),
+            local_transform: trs,
         }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct Transform {
-    pub translation: Vec3,
-    pub rotation: Quat,
-    pub scale: Vec3,
-}
-
-impl Default for Transform {
-    fn default() -> Self {
-        Self {
-            translation: Vec3::ZERO,
-            rotation: Quat::default(),
-            scale: Vec3::ONE,
-        }
-    }
-}
-
-impl Transform {
-    fn from_cols_array_2d(matrix: [[f32; 4]; 4]) -> Self {
-        let mat = Mat4::from_cols_array_2d(&matrix);
-        let trs = mat.to_scale_rotation_translation();
-        // Convert glam to threerender's vector type
-        Self {
-            scale: Vec3::from_array(&trs.0.to_array()),
-            rotation: Quat::from_array(trs.1.to_array()),
-            translation: Vec3::from_array(&trs.2.to_array()),
-        }
-    }
-
-    fn from_translation_rotation_scale(translation: [f32; 3], rotation: [f32; 4], scale: [f32; 3]) -> Self {
-        Self {
-            translation: Vec3::from_array(&translation),
-            rotation: Quat::from_array(rotation),
-            scale: Vec3::from_array(&scale),
-        }
-    }
-
-    fn mul(&self, node: &Self) -> Self {
-        let mut next = Self::default();
-        next.translation = self.transform_point(node.translation);
-        next.rotation = self.rotation.mul(node.rotation);
-        next.scale = self.scale.mul(node.scale);
-        next
-    }
-
-    fn transform_point(&self, mut point: Vec3) -> Vec3 {
-        point = self.scale.mul(point);
-        point = self.rotation.mul_vec3(point);
-        point = self.translation.add(point);
-        point
     }
 }
 

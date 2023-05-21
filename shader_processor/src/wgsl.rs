@@ -568,14 +568,14 @@ fn main() vec4<f32> {
 "#
         );
 
-        assert_eq!(p.is_dirty, false);
+        assert!(!p.is_dirty);
 
         p.insert_builtin("light", "./assets/builtin/light".to_owned());
-        assert_eq!(p.is_dirty, false);
+        assert!(!p.is_dirty);
 
         p.insert_env("USE_BIAS", EnvType::Bool(true));
         p.insert_env("BIAS_TYPE", EnvType::Str("u32".to_owned()));
-        assert_eq!(p.is_dirty, true);
+        assert!(p.is_dirty);
 
         assert_eq!(
             &p.process().unwrap(),
@@ -600,14 +600,14 @@ fn main() vec4<f32> {
 "#
         );
 
-        assert_eq!(p.is_dirty, false);
+        assert!(!p.is_dirty);
 
         p.insert_env("USE_BIAS", EnvType::Bool(true));
         p.insert_env("BIAS_TYPE", EnvType::Str("u32".to_owned()));
-        assert_eq!(p.is_dirty, false);
+        assert!(!p.is_dirty);
 
         p.insert_builtin("light", "./assets/builtin/light2".to_owned());
-        assert_eq!(p.is_dirty, true);
+        assert!(p.is_dirty);
 
         assert_eq!(
             &p.process().unwrap(),

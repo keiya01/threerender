@@ -1,11 +1,9 @@
+use threerender_color::rgb::RGBA;
+use threerender_traits::entity::{EntityDescriptor, RendererState};
+
 #[cfg(feature = "wgpu")]
 use crate::renderer::wgpu_builder::RendererSpecificAttributes;
-use crate::{
-    entity::EntityDescriptor,
-    mesh::{MeshType, PolygonMode, Topology},
-    unit::RGBA,
-    ShadowOptions,
-};
+use crate::ShadowOptions;
 
 use super::scene::{CameraStyle, LightStyle, Scene};
 
@@ -120,11 +118,12 @@ impl RendererBuilder {
     pub fn push_state(&mut self, state: RendererState) {
         self.states.push(state);
     }
-}
 
-#[derive(Default, Clone, Copy)]
-pub struct RendererState {
-    pub mesh_type: MeshType,
-    pub topology: Topology,
-    pub polygon_mode: PolygonMode,
+    pub fn mesh_length(&self) -> usize {
+        let mut res = 0;
+        for e in &self.entities {
+            res += e.flatten_mesh_length();
+        }
+        res
+    }
 }

@@ -1,7 +1,10 @@
-use crate::{math::{Vec3, Quat}, ShadowStyle};
+use crate::{
+    math::{Quat, Vec3},
+    ShadowStyle,
+};
 use getset::{Getters, MutGetters, Setters};
-
-use crate::unit::{Rotation, Translation, RGB};
+use threerender_color::rgb::RGB;
+use threerender_math::trs::{Rotation, Translation};
 
 #[derive(Default, Clone)]
 pub enum LightModel {

@@ -8,8 +8,7 @@ use glam::Mat4;
 
 pub use camera::*;
 pub use light::*;
-
-use crate::unit::{Rotation, Translation};
+use threerender_math::trs::{Rotation, Translation};
 
 #[derive(Getters, MutGetters)]
 pub struct Scene {

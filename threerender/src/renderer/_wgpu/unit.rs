@@ -1,4 +1,4 @@
-use crate::unit::{RGB, RGBA};
+use threerender_color::rgb::{RGB, RGBA};
 
 fn u8_to_color(v: u8) -> f32 {
     v as f32 / 255.

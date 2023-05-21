@@ -1,12 +1,8 @@
 use std::f32::consts;
 
-use crate::{
-    math::{Vec3, Affine3A, Mat4, Quat},
-    unit::{Rotation, Scale},
-};
+use crate::math::{Affine3A, Mat4, Quat, Vec3};
 use getset::{Getters, MutGetters, Setters};
-
-use crate::unit::Translation;
+use threerender_math::trs::{Rotation, Scale, Translation};
 
 pub struct CameraPosition {
     pub(crate) translation: Vec3,

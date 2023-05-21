@@ -2,16 +2,14 @@ use std::mem;
 
 use bytemuck::{Pod, Zeroable};
 use glam::{Affine3A, Mat4};
+use threerender_math::trs::Translation;
+use threerender_traits::entity::ReflectionStyle;
 use wgpu::{
     util::DeviceExt, Adapter, BindGroup, BindGroupLayout, Buffer, BufferAddress, Device, Queue,
     Sampler, Texture, TextureView,
 };
 
-use crate::{
-    entity::ReflectionStyle,
-    unit::{Translation},
-    HemisphereLightStyle, LightModel, LightStyle, Scene as AbstractedScene, ShadowStyle,
-};
+use crate::{HemisphereLightStyle, LightModel, LightStyle, Scene as AbstractedScene, ShadowStyle};
 
 use super::unit::rgb_to_array;
 
