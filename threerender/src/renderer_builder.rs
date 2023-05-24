@@ -1,5 +1,5 @@
 use threerender_color::rgb::RGBA;
-use threerender_traits::entity::{EntityDescriptor, RendererState};
+use threerender_traits::{entity::{EntityDescriptor, RendererState}, mesh::{Mesh, MeshType}};
 
 #[cfg(feature = "wgpu")]
 use crate::renderer::wgpu_builder::RendererSpecificAttributes;
@@ -30,7 +30,7 @@ impl Default for RendererBuilder {
             background: RGBA::new(255, 255, 255, 255),
             #[cfg(feature = "wgpu")]
             renderer_specific_attributes: Default::default(),
-            states: vec![Default::default()],
+            states: vec![Default::default(), RendererState { mesh_type: MeshType::Texture, ..Default::default() }],
         }
     }
 }
@@ -49,7 +49,17 @@ impl RendererBuilder {
         }
     }
 
-    pub fn push(&mut self, descriptor: EntityDescriptor) {
+    pub fn push(&mut self, mut descriptor: EntityDescriptor) {
+        match descriptor.state.mesh_type {
+            Some(_) => {},
+            None => {
+                descriptor.state.mesh_type = match descriptor.mesh.as_ref().map(|v| &**v) {
+                    Some(Mesh::Entity(_)) => Some(MeshType::Entity),
+                    Some(Mesh::Texture(_)) => Some(MeshType::Texture),
+                    _ => None,
+                };
+            }
+        };
         self.entities.push(descriptor);
     }
 
@@ -119,6 +129,7 @@ impl RendererBuilder {
         self.states.push(state);
     }
 
+    // FIXME(@keiya01): Cache result
     pub fn mesh_length(&self) -> usize {
         let mut res = 0;
         for e in &self.entities {

@@ -6,16 +6,12 @@ use threerender::color::rgb::RGBA;
 use threerender::math::trs::Rotation;
 use threerender::math::{Quat, Transform, Vec3};
 use threerender::mesh::{EntityMesh, TextureMesh};
-use threerender::mesh::{MeshType, Plane, Sphere, Square, TextureDescriptor, TextureFormat};
-#[cfg(feature = "wgpu")]
-use threerender::renderer::builder::WGPURendererBuilder;
+use threerender::mesh::{Plane, Sphere, Square, TextureDescriptor, TextureFormat};
 use threerender::renderer::Updater;
-use threerender::traits::entity::{EntityDescriptor, EntityRendererState, RendererState};
+use threerender::traits::entity::{EntityDescriptor, EntityRendererState};
 use threerender::{
     CameraStyle, EntityList, LightBaseStyle, LightStyle, RendererBuilder, Scene, ShadowStyle,
 };
-#[cfg(feature = "wgpu")]
-use wgpu::Features;
 
 struct App;
 
@@ -62,15 +58,7 @@ fn main() {
         Some(ShadowStyle::default()),
     ));
 
-    #[cfg(feature = "wgpu")]
-    renderer_builder.set_features(Features::TEXTURE_BINDING_ARRAY);
-
-    renderer_builder.push_state(RendererState {
-        mesh_type: MeshType::Texture,
-        ..Default::default()
-    });
-
-    let plane = Plane::new([0, 1, 0]);
+    let plane = Plane::new([0, 1, 0], None);
     let plane = Rc::new(plane.use_entity());
     renderer_builder.push(EntityDescriptor {
         id: "plane".to_owned(),
@@ -90,13 +78,13 @@ fn main() {
     let im = im.to_rgba8();
     let (width, height) = im.dimensions();
 
-    let square = Square::new();
-    let square = Rc::new(square.use_texture(TextureDescriptor {
+    let square = Square::new(Some(TextureDescriptor {
         width,
         height,
-        format: TextureFormat::RGBA,
+        format: TextureFormat::Rgba8,
         data: im.as_bytes().to_vec(),
     }));
+    let square = Rc::new(square.use_texture());
     renderer_builder.push(EntityDescriptor {
         id: "square".to_owned(),
         mesh: Some(square),
@@ -106,21 +94,18 @@ fn main() {
             Quat::default(),
             Vec3::ONE,
         ),
-        state: EntityRendererState {
-            mesh_type: MeshType::Texture,
-            ..Default::default()
-        },
+        state: EntityRendererState::default(),
         reflection: Default::default(),
         ..Default::default()
     });
 
-    let plane = Plane::new([0, 1, 0]);
-    let plane = Rc::new(plane.use_texture(TextureDescriptor {
+    let plane = Plane::new([0, 1, 0], Some(TextureDescriptor {
         width,
         height,
-        format: TextureFormat::RGBA,
+        format: TextureFormat::Rgba8,
         data: im.as_bytes().to_vec(),
     }));
+    let plane = Rc::new(plane.use_texture());
     renderer_builder.push(EntityDescriptor {
         id: "plane".to_owned(),
         mesh: Some(plane),
@@ -130,10 +115,7 @@ fn main() {
             Quat::from_axis_angle(0., 0.5, 0., 1.),
             Vec3::ONE,
         ),
-        state: EntityRendererState {
-            mesh_type: MeshType::Texture,
-            ..Default::default()
-        },
+        state: EntityRendererState::default(),
         reflection: Default::default(),
         ..Default::default()
     });
@@ -142,13 +124,13 @@ fn main() {
     let globe_im = globe_im.to_rgba8();
     let (globe_width, globe_height) = globe_im.dimensions();
 
-    let sphere = Sphere::new(50, 50);
-    let sphere = Rc::new(sphere.use_texture(TextureDescriptor {
+    let sphere = Sphere::new(50, 50, Some(TextureDescriptor {
         width: globe_width,
         height: globe_height,
-        format: TextureFormat::RGBA,
+        format: TextureFormat::Rgba8,
         data: globe_im.as_bytes().to_vec(),
     }));
+    let sphere = Rc::new(sphere.use_texture());
     renderer_builder.push(EntityDescriptor {
         id: "sphere".to_owned(),
         mesh: Some(sphere),
@@ -158,10 +140,7 @@ fn main() {
             Quat::from_axis_angle(0., 0.5, 0., 1.),
             Vec3::ONE,
         ),
-        state: EntityRendererState {
-            mesh_type: MeshType::Texture,
-            ..Default::default()
-        },
+        state: EntityRendererState::default(),
         reflection: Default::default(),
         ..Default::default()
     });

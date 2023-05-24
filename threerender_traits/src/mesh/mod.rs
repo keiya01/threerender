@@ -6,6 +6,7 @@ pub use traits::*;
 pub use types::*;
 pub use utils::*;
 
+#[derive(Debug)]
 pub struct DefaultMesh;
 impl EntityMesh for DefaultMesh {
     fn vertex(&self) -> &[Vertex] {

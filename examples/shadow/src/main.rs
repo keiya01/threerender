@@ -103,7 +103,7 @@ fn main() {
         Some(ShadowStyle::default()),
     ));
 
-    let plane = Plane::new([0, 1, 0]);
+    let plane = Plane::new([0, 1, 0], None);
     let plane = Rc::new(plane.use_entity());
     renderer_builder.push(EntityDescriptor {
         id: "plane".to_owned(),
@@ -118,7 +118,7 @@ fn main() {
         reflection: Default::default(),
         ..Default::default()
     });
-    let sphere = Sphere::new(50, 50);
+    let sphere = Sphere::new(50, 50, None);
     let sphere = Rc::new(sphere.use_entity());
     renderer_builder.push(EntityDescriptor {
         id: "sphere".to_owned(),
@@ -133,7 +133,7 @@ fn main() {
         reflection: Default::default(),
         ..Default::default()
     });
-    let square = Square::new();
+    let square = Square::new(None);
     let square = Rc::new(square.use_entity());
     renderer_builder.push(EntityDescriptor {
         id: "square1".to_owned(),

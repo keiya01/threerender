@@ -18,6 +18,7 @@ struct Entity {
     transform: mat4x4<f32>,
     color: vec4<f32>,
     reflection: Reflection,
+    tex_idx: i32,
 }
 
 @group(1)
@@ -84,20 +85,12 @@ var t_shadow: texture_depth_2d_array;
 var sampler_shadow: sampler_comparison;
 
 #ifdef USE_TEXTURE
-// For texture
-struct TextureInfo {
-    idx: u32,
-}
-
 @group(4)
 @binding(0)
 var texs: binding_array<texture_2d<f32>>;
 @group(4)
 @binding(1)
 var sams: binding_array<sampler>;
-@group(4)
-@binding(2)
-var<uniform> tex_info: TextureInfo;
 #end
 
 // Fragment entry point
@@ -145,7 +138,7 @@ fn fs_main(vertex: VertexOutput) -> @location(0) vec4<f32> {
     color *= vertex.color;
 
 #ifdef USE_TEXTURE
-    color *= textureSampleLevel(texs[tex_info.idx], sams[tex_info.idx], vertex.tex_coords, 0.0);
+    color *= textureSampleLevel(texs[entity.tex_idx], sams[entity.tex_idx], vertex.tex_coords, 0.0);
 #end
 
     return color;

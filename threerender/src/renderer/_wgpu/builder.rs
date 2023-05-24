@@ -10,7 +10,7 @@ pub struct RendererSpecificAttributes {
 impl Default for RendererSpecificAttributes {
     fn default() -> Self {
         Self {
-            features: Features::empty(),
+            features: Features::TEXTURE_BINDING_ARRAY,
             adapter_features: false,
         }
     }

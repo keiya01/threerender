@@ -80,7 +80,7 @@ impl ShadowBaker {
                 continue;
             }
 
-            let (shader, vertex_buf_size, vertex_buf_attr) = match &key.mesh_type {
+            let (shader, vertex_buf_size, vertex_buf_attr) = match &key.mesh_type.expect("RendererState should have mesh type") {
                 MeshType::Entity => (
                     lazy_load_shader(
                         &mut entity_shader,

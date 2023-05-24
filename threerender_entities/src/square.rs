@@ -1,8 +1,11 @@
 use threerender_traits::mesh::{
-    texture, texture_vertex, vertex, EntityMesh, Mesh, TextureDescriptor, TextureFormat,
+    texture, texture_vertex, vertex, EntityMesh, Mesh, TextureFormat,
     TextureMesh, TextureVertex, Vertex,
 };
 
+use crate::TextureDescriptor;
+
+#[derive(Debug)]
 pub struct Square {
     vertex: Vec<Vertex>,
     index: Vec<u16>,
@@ -12,8 +15,11 @@ pub struct Square {
 }
 
 impl Square {
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(texture_descriptor: Option<TextureDescriptor>) -> Self {
+        Self {
+            texture_descriptor,
+            ..Self::default()
+        }
     }
 }
 
@@ -104,7 +110,7 @@ impl TextureMesh for Square {
         &self.texture_descriptor.as_ref().unwrap().data
     }
 
-    fn use_texture(mut self, descriptor: TextureDescriptor) -> Mesh {
+    fn use_texture(mut self) -> Mesh {
         let texs = vec![
             texture([0., 1.]),
             texture([1., 1.]),
@@ -124,7 +130,6 @@ impl TextureMesh for Square {
         }
 
         self.texture = Some(tex_vert);
-        self.texture_descriptor = Some(descriptor);
 
         Mesh::Texture(Box::new(self))
     }

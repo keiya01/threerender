@@ -5,7 +5,7 @@ use examples_common::CustomEvent;
 use threerender::color::rgb::{RGB, RGBA};
 use threerender::math::trs::{Rotation, Scale, Translation};
 use threerender::math::{Quat, Transform, Vec3};
-use threerender::mesh::EntityMesh;
+use threerender::mesh::{EntityMesh};
 use threerender::mesh::Plane;
 use threerender::renderer::Updater;
 use threerender::traits::entity::{EntityDescriptor, ReflectionStyle};
@@ -139,7 +139,7 @@ fn main() {
         Vec3::new(0., 1., 0.),
     ));
 
-    let plane = Plane::new([0, 1, 0]);
+    let plane = Plane::new([0, 1, 0], None);
     let plane = Rc::new(plane.use_entity());
     renderer_builder.push(EntityDescriptor {
         id: "plane".to_owned(),
@@ -157,7 +157,15 @@ fn main() {
 
     let gltf_loader = GltfLoader::from_byte(
         "model",
+        #[cfg(feature = "duck")]
+        include_bytes!("../assets/duck/Duck.gltf"),
+        #[cfg(feature = "cylinder_engine")]
         include_bytes!("../assets/cylinderEngine/2CylinderEngine.gltf"),
+        #[cfg(feature = "duck")]
+        DefaultFileSystemBasedFetcher::with_resolve_path(
+            canonicalize("./examples/gltf/assets/duck").unwrap(),
+        ),
+        #[cfg(feature = "cylinder_engine")]
         DefaultFileSystemBasedFetcher::with_resolve_path(
             canonicalize("./examples/gltf/assets/cylinderEngine").unwrap(),
         ),
@@ -168,7 +176,13 @@ fn main() {
         mesh: None,
         fill_color: RGBA::default(),
         transform: Transform {
-            translation: Vec3::new(0., 10., 0.),
+            #[cfg(feature = "duck")]
+            translation: Vec3::new(0., 1., 0.),
+            #[cfg(feature = "cylinder_engine")]
+            translation: Vec3::new(0., 8., 0.),
+            #[cfg(feature = "duck")]
+            scale: Vec3::new(10., 10., 10.),
+            #[cfg(feature = "cylinder_engine")]
             scale: Vec3::new(0.05, 0.05, 0.05),
             ..Default::default()
         },

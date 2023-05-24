@@ -14,11 +14,24 @@ enum IFStatement {
 
 const EXTENSION: &str = "wgsl";
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum EnvType {
     Bool(bool),
     Number(u32),
     Str(String),
+}
+
+impl Eq for EnvType {}
+
+impl PartialEq for EnvType {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (EnvType::Bool(a), EnvType::Bool(b)) => a == b,
+            (EnvType::Number(a), EnvType::Number(b)) => a == b,
+            (EnvType::Str(a), EnvType::Str(b)) => a == b,
+            _ => false,
+        }
+    }
 }
 
 pub enum ProcessError {
@@ -58,7 +71,6 @@ impl<'a> ShaderProcessor<'a> {
         Self {
             shader,
             result: None,
-            // TODO: implement this for setting MAX_LIGHT dynamically
             envs: HashMap::new(),
             builtin: HashMap::new(),
             lines: vec![],

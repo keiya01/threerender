@@ -22,7 +22,7 @@ pub fn vertex(pos: [f32; 4], normal: [f32; 3]) -> Vertex {
 }
 
 #[repr(C)]
-#[derive(Clone, Copy, Pod, Zeroable)]
+#[derive(Debug, Clone, Copy, Pod, Zeroable)]
 pub struct TextureVertex {
     pos: [f32; 4],
     normal: [f32; 3],

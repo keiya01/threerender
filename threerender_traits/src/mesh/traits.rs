@@ -1,9 +1,12 @@
+use std::fmt::Debug;
+
 use super::{
     types::Topology,
     utils::{TextureVertex, Vertex},
-    MeshType, TextureDescriptor, TextureFormat,
+    MeshType, TextureFormat,
 };
 
+#[derive(Debug)]
 pub enum Mesh {
     Entity(Box<dyn EntityMesh>),
     Texture(Box<dyn TextureMesh>),
@@ -47,7 +50,7 @@ impl Mesh {
 }
 
 /// Define an entity. Entity will be used to draw mesh.
-pub trait EntityMesh {
+pub trait EntityMesh: Debug {
     /// Required to return vertices.
     fn vertex(&self) -> &[Vertex];
     /// Define indices to draw an entity more efficiently.
@@ -66,7 +69,7 @@ pub trait EntityMesh {
 }
 
 /// Define an entity that has a texture.
-pub trait TextureMesh: EntityMesh {
+pub trait TextureMesh: Debug + EntityMesh {
     /// Define vertex for texture
     fn texture(&self) -> Option<&[TextureVertex]>;
     /// Texture width
@@ -82,5 +85,5 @@ pub trait TextureMesh: EntityMesh {
     /// Texture data
     fn data(&self) -> &[u8];
     /// Make mesh from texture entity.
-    fn use_texture(self, descriptor: TextureDescriptor) -> Mesh;
+    fn use_texture(self) -> Mesh;
 }

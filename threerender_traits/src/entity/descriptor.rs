@@ -7,7 +7,7 @@ use threerender_math::Transform;
 use crate::mesh::{Mesh, MeshType, PolygonMode, Topology};
 
 /// A descriptor to setup an entity to the renderer.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct EntityDescriptor {
     pub id: String,
     pub mesh: Option<Rc<Mesh>>,
@@ -53,7 +53,7 @@ impl EntityDescriptor {
     }
 }
 
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone, Copy, Debug)]
 pub struct RendererState {
     pub mesh_type: MeshType,
     pub topology: Topology,
@@ -64,7 +64,7 @@ pub struct RendererState {
 pub struct EntityRendererState {
     pub topology: Topology,
     pub polygon_mode: PolygonMode,
-    pub mesh_type: MeshType,
+    pub mesh_type: Option<MeshType>,
 }
 
 impl EntityRendererState {
@@ -72,7 +72,7 @@ impl EntityRendererState {
         Self {
             topology: state.topology,
             polygon_mode: state.polygon_mode,
-            mesh_type: state.mesh_type,
+            mesh_type: Some(state.mesh_type),
         }
     }
 }
@@ -106,6 +106,7 @@ mod test {
 
     use super::EntityDescriptor;
 
+    #[derive(Debug)]
     struct Entity;
     impl EntityMesh for Entity {
         fn vertex(&self) -> &[crate::mesh::Vertex] {

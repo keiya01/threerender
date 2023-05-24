@@ -62,7 +62,7 @@ fn main() {
         None,
     ));
 
-    let sphere = Sphere::new(50, 50);
+    let sphere = Sphere::new(50, 50, None);
     let sphere = Rc::new(sphere.use_entity());
     renderer_builder.push(EntityDescriptor {
         id: "sphere".to_owned(),
