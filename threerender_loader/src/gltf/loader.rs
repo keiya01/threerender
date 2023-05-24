@@ -316,6 +316,7 @@ impl GltfLoader {
         };
 
         let mut entities = vec![];
+        // FIXME(@keiya01): Handle camera transform
         for scene in data.scenes() {
             entities.push(EntityDescriptor {
                 id: format!("{name}:scene:{}", scene.index()),
@@ -323,7 +324,6 @@ impl GltfLoader {
                 fill_color: RGBA::default(),
                 transform: Transform::default(),
                 reflection: ReflectionStyle::default(),
-                // FIXME(@keiya01): Handle camera transform
                 children: search_node(scene.nodes().collect(), &f),
                 state: EntityRendererState::default(),
             });
