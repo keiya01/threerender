@@ -23,7 +23,7 @@ use super::{
     processor::{ProcessOption, Processor},
     scene::{is_storage_supported, Reflection, Scene},
     shadow::ShadowBaker,
-    uniform::{EntityUniformBuffer},
+    uniform::EntityUniformBuffer,
     unit::{rgba_to_array, rgba_to_array_64},
 };
 
@@ -276,11 +276,8 @@ impl RenderedTexture {
             sampler_array.append(&mut rt.sampler_array);
         }
 
-        let (texture_bind_group_layout, texture_bind_group) = Self::make_bind_group(
-            device,
-            &texture_view_array,
-            &sampler_array,
-        );
+        let (texture_bind_group_layout, texture_bind_group) =
+            Self::make_bind_group(device, &texture_view_array, &sampler_array);
 
         match rendered_texture {
             Some(rt) => {
@@ -334,11 +331,8 @@ impl DynamicRenderer {
             RenderedEntity::make_bind_group(&device, entity_uniform_size, &entity_uniform_buf);
 
         let rendered_texture = if !texture_view_array.is_empty() && !sampler_array.is_empty() {
-            let (texture_bind_group_layout, texture_bind_group) = RenderedTexture::make_bind_group(
-                &device,
-                &texture_view_array,
-                &sampler_array,
-            );
+            let (texture_bind_group_layout, texture_bind_group) =
+                RenderedTexture::make_bind_group(&device, &texture_view_array, &sampler_array);
 
             Some(RenderedTexture {
                 texture_view_array,
@@ -421,7 +415,7 @@ impl DynamicRenderer {
                 None => {
                     meta_list.push(None);
                     None
-                },
+                }
             };
 
             let (children, mut meta_list2) = Self::create_recursive_entity(
@@ -504,7 +498,7 @@ impl DynamicRenderer {
                 None => {
                     meta_list.push(None);
                     None
-                },
+                }
             };
 
             let (children, mut meta_list2) =
@@ -519,7 +513,7 @@ impl DynamicRenderer {
                 state,
                 reflection,
                 children,
-                tex_idx: tex_idx_for_entity
+                tex_idx: tex_idx_for_entity,
             });
         }
 
@@ -537,18 +531,20 @@ impl EntityList for DynamicRenderer {
     }
 
     // FIXME(@kaiye01): Support updating ShadowBaker when entity is added.
-    fn push(&mut self, descriptor: EntityDescriptor) {
+    fn push(&mut self, mut descriptor: EntityDescriptor) {
+        descriptor.infer_mesh_type();
+        let entity_length = count_some(&self.rendered_entity.meta_list);
         let (entity_uniform_size, entity_uniform_buf, entity_uniform_alignment) =
             RenderedEntity::make_uniform(
                 &self.device,
                 // Length of `Some` of meta_list will be equal with entity mesh length.
-                count_some(&self.rendered_entity.meta_list) + descriptor.flatten_mesh_length(),
+                entity_length + descriptor.flatten_mesh_length(),
             );
 
         let (entity_bind_group_layout, entity_bind_group) =
             RenderedEntity::make_bind_group(&self.device, entity_uniform_size, &entity_uniform_buf);
 
-        let idx = self.rendered_entity.meta_list.len() as u64;
+        let idx = entity_length as u64;
         let (mut entities, mut metas) =
             self.update_recursive_entity(vec![descriptor], &idx, &entity_uniform_alignment);
 
@@ -642,21 +638,22 @@ impl<Event> Renderer<Event> {
         let mut processor = Processor::new(shader_str);
         let mut tex_processor = Processor::new(shader_str);
 
-        let lazy_load_shader =
-            |shader: &mut Option<Rc<ShaderModule>>, processor: &mut Processor, option: ProcessOption| match shader {
-                Some(ref s) => s.clone(),
-                None => {
-                    let source = processor.process(option);
-                    let s = Rc::new(dynamic_renderer.device.create_shader_module(
-                        wgpu::ShaderModuleDescriptor {
-                            label: None,
-                            source: wgpu::ShaderSource::Wgsl(Cow::Owned(source)),
-                        },
-                    ));
-                    *shader = Some(s.clone());
-                    s
-                }
-            };
+        let lazy_load_shader = |shader: &mut Option<Rc<ShaderModule>>,
+                                processor: &mut Processor,
+                                option: ProcessOption| match shader {
+            Some(ref s) => s.clone(),
+            None => {
+                let source = processor.process(option);
+                let s = Rc::new(dynamic_renderer.device.create_shader_module(
+                    wgpu::ShaderModuleDescriptor {
+                        label: None,
+                        source: wgpu::ShaderSource::Wgsl(Cow::Owned(source)),
+                    },
+                ));
+                *shader = Some(s.clone());
+                s
+            }
+        };
 
         let mut bind_group_layouts = vec![
             &scene.scene_uniform.bind_group_layout,
@@ -688,35 +685,36 @@ impl<Event> Renderer<Event> {
                 continue;
             }
 
-            let (shader, vertex_buf_size, vertex_buf_attr) = match &key.mesh_type.expect("RendererState should have mesh type.") {
-                MeshType::Entity => (
-                    lazy_load_shader(
-                        &mut entity_shader,
-                        &mut processor,
-                        ProcessOption {
-                            use_texture: false,
-                            support_storage,
-                            max_light_num: scene.scene.max_light_num,
-                        },
+            let (shader, vertex_buf_size, vertex_buf_attr) =
+                match &key.mesh_type.expect("RendererState should have mesh type.") {
+                    MeshType::Entity => (
+                        lazy_load_shader(
+                            &mut entity_shader,
+                            &mut processor,
+                            ProcessOption {
+                                use_texture: false,
+                                support_storage,
+                                max_light_num: scene.scene.max_light_num,
+                            },
+                        ),
+                        mem::size_of::<Vertex>() as wgpu::BufferAddress,
+                        vertex_attr_array![0 => Float32x4, 1 => Float32x3].to_vec(),
                     ),
-                    mem::size_of::<Vertex>() as wgpu::BufferAddress,
-                    vertex_attr_array![0 => Float32x4, 1 => Float32x3].to_vec(),
-                ),
-                MeshType::Texture if dynamic_renderer.rendered_texture.is_some() => (
-                    lazy_load_shader(
-                        &mut texture_shader,
-                        &mut tex_processor,
-                        ProcessOption {
-                            use_texture: true,
-                            support_storage,
-                            max_light_num: scene.scene.max_light_num,
-                        },
+                    MeshType::Texture if dynamic_renderer.rendered_texture.is_some() => (
+                        lazy_load_shader(
+                            &mut texture_shader,
+                            &mut tex_processor,
+                            ProcessOption {
+                                use_texture: true,
+                                support_storage,
+                                max_light_num: scene.scene.max_light_num,
+                            },
+                        ),
+                        mem::size_of::<TextureVertex>() as wgpu::BufferAddress,
+                        vertex_attr_array![0 => Float32x4, 1 => Float32x3, 2 => Float32x2].to_vec(),
                     ),
-                    mem::size_of::<TextureVertex>() as wgpu::BufferAddress,
-                    vertex_attr_array![0 => Float32x4, 1 => Float32x3, 2 => Float32x2].to_vec(),
-                ),
-                _ => continue,
-            };
+                    _ => continue,
+                };
 
             let render_pipeline =
                 dynamic_renderer
@@ -1022,11 +1020,7 @@ impl<Event> Renderer<Event> {
                         );
 
                         if let Some(rt) = &self.dynamic_renderer.rendered_texture {
-                            rpass.set_bind_group(
-                                4,
-                                &rt.texture_bind_group,
-                                &[],
-                            );
+                            rpass.set_bind_group(4, &rt.texture_bind_group, &[]);
                         }
 
                         rpass.set_vertex_buffer(0, meta.vertex_buf.slice(..));

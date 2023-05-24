@@ -1,12 +1,15 @@
-use std::{rc::Rc, mem};
+use std::{mem, rc::Rc};
 
 use anyhow::Result;
-use gltf::{mesh::util::{ReadIndices, ReadTexCoords}};
+use gltf::mesh::util::{ReadIndices, ReadTexCoords};
 use threerender_color::rgb::RGBA;
 use threerender_math::Transform;
 use threerender_traits::{
     entity::{EntityDescriptor, EntityRendererState, ReflectionStyle},
-    mesh::{vertex, EntityMesh, Vertex, TextureMesh, TextureVertex, TextureFormat, texture_vertex, Mesh, MeshType},
+    mesh::{
+        texture_vertex, vertex, EntityMesh, Mesh, MeshType, TextureFormat, TextureMesh,
+        TextureVertex, Vertex,
+    },
 };
 
 use super::{
@@ -53,23 +56,56 @@ impl TextureMesh for GltfMesh {
         self.textures.as_ref().map(|t| &t[..])
     }
     fn width(&self) -> u32 {
-        self.material.as_ref().unwrap().base_color_texture.as_ref().unwrap().size.0
+        self.material
+            .as_ref()
+            .unwrap()
+            .base_color_texture
+            .as_ref()
+            .unwrap()
+            .size
+            .0
     }
     fn height(&self) -> u32 {
-        self.material.as_ref().unwrap().base_color_texture.as_ref().unwrap().size.1
+        self.material
+            .as_ref()
+            .unwrap()
+            .base_color_texture
+            .as_ref()
+            .unwrap()
+            .size
+            .1
     }
     fn format(&self) -> &TextureFormat {
-        &self.material.as_ref().unwrap().base_color_texture.as_ref().unwrap().format
+        &self
+            .material
+            .as_ref()
+            .unwrap()
+            .base_color_texture
+            .as_ref()
+            .unwrap()
+            .format
     }
     fn data(&self) -> &[u8] {
-        &self.material.as_ref().unwrap().base_color_texture.as_ref().unwrap().data
+        &self
+            .material
+            .as_ref()
+            .unwrap()
+            .base_color_texture
+            .as_ref()
+            .unwrap()
+            .data
     }
     fn use_texture(mut self) -> Mesh {
         let mut tex_vert = vec![];
 
         let verts = mem::take(&mut self.vertices);
         for (idx, vert) in verts.into_iter().enumerate() {
-            let tex = *self.tex_coords.as_ref().unwrap().get(idx).expect("`texs` length is incorrect");
+            let tex = *self
+                .tex_coords
+                .as_ref()
+                .unwrap()
+                .get(idx)
+                .expect("`texs` length is incorrect");
             tex_vert.push(texture_vertex(vert, tex));
         }
 
@@ -197,7 +233,7 @@ impl GltfLoader {
                             ReadTexCoords::F32(coords) => {
                                 let et = &mut entity.tex_coords;
                                 for coord in coords {
-                                    let coord = [coord[0] as f32, coord[1] as f32];
+                                    let coord = [coord[0], coord[1]];
                                     match et {
                                         Some(ref mut et) => et.push(coord),
                                         None => *et = Some(vec![coord]),
@@ -258,7 +294,11 @@ impl GltfLoader {
                         reflection: ReflectionStyle::default(),
                         children,
                         state: EntityRendererState {
-                            mesh_type: Some(if is_tex { MeshType::Texture } else { MeshType::Entity }),
+                            mesh_type: Some(if is_tex {
+                                MeshType::Texture
+                            } else {
+                                MeshType::Entity
+                            }),
                             ..Default::default()
                         },
                     }
@@ -344,27 +384,33 @@ impl Material {
         let base_color_texture = match pbr.base_color_texture() {
             Some(v) => {
                 let data = match v.texture().source().source() {
-                    gltf::image::Source::View { view, mime_type: _mime_type } => {
-                        match view.buffer().source() {
-                            gltf::buffer::Source::Uri(uri) => {
-                                if check_if_data_uri(uri) {
-                                    fetcher.parse_data_url(uri)?
-                                } else {
-                                    fetcher.fetch(uri)?
-                                }
-                            }
-                            gltf::buffer::Source::Bin => {
-                                unimplemented!()
+                    gltf::image::Source::View {
+                        view,
+                        mime_type: _mime_type,
+                    } => match view.buffer().source() {
+                        gltf::buffer::Source::Uri(uri) => {
+                            if check_if_data_uri(uri) {
+                                fetcher.parse_data_url(uri)?
+                            } else {
+                                fetcher.fetch(uri)?
                             }
                         }
+                        gltf::buffer::Source::Bin => {
+                            unimplemented!()
+                        }
                     },
-                    gltf::image::Source::Uri { uri, mime_type: _mime_type } => {
-                        fetcher.fetch(uri)?
-                    }
+                    gltf::image::Source::Uri {
+                        uri,
+                        mime_type: _mime_type,
+                    } => fetcher.fetch(uri)?,
                 };
                 let mut img = fetcher.load_image(data)?;
-                Some(MaterialTextureDescriptor { data: Rc::new(img.data()), size: (img.width(), img.height()), format: img.format() })
-            },
+                Some(MaterialTextureDescriptor {
+                    data: Rc::new(img.data()),
+                    size: (img.width(), img.height()),
+                    format: img.format(),
+                })
+            }
             None => None,
         };
 

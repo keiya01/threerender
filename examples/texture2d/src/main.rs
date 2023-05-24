@@ -99,12 +99,15 @@ fn main() {
         ..Default::default()
     });
 
-    let plane = Plane::new([0, 1, 0], Some(TextureDescriptor {
-        width,
-        height,
-        format: TextureFormat::Rgba8,
-        data: im.as_bytes().to_vec(),
-    }));
+    let plane = Plane::new(
+        [0, 1, 0],
+        Some(TextureDescriptor {
+            width,
+            height,
+            format: TextureFormat::Rgba8,
+            data: im.as_bytes().to_vec(),
+        }),
+    );
     let plane = Rc::new(plane.use_texture());
     renderer_builder.push(EntityDescriptor {
         id: "plane".to_owned(),
@@ -124,12 +127,16 @@ fn main() {
     let globe_im = globe_im.to_rgba8();
     let (globe_width, globe_height) = globe_im.dimensions();
 
-    let sphere = Sphere::new(50, 50, Some(TextureDescriptor {
-        width: globe_width,
-        height: globe_height,
-        format: TextureFormat::Rgba8,
-        data: globe_im.as_bytes().to_vec(),
-    }));
+    let sphere = Sphere::new(
+        50,
+        50,
+        Some(TextureDescriptor {
+            width: globe_width,
+            height: globe_height,
+            format: TextureFormat::Rgba8,
+            data: globe_im.as_bytes().to_vec(),
+        }),
+    );
     let sphere = Rc::new(sphere.use_texture());
     renderer_builder.push(EntityDescriptor {
         id: "sphere".to_owned(),

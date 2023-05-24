@@ -6,9 +6,9 @@ use std::{
 
 use base64::Engine;
 
-use crate::gltf::fetcher::{GltfFetcher, GltfImage, Buffer};
+use crate::gltf::fetcher::{Buffer, GltfFetcher, GltfImage};
 
-use super::{LoaderFetcher, image::Image, err::FetcherError};
+use super::{err::FetcherError, image::Image, LoaderFetcher};
 
 pub struct DefaultFileSystemBasedFetcher {
     resolve_path: PathBuf,
@@ -25,7 +25,6 @@ impl LoaderFetcher for DefaultFileSystemBasedFetcher {}
 impl GltfFetcher for DefaultFileSystemBasedFetcher {
     fn fetch(&self, uri: &str) -> Result<crate::gltf::fetcher::Buffer, FetcherError> {
         let path = Path::new(&self.resolve_path).join(uri);
-        println!("Path: {}", path.to_str().unwrap());
         let mut f = File::open(path)?;
 
         let mut buf = vec![];
@@ -40,12 +39,20 @@ impl GltfFetcher for DefaultFileSystemBasedFetcher {
             .unwrap();
         let uri = match uri.strip_prefix("data:") {
             Some(uri) => uri,
-            None => return Err(FetcherError::Fetcher(std::io::Error::from(std::io::ErrorKind::InvalidInput))),
+            None => {
+                return Err(FetcherError::Fetcher(std::io::Error::from(
+                    std::io::ErrorKind::InvalidInput,
+                )))
+            }
         };
         let mut iter = uri.splitn(2, ',');
         let (mime_type, data) = match (iter.next(), iter.next()) {
             (Some(a), Some(b)) => (a, b),
-            _ => return Err(FetcherError::Fetcher(std::io::Error::from(std::io::ErrorKind::InvalidInput))),
+            _ => {
+                return Err(FetcherError::Fetcher(std::io::Error::from(
+                    std::io::ErrorKind::InvalidInput,
+                )))
+            }
         };
 
         let (_mime_type, is_base64) = match mime_type.strip_suffix(";base64") {
@@ -57,7 +64,9 @@ impl GltfFetcher for DefaultFileSystemBasedFetcher {
             match base64::engine::general_purpose::STANDARD.decode(data) {
                 Ok(v) => Ok(v),
                 // FIXME(@keiya01): logging for base64 parsing error
-                Err(_) => Err(FetcherError::Fetcher(std::io::Error::from(std::io::ErrorKind::InvalidData))),
+                Err(_) => Err(FetcherError::Fetcher(std::io::Error::from(
+                    std::io::ErrorKind::InvalidData,
+                ))),
             }
         } else {
             Ok(data.as_bytes().to_owned())

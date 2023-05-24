@@ -5,7 +5,7 @@ use examples_common::CustomEvent;
 use threerender::color::rgb::{RGB, RGBA};
 use threerender::math::trs::{Rotation, Scale, Translation};
 use threerender::math::{Quat, Transform, Vec3};
-use threerender::mesh::{EntityMesh};
+use threerender::mesh::EntityMesh;
 use threerender::mesh::Plane;
 use threerender::renderer::Updater;
 use threerender::traits::entity::{EntityDescriptor, ReflectionStyle};

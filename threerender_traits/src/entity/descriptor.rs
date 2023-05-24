@@ -51,6 +51,19 @@ impl EntityDescriptor {
         }
         cnt
     }
+
+    pub fn infer_mesh_type(&mut self) {
+        match self.state.mesh_type {
+            Some(_) => {}
+            None => {
+                self.state.mesh_type = match self.mesh.as_deref() {
+                    Some(Mesh::Entity(_)) => Some(MeshType::Entity),
+                    Some(Mesh::Texture(_)) => Some(MeshType::Texture),
+                    _ => None,
+                };
+            }
+        };
+    }
 }
 
 #[derive(Default, Clone, Copy, Debug)]

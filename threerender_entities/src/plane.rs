@@ -1,8 +1,8 @@
 use std::mem;
 
 use threerender_traits::mesh::{
-    texture, texture_vertex, vertex, EntityMesh, Mesh, TextureFormat,
-    TextureMesh, TextureVertex, Vertex,
+    texture, texture_vertex, vertex, EntityMesh, Mesh, TextureFormat, TextureMesh, TextureVertex,
+    Vertex,
 };
 
 use crate::TextureDescriptor;
