@@ -1,11 +1,12 @@
+use threerender_color::rgb::RGBA;
+use threerender_traits::{
+    entity::{EntityDescriptor, RendererState},
+    mesh::MeshType,
+};
+
 #[cfg(feature = "wgpu")]
 use crate::renderer::wgpu_builder::RendererSpecificAttributes;
-use crate::{
-    entity::EntityDescriptor,
-    mesh::{MeshType, PolygonMode, Topology},
-    unit::RGBA,
-    ShadowOptions,
-};
+use crate::ShadowOptions;
 
 use super::scene::{CameraStyle, LightStyle, Scene};
 
@@ -32,7 +33,13 @@ impl Default for RendererBuilder {
             background: RGBA::new(255, 255, 255, 255),
             #[cfg(feature = "wgpu")]
             renderer_specific_attributes: Default::default(),
-            states: vec![Default::default()],
+            states: vec![
+                Default::default(),
+                RendererState {
+                    mesh_type: MeshType::Texture,
+                    ..Default::default()
+                },
+            ],
         }
     }
 }
@@ -51,7 +58,8 @@ impl RendererBuilder {
         }
     }
 
-    pub fn push(&mut self, descriptor: EntityDescriptor) {
+    pub fn push(&mut self, mut descriptor: EntityDescriptor) {
+        descriptor.infer_mesh_type();
         self.entities.push(descriptor);
     }
 
@@ -120,11 +128,17 @@ impl RendererBuilder {
     pub fn push_state(&mut self, state: RendererState) {
         self.states.push(state);
     }
-}
 
-#[derive(Default, Clone, Copy)]
-pub struct RendererState {
-    pub mesh_type: MeshType,
-    pub topology: Topology,
-    pub polygon_mode: PolygonMode,
+    pub fn set_state(&mut self, state: Vec<RendererState>) {
+        self.states = state;
+    }
+
+    // FIXME(@keiya01): Cache result
+    pub fn mesh_length(&self) -> usize {
+        let mut res = 0;
+        for e in &self.entities {
+            res += e.flatten_mesh_length();
+        }
+        res
+    }
 }

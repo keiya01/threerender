@@ -14,11 +14,24 @@ enum IFStatement {
 
 const EXTENSION: &str = "wgsl";
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum EnvType {
     Bool(bool),
     Number(u32),
     Str(String),
+}
+
+impl Eq for EnvType {}
+
+impl PartialEq for EnvType {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (EnvType::Bool(a), EnvType::Bool(b)) => a == b,
+            (EnvType::Number(a), EnvType::Number(b)) => a == b,
+            (EnvType::Str(a), EnvType::Str(b)) => a == b,
+            _ => false,
+        }
+    }
 }
 
 pub enum ProcessError {
@@ -58,7 +71,6 @@ impl<'a> ShaderProcessor<'a> {
         Self {
             shader,
             result: None,
-            // TODO: implement this for setting MAX_LIGHT dynamically
             envs: HashMap::new(),
             builtin: HashMap::new(),
             lines: vec![],
@@ -568,14 +580,14 @@ fn main() vec4<f32> {
 "#
         );
 
-        assert_eq!(p.is_dirty, false);
+        assert!(!p.is_dirty);
 
         p.insert_builtin("light", "./assets/builtin/light".to_owned());
-        assert_eq!(p.is_dirty, false);
+        assert!(!p.is_dirty);
 
         p.insert_env("USE_BIAS", EnvType::Bool(true));
         p.insert_env("BIAS_TYPE", EnvType::Str("u32".to_owned()));
-        assert_eq!(p.is_dirty, true);
+        assert!(p.is_dirty);
 
         assert_eq!(
             &p.process().unwrap(),
@@ -600,14 +612,14 @@ fn main() vec4<f32> {
 "#
         );
 
-        assert_eq!(p.is_dirty, false);
+        assert!(!p.is_dirty);
 
         p.insert_env("USE_BIAS", EnvType::Bool(true));
         p.insert_env("BIAS_TYPE", EnvType::Str("u32".to_owned()));
-        assert_eq!(p.is_dirty, false);
+        assert!(!p.is_dirty);
 
         p.insert_builtin("light", "./assets/builtin/light2".to_owned());
-        assert_eq!(p.is_dirty, true);
+        assert!(p.is_dirty);
 
         assert_eq!(
             &p.process().unwrap(),

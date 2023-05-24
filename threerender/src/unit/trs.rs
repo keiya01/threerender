@@ -1,4 +1,4 @@
-use crate::math::vec::Vec3;
+use crate::math::{Vec3, Quat};
 
 pub trait Translation {
     fn translation(&self) -> &Vec3;
@@ -24,7 +24,7 @@ pub trait Translation {
 }
 
 pub trait Rotation {
-    fn rotation(&self) -> &Vec3;
+    fn rotation(&self) -> &Quat;
     fn rotation_x(&self) -> f32 {
         self.rotation().x
     }
@@ -34,15 +34,15 @@ pub trait Rotation {
     fn rotation_z(&self) -> f32 {
         self.rotation().z
     }
-    fn rotation_mut(&mut self) -> &mut Vec3;
+    fn rotation_mut(&mut self) -> &mut Quat;
     fn rotate_x(&mut self, x: f32) {
-        self.rotation_mut().x = x;
+        *self.rotation_mut() = self.rotation().mul(Quat::from_array(glam::Quat::from_rotation_x(x).to_array()))
     }
     fn rotate_y(&mut self, y: f32) {
-        self.rotation_mut().y = y;
+        *self.rotation_mut() = self.rotation().mul(Quat::from_array(glam::Quat::from_rotation_y(y).to_array()))
     }
     fn rotate_z(&mut self, z: f32) {
-        self.rotation_mut().z = z;
+        *self.rotation_mut() = self.rotation().mul(Quat::from_array(glam::Quat::from_rotation_z(z).to_array()))
     }
 }
 

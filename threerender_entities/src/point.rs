@@ -1,6 +1,7 @@
-use threerender_math::vec::Vec3;
+use threerender_math::Vec3;
 use threerender_traits::mesh::{EntityMesh, Mesh, Topology, Vertex};
 
+#[derive(Debug)]
 pub struct Point {
     vertex: Vec<Vertex>,
     index: Option<Vec<u16>>,

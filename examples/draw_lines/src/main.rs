@@ -1,13 +1,14 @@
 use std::rc::Rc;
 
 use examples_common::CustomEvent;
-use threerender::entity::{EntityDescriptor, EntityList, EntityRendererState};
-use threerender::math::vec::Vec3;
-use threerender::mesh::{EntityMesh, Line};
-use threerender::mesh::{Point, Topology};
+use threerender::color::rgb::RGBA;
+use threerender::math::trs::Rotation;
+use threerender::math::{Quat, Transform, Vec3};
+use threerender::mesh::{EntityMesh, Line, Point, Topology};
+
 use threerender::renderer::Updater;
-use threerender::unit::{Rotation, RGBA};
-use threerender::{CameraPosition, CameraStyle, RendererBuilder, RendererState, Scene};
+use threerender::traits::entity::{EntityDescriptor, EntityRendererState, RendererState};
+use threerender::{CameraPosition, CameraStyle, EntityList, RendererBuilder, Scene};
 
 struct App {}
 
@@ -28,9 +29,8 @@ impl Updater for App {
     ) {
         for entity in entity_list.items_mut() {
             // Rotate lines
-            if entity.id() == "lines" {
-                let prev = entity.rotation_y();
-                entity.rotate_y(prev + 0.01);
+            if entity.id == "lines" {
+                entity.rotate_y(0.01);
             }
         }
     }
@@ -76,16 +76,19 @@ fn main() {
     let lines = Rc::new(lines.use_entity());
     renderer_builder.push(EntityDescriptor {
         id: "lines".to_owned(),
-        mesh: lines.clone(),
+        mesh: Some(lines.clone()),
         fill_color: RGBA::new(255, 0, 0, 255),
-        position: Vec3::new(0., 0., 0.),
-        dimension: Vec3::ONE,
-        rotation: Vec3::ZERO,
+        transform: Transform::from_translation_rotation_scale(
+            Vec3::new(0., 0., 0.),
+            Quat::default(),
+            Vec3::ONE,
+        ),
         state: EntityRendererState {
             topology: lines.topology(),
             ..Default::default()
         },
         reflection: Default::default(),
+        children: vec![],
     });
 
     let mut circles = vec![];
@@ -101,16 +104,19 @@ fn main() {
     let points = Rc::new(points.use_entity());
     renderer_builder.push(EntityDescriptor {
         id: "circle".to_owned(),
-        mesh: points.clone(),
+        mesh: Some(points.clone()),
         fill_color: RGBA::new(0, 0, 0, 255),
-        position: Vec3::new(0., 0., 0.),
-        dimension: Vec3::ONE,
-        rotation: Vec3::ZERO,
+        transform: Transform::from_translation_rotation_scale(
+            Vec3::new(0., 0., 0.),
+            Quat::default(),
+            Vec3::ONE,
+        ),
         state: EntityRendererState {
             topology: points.topology(),
             ..Default::default()
         },
         reflection: Default::default(),
+        children: vec![],
     });
 
     examples_common::start(renderer_builder, Box::new(App::new()));

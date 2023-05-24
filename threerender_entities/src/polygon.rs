@@ -1,6 +1,7 @@
-use threerender_math::vec::Vec3;
+use threerender_math::Vec3;
 use threerender_traits::mesh::{EntityMesh, Mesh, Vertex};
 
+#[derive(Debug)]
 pub struct Polygon {
     vertex: Vec<Vertex>,
     index: Option<Vec<u16>>,

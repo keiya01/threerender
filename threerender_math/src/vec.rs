@@ -39,7 +39,22 @@ impl Vec3 {
         Self { x, y, z }
     }
 
+    pub fn from_array(a: &[f32; 3]) -> Self {
+        Self {
+            x: a[0],
+            y: a[1],
+            z: a[2],
+        }
+    }
+
     pub fn as_glam(&self) -> glam::Vec3 {
         glam::vec3(self.x, self.y, self.z)
+    }
+
+    pub fn add(&self, a: Self) -> Self {
+        Vec3::from_array(&(self.as_glam() + a.as_glam()).to_array())
+    }
+    pub fn mul(&self, a: Self) -> Self {
+        Vec3::from_array(&(self.as_glam() * a.as_glam()).to_array())
     }
 }

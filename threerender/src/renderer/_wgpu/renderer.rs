@@ -1,6 +1,7 @@
 use std::{borrow::Cow, collections::HashMap, marker::PhantomData, mem, num::NonZeroU32, rc::Rc};
 
-use glam::{Mat4, Quat};
+use threerender_math::Transform;
+use threerender_traits::entity::{EntityDescriptor, EntityRendererState};
 use wgpu::{
     util::{align_to, DeviceExt},
     vertex_attr_array, BindGroup, BindGroupLayout, Buffer, BufferAddress, Device, Features,
@@ -9,12 +10,12 @@ use wgpu::{
 };
 
 use crate::{
-    entity::{Entity, EntityDescriptor, EntityList, EntityRendererState},
+    entity::{Entity, EntityList},
     mesh::{
         Mesh, MeshType, PolygonMode, TextureFormat, TextureMesh, TextureVertex, Topology, Vertex,
     },
     renderer::Updater,
-    unit::Rotation,
+    utils::vec::count_some,
     RendererBuilder,
 };
 
@@ -22,29 +23,23 @@ use super::{
     processor::{ProcessOption, Processor},
     scene::{is_storage_supported, Reflection, Scene},
     shadow::ShadowBaker,
-    uniform::{EntityUniformBuffer, TextureInfoUniformBuffer},
+    uniform::EntityUniformBuffer,
     unit::{rgba_to_array, rgba_to_array_64},
 };
 
-struct RenderedTextureMeta {
-    tex_info: TextureInfoUniformBuffer,
-    uniform_offset: BufferAddress,
-}
-
+#[derive(Debug)]
 struct RenderedEntityMeta {
     uniform_offset: BufferAddress,
     vertex_buf: Buffer,
     index_buf: Option<Buffer>,
     vertex_length: u32,
     index_length: u32,
-
-    texture: Option<RenderedTextureMeta>,
 }
 
 // The struct will be depend on entity.
 pub struct RenderedEntity {
     pub(super) entities: Vec<Entity>,
-    meta_list: Vec<RenderedEntityMeta>,
+    meta_list: Vec<Option<RenderedEntityMeta>>,
     entity_uniform_buf: Buffer,
     entity_bind_group: BindGroup,
     entity_bind_group_layout: BindGroupLayout,
@@ -152,7 +147,6 @@ impl RenderedEntity {
 pub struct RenderedTexture {
     pub(super) texture_view_array: Vec<TextureView>,
     pub(super) sampler_array: Vec<Sampler>,
-    texture_uniform_buf: Buffer,
     texture_bind_group: BindGroup,
     texture_bind_group_layout: BindGroupLayout,
 
@@ -176,13 +170,14 @@ impl RenderedTexture {
                 depth_or_array_layers: 1,
             };
             let texture = device.create_texture(&wgpu::TextureDescriptor {
-                label: None,
+                label: Some("Texture mesh texture"),
                 size,
                 mip_level_count: 1,
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
                 format: match texture_mesh.format() {
-                    TextureFormat::RGBA => wgpu::TextureFormat::Rgba8Unorm,
+                    TextureFormat::Rgba8 => wgpu::TextureFormat::Rgba8Unorm,
+                    TextureFormat::Rgba16 => wgpu::TextureFormat::Rgba16Unorm,
                 },
                 usage: wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::TEXTURE_BINDING,
                 view_formats: &[],
@@ -216,38 +211,10 @@ impl RenderedTexture {
         (sampler, view)
     }
 
-    fn make_uniform_offset(device: &Device) -> (wgpu::BufferAddress, wgpu::BufferAddress) {
-        let texture_uniform_size =
-            mem::size_of::<TextureInfoUniformBuffer>() as wgpu::BufferAddress;
-        let texture_uniform_alignment = {
-            let alignment =
-                device.limits().min_uniform_buffer_offset_alignment as wgpu::BufferAddress;
-            align_to(texture_uniform_size, alignment)
-        };
-        (texture_uniform_size, texture_uniform_alignment)
-    }
-
-    fn make_uniform(
-        device: &Device,
-        length: usize,
-        texture_uniform_alignment: wgpu::BufferAddress,
-    ) -> Buffer {
-        let texture_length = length as wgpu::BufferAddress;
-
-        device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("Texture Uniform Buffer"),
-            size: texture_length * texture_uniform_alignment,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        })
-    }
-
     fn make_bind_group(
         device: &Device,
         texture_view_array: &[TextureView],
         sampler_array: &[Sampler],
-        texture_uniform_buf: &Buffer,
-        texture_uniform_size: wgpu::BufferAddress,
     ) -> (BindGroupLayout, BindGroup) {
         let texture_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -269,16 +236,6 @@ impl RenderedTexture {
                         ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                         count: NonZeroU32::new(sampler_array.len() as u32),
                     },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: true,
-                            min_binding_size: wgpu::BufferSize::new(texture_uniform_size),
-                        },
-                        count: None,
-                    },
                 ],
             });
 
@@ -297,14 +254,6 @@ impl RenderedTexture {
                         &sampler_array.iter().collect::<Vec<_>>(),
                     ),
                 },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
-                        buffer: texture_uniform_buf,
-                        offset: 0,
-                        size: wgpu::BufferSize::new(texture_uniform_size),
-                    }),
-                },
             ],
             label: None,
         });
@@ -317,7 +266,7 @@ impl RenderedTexture {
         device: &Device,
         queue: &Queue,
         rendered_texture: &mut Option<RenderedTexture>,
-    ) -> wgpu::BufferAddress {
+    ) {
         let (sampler, view) = Self::make_texture(texture_mesh, device, queue);
 
         let (mut texture_view_array, mut sampler_array) = (vec![view], vec![sampler]);
@@ -327,17 +276,8 @@ impl RenderedTexture {
             sampler_array.append(&mut rt.sampler_array);
         }
 
-        let (texture_uniform_size, texture_uniform_alignment) = Self::make_uniform_offset(device);
-        let texture_uniform_buf =
-            Self::make_uniform(device, texture_view_array.len(), texture_uniform_alignment);
-
-        let (texture_bind_group_layout, texture_bind_group) = Self::make_bind_group(
-            device,
-            &texture_view_array,
-            &sampler_array,
-            &texture_uniform_buf,
-            texture_uniform_size,
-        );
+        let (texture_bind_group_layout, texture_bind_group) =
+            Self::make_bind_group(device, &texture_view_array, &sampler_array);
 
         match rendered_texture {
             Some(rt) => {
@@ -353,13 +293,10 @@ impl RenderedTexture {
                     sampler_array,
                     texture_bind_group,
                     texture_bind_group_layout,
-                    texture_uniform_buf,
                     cur_tex_idx: 0,
                 });
             }
         }
-
-        texture_uniform_alignment
     }
 }
 
@@ -373,96 +310,35 @@ pub(super) struct DynamicRenderer {
 
 impl DynamicRenderer {
     pub fn new(device: Device, queue: Queue, renderer_builder: &mut RendererBuilder) -> Self {
+        let entity_length = renderer_builder.mesh_length();
         let (entity_uniform_size, entity_uniform_buf, entity_uniform_alignment) =
-            RenderedEntity::make_uniform(&device, renderer_builder.entities.len());
+            RenderedEntity::make_uniform(&device, entity_length);
 
-        let (texture_uniform_size, texture_uniform_alignment) =
-            RenderedTexture::make_uniform_offset(&device);
-
-        let mut entities = vec![];
-        let mut meta_list = vec![];
         let mut texture_view_array = vec![];
         let mut sampler_array = vec![];
         let mut i = 0;
         let mut tex_idx = 0;
-        while let Some(EntityDescriptor {
-            id,
-            mesh,
-            fill_color,
-            position,
-            dimension,
-            rotation,
-            state,
-            reflection,
-        }) = renderer_builder.entities.pop()
-        {
-            let (vertex_buf, index_buf, vertex_length) =
-                RenderedEntity::make_entity(&mesh, &device);
-
-            let texture = if let Mesh::Texture(texture_mesh) = mesh.as_ref() {
-                let (sampler, view) =
-                    RenderedTexture::make_texture(texture_mesh.as_ref(), &device, &queue);
-
-                texture_view_array.push(view);
-                sampler_array.push(sampler);
-
-                let tex = Some(RenderedTextureMeta {
-                    tex_info: TextureInfoUniformBuffer { idx: tex_idx },
-                    uniform_offset: i * texture_uniform_alignment,
-                });
-
-                tex_idx += 1;
-
-                tex
-            } else {
-                None
-            };
-
-            entities.push(Entity {
-                id,
-                fill_color,
-                position,
-                dimension,
-                rotation,
-                state,
-                reflection,
-            });
-            meta_list.push(RenderedEntityMeta {
-                uniform_offset: i * entity_uniform_alignment,
-                vertex_buf,
-                index_buf,
-                vertex_length,
-                index_length: mesh.index().map_or(0, |i| i.len()) as u32,
-                texture,
-            });
-
-            i += 1;
-        }
+        let (entities, meta_list) = Self::create_recursive_entity(
+            &device,
+            &queue,
+            std::mem::take(&mut renderer_builder.entities),
+            (&mut texture_view_array, &mut sampler_array),
+            (&mut i, &mut tex_idx),
+            entity_uniform_alignment,
+        );
 
         let (entity_bind_group_layout, entity_bind_group) =
             RenderedEntity::make_bind_group(&device, entity_uniform_size, &entity_uniform_buf);
 
         let rendered_texture = if !texture_view_array.is_empty() && !sampler_array.is_empty() {
-            let texture_uniform_buf = RenderedTexture::make_uniform(
-                &device,
-                texture_view_array.len(),
-                texture_uniform_alignment,
-            );
-
-            let (texture_bind_group_layout, texture_bind_group) = RenderedTexture::make_bind_group(
-                &device,
-                &texture_view_array,
-                &sampler_array,
-                &texture_uniform_buf,
-                texture_uniform_size,
-            );
+            let (texture_bind_group_layout, texture_bind_group) =
+                RenderedTexture::make_bind_group(&device, &texture_view_array, &sampler_array);
 
             Some(RenderedTexture {
                 texture_view_array,
                 sampler_array,
                 texture_bind_group_layout,
                 texture_bind_group,
-                texture_uniform_buf,
                 cur_tex_idx: tex_idx,
             })
         } else {
@@ -482,6 +358,167 @@ impl DynamicRenderer {
             rendered_texture,
         }
     }
+
+    fn create_recursive_entity(
+        device: &Device,
+        queue: &Queue,
+        descriptors: Vec<EntityDescriptor>,
+        (texture_view_array, sampler_array): (&mut Vec<TextureView>, &mut Vec<Sampler>),
+        (idx, tex_idx): (&mut u64, &mut u32),
+        entity_uniform_alignment: u64,
+    ) -> (Vec<Entity>, Vec<Option<RenderedEntityMeta>>) {
+        let mut entities = vec![];
+        let mut meta_list = vec![];
+        for EntityDescriptor {
+            id,
+            mesh,
+            fill_color,
+            transform,
+            state,
+            children,
+            reflection,
+        } in descriptors.into_iter()
+        {
+            let tex_idx_for_entity = match mesh {
+                Some(mesh) => {
+                    let (vertex_buf, index_buf, vertex_length) =
+                        RenderedEntity::make_entity(&mesh, device);
+
+                    let tex_idx_for_entity = if let Mesh::Texture(texture_mesh) = mesh.as_ref() {
+                        let (sampler, view) =
+                            RenderedTexture::make_texture(texture_mesh.as_ref(), device, queue);
+
+                        texture_view_array.push(view);
+                        sampler_array.push(sampler);
+
+                        Some(*tex_idx as i32)
+                    } else {
+                        None
+                    };
+
+                    meta_list.push(Some(RenderedEntityMeta {
+                        uniform_offset: *idx * entity_uniform_alignment,
+                        vertex_buf,
+                        index_buf,
+                        vertex_length,
+                        index_length: mesh.index().map_or(0, |i| i.len()) as u32,
+                    }));
+
+                    // Must update only when mesh is exist
+                    *idx += 1;
+                    if tex_idx_for_entity.is_some() {
+                        *tex_idx += 1;
+                    }
+
+                    tex_idx_for_entity
+                }
+                None => {
+                    meta_list.push(None);
+                    None
+                }
+            };
+
+            let (children, mut meta_list2) = Self::create_recursive_entity(
+                device,
+                queue,
+                children,
+                (texture_view_array, sampler_array),
+                (idx, tex_idx),
+                entity_uniform_alignment,
+            );
+
+            meta_list.append(&mut meta_list2);
+
+            entities.push(Entity {
+                id,
+                fill_color,
+                transform,
+                state,
+                reflection,
+                children,
+                tex_idx: tex_idx_for_entity,
+            });
+        }
+
+        (entities, meta_list)
+    }
+
+    fn update_recursive_entity(
+        &mut self,
+        descriptors: Vec<EntityDescriptor>,
+        idx: &u64,
+        entity_uniform_alignment: &u64,
+    ) -> (Vec<Entity>, Vec<Option<RenderedEntityMeta>>) {
+        let mut idx = *idx;
+
+        let mut entities = vec![];
+        let mut meta_list = vec![];
+        for EntityDescriptor {
+            id,
+            mesh,
+            fill_color,
+            transform,
+            state,
+            children,
+            reflection,
+        } in descriptors.into_iter()
+        {
+            let tex_idx_for_entity = match mesh {
+                Some(mesh) => {
+                    let (vertex_buf, index_buf, vertex_length) =
+                        RenderedEntity::make_entity(&mesh, &self.device);
+
+                    let tex_idx = if let Mesh::Texture(texture_mesh) = mesh.as_ref() {
+                        RenderedTexture::create_or_update(
+                            texture_mesh.as_ref(),
+                            &self.device,
+                            &self.queue,
+                            &mut self.rendered_texture,
+                        );
+
+                        let tex_idx = self.rendered_texture.as_ref().unwrap().cur_tex_idx;
+                        self.rendered_texture.as_mut().unwrap().cur_tex_idx += 1;
+
+                        Some(tex_idx as i32)
+                    } else {
+                        None
+                    };
+                    meta_list.push(Some(RenderedEntityMeta {
+                        uniform_offset: idx * entity_uniform_alignment,
+                        vertex_buf,
+                        index_buf,
+                        vertex_length,
+                        index_length: mesh.index().map_or(0, |i| i.len()) as u32,
+                    }));
+                    // Must update only when mesh is exist
+                    idx += 1;
+
+                    tex_idx
+                }
+                None => {
+                    meta_list.push(None);
+                    None
+                }
+            };
+
+            let (children, mut meta_list2) =
+                self.update_recursive_entity(children, &idx, entity_uniform_alignment);
+
+            meta_list.append(&mut meta_list2);
+
+            entities.push(Entity {
+                id,
+                fill_color,
+                transform,
+                state,
+                reflection,
+                children,
+                tex_idx: tex_idx_for_entity,
+            });
+        }
+
+        (entities, meta_list)
+    }
 }
 
 impl EntityList for DynamicRenderer {
@@ -493,68 +530,29 @@ impl EntityList for DynamicRenderer {
         &mut self.rendered_entity.entities
     }
 
-    fn push(&mut self, descriptor: EntityDescriptor) {
-        let rendered_entity = &mut self.rendered_entity;
-
-        let EntityDescriptor {
-            id,
-            fill_color,
-            position,
-            dimension,
-            rotation,
-            mesh,
-            state,
-            reflection,
-        } = descriptor;
-
+    // FIXME(@kaiye01): Support updating ShadowBaker when entity is added.
+    fn push(&mut self, mut descriptor: EntityDescriptor) {
+        descriptor.infer_mesh_type();
+        let entity_length = count_some(&self.rendered_entity.meta_list);
         let (entity_uniform_size, entity_uniform_buf, entity_uniform_alignment) =
-            RenderedEntity::make_uniform(&self.device, rendered_entity.entities.len() + 1);
-
-        let (vertex_buf, index_buf, vertex_length) =
-            RenderedEntity::make_entity(&mesh, &self.device);
+            RenderedEntity::make_uniform(
+                &self.device,
+                // Length of `Some` of meta_list will be equal with entity mesh length.
+                entity_length + descriptor.flatten_mesh_length(),
+            );
 
         let (entity_bind_group_layout, entity_bind_group) =
             RenderedEntity::make_bind_group(&self.device, entity_uniform_size, &entity_uniform_buf);
 
-        let texture = if let Mesh::Texture(texture_mesh) = mesh.as_ref() {
-            let align = RenderedTexture::create_or_update(
-                texture_mesh.as_ref(),
-                &self.device,
-                &self.queue,
-                &mut self.rendered_texture,
-            );
+        let idx = entity_length as u64;
+        let (mut entities, mut metas) =
+            self.update_recursive_entity(vec![descriptor], &idx, &entity_uniform_alignment);
 
-            let tex_idx = self.rendered_texture.as_ref().unwrap().cur_tex_idx;
-            self.rendered_texture.as_mut().unwrap().cur_tex_idx += 1;
-
-            Some(RenderedTextureMeta {
-                tex_info: TextureInfoUniformBuffer { idx: tex_idx },
-                uniform_offset: (tex_idx as u64) * align,
-            })
-        } else {
-            None
-        };
-
-        rendered_entity.entities.push(Entity {
-            id,
-            fill_color,
-            position,
-            dimension,
-            rotation,
-            state,
-            reflection,
-        });
-        rendered_entity.entity_uniform_buf = entity_uniform_buf;
-        rendered_entity.entity_bind_group_layout = entity_bind_group_layout;
-        rendered_entity.entity_bind_group = entity_bind_group;
-        rendered_entity.meta_list.push(RenderedEntityMeta {
-            uniform_offset: (rendered_entity.meta_list.len() as u64) * entity_uniform_alignment,
-            vertex_buf,
-            index_buf,
-            vertex_length,
-            index_length: mesh.index().map_or(0, |i| i.len()) as u32,
-            texture,
-        });
+        self.rendered_entity.entities.append(&mut entities);
+        self.rendered_entity.entity_uniform_buf = entity_uniform_buf;
+        self.rendered_entity.entity_bind_group_layout = entity_bind_group_layout;
+        self.rendered_entity.entity_bind_group = entity_bind_group;
+        self.rendered_entity.meta_list.append(&mut metas);
     }
 }
 
@@ -629,29 +627,33 @@ impl<Event> Renderer<Event> {
 
         let scene = Scene::new(&adapter, &device, renderer_builder.scene.take().unwrap());
 
+        let mesh_length = renderer_builder.mesh_length();
         let dynamic_renderer = DynamicRenderer::new(device, queue, &mut renderer_builder);
 
         // Load the shaders from disk
         let mut entity_shader: Option<Rc<ShaderModule>> = None;
         let mut texture_shader: Option<Rc<ShaderModule>> = None;
 
-        let mut processor = Processor::new(include_str!("shaders/entity.wgsl"));
+        let shader_str = include_str!("shaders/entity.wgsl");
+        let mut processor = Processor::new(shader_str);
+        let mut tex_processor = Processor::new(shader_str);
 
-        let mut lazy_load_shader =
-            |shader: &mut Option<Rc<ShaderModule>>, option: ProcessOption| match shader {
-                Some(ref s) => s.clone(),
-                None => {
-                    let source = processor.process(option);
-                    let s = Rc::new(dynamic_renderer.device.create_shader_module(
-                        wgpu::ShaderModuleDescriptor {
-                            label: None,
-                            source: wgpu::ShaderSource::Wgsl(Cow::Owned(source)),
-                        },
-                    ));
-                    *shader = Some(s.clone());
-                    s
-                }
-            };
+        let lazy_load_shader = |shader: &mut Option<Rc<ShaderModule>>,
+                                processor: &mut Processor,
+                                option: ProcessOption| match shader {
+            Some(ref s) => s.clone(),
+            None => {
+                let source = processor.process(option);
+                let s = Rc::new(dynamic_renderer.device.create_shader_module(
+                    wgpu::ShaderModuleDescriptor {
+                        label: None,
+                        source: wgpu::ShaderSource::Wgsl(Cow::Owned(source)),
+                    },
+                ));
+                *shader = Some(s.clone());
+                s
+            }
+        };
 
         let mut bind_group_layouts = vec![
             &scene.scene_uniform.bind_group_layout,
@@ -683,32 +685,36 @@ impl<Event> Renderer<Event> {
                 continue;
             }
 
-            let (shader, vertex_buf_size, vertex_buf_attr) = match &key.mesh_type {
-                MeshType::Entity => (
-                    lazy_load_shader(
-                        &mut entity_shader,
-                        ProcessOption {
-                            use_texture: false,
-                            support_storage,
-                            max_light_num: scene.scene.max_light_num,
-                        },
+            let (shader, vertex_buf_size, vertex_buf_attr) =
+                match &key.mesh_type.expect("RendererState should have mesh type.") {
+                    MeshType::Entity => (
+                        lazy_load_shader(
+                            &mut entity_shader,
+                            &mut processor,
+                            ProcessOption {
+                                use_texture: false,
+                                support_storage,
+                                max_light_num: scene.scene.max_light_num,
+                            },
+                        ),
+                        mem::size_of::<Vertex>() as wgpu::BufferAddress,
+                        vertex_attr_array![0 => Float32x4, 1 => Float32x3].to_vec(),
                     ),
-                    mem::size_of::<Vertex>() as wgpu::BufferAddress,
-                    vertex_attr_array![0 => Float32x4, 1 => Float32x3].to_vec(),
-                ),
-                MeshType::Texture => (
-                    lazy_load_shader(
-                        &mut texture_shader,
-                        ProcessOption {
-                            use_texture: true,
-                            support_storage,
-                            max_light_num: scene.scene.max_light_num,
-                        },
+                    MeshType::Texture if dynamic_renderer.rendered_texture.is_some() => (
+                        lazy_load_shader(
+                            &mut texture_shader,
+                            &mut tex_processor,
+                            ProcessOption {
+                                use_texture: true,
+                                support_storage,
+                                max_light_num: scene.scene.max_light_num,
+                            },
+                        ),
+                        mem::size_of::<TextureVertex>() as wgpu::BufferAddress,
+                        vertex_attr_array![0 => Float32x4, 1 => Float32x3, 2 => Float32x2].to_vec(),
                     ),
-                    mem::size_of::<TextureVertex>() as wgpu::BufferAddress,
-                    vertex_attr_array![0 => Float32x4, 1 => Float32x3, 2 => Float32x2].to_vec(),
-                ),
-            };
+                    _ => continue,
+                };
 
             let render_pipeline =
                 dynamic_renderer
@@ -761,7 +767,7 @@ impl<Event> Renderer<Event> {
         let shadow_baker = ShadowBaker::new(
             &adapter,
             &dynamic_renderer.device,
-            dynamic_renderer.rendered_entity.entities.len(),
+            mesh_length,
             &scene,
             renderer_builder.states,
         );
@@ -898,38 +904,52 @@ impl<Event> Renderer<Event> {
                         );
                     }
 
-                    for (i, entity) in rendered_entity.entities.iter().enumerate() {
-                        rpass.set_pipeline(
-                            self.shadow_baker
-                                .render_pipelines
-                                .get(&entity.state)
-                                .expect("Specified renderer state is not found"),
-                        );
-
-                        let meta = rendered_entity
-                            .meta_list
-                            .get(i)
-                            .expect("The length of meta_list must match with entities");
-
-                        self.prepare_shadow_entity(entity, meta);
-                        rpass.set_bind_group(
-                            1,
-                            &self.shadow_baker.entity.entity_bind_group,
-                            &[meta.uniform_offset as u32],
-                        );
-
-                        rpass.set_vertex_buffer(0, meta.vertex_buf.slice(..));
-                        match &meta.index_buf {
-                            Some(index_buf) => {
-                                rpass.set_index_buffer(
-                                    index_buf.slice(..),
-                                    wgpu::IndexFormat::Uint16,
-                                );
-                                rpass.draw_indexed(0..meta.index_length, 0, 0..1);
+                    let mut i = 0;
+                    traverse_entities_with_transform(
+                        &rendered_entity.entities,
+                        &Transform::default(),
+                        &mut |entity, transform| {
+                            if entity.state.mesh_type.is_none() {
+                                i += 1;
+                                return;
                             }
-                            None => rpass.draw(0..meta.vertex_length, 0..1),
-                        }
-                    }
+
+                            rpass.set_pipeline(
+                                self.shadow_baker
+                                    .render_pipelines
+                                    .get(&entity.state)
+                                    .expect("Specified renderer state is not found"),
+                            );
+
+                            let meta = rendered_entity
+                                .meta_list
+                                .get(i)
+                                .expect("The length of meta_list must match with entities");
+
+                            i += 1;
+
+                            if let Some(meta) = meta {
+                                self.prepare_shadow_entity(entity, meta, transform);
+                                rpass.set_bind_group(
+                                    1,
+                                    &self.shadow_baker.entity.entity_bind_group,
+                                    &[meta.uniform_offset as u32],
+                                );
+
+                                rpass.set_vertex_buffer(0, meta.vertex_buf.slice(..));
+                                match &meta.index_buf {
+                                    Some(index_buf) => {
+                                        rpass.set_index_buffer(
+                                            index_buf.slice(..),
+                                            wgpu::IndexFormat::Uint16,
+                                        );
+                                        rpass.draw_indexed(0..meta.index_length, 0, 0..1);
+                                    }
+                                    None => rpass.draw(0..meta.vertex_length, 0..1),
+                                }
+                            }
+                        },
+                    );
                 }
             }
             encoder.pop_debug_group();
@@ -968,43 +988,55 @@ impl<Event> Renderer<Event> {
             rpass.set_bind_group(2, &self.scene.light_uniform.bind_group, &[]);
             rpass.set_bind_group(3, &self.scene.shadow_uniform.bind_group, &[]);
 
-            for (i, entity) in rendered_entity.entities.iter().enumerate() {
-                rpass.set_pipeline(
-                    self.render_pipelines
-                        .get(&entity.state)
-                        .expect("Specified renderer state is not found"),
-                );
-                let meta = rendered_entity
-                    .meta_list
-                    .get(i)
-                    .expect("The length of meta_list must match with entities");
+            let mut i = 0;
+            traverse_entities_with_transform(
+                &rendered_entity.entities,
+                &Transform::default(),
+                &mut |entity, transform| {
+                    if entity.state.mesh_type.is_none() {
+                        i += 1;
+                        return;
+                    }
 
-                self.prepare_entity(entity, meta);
-                rpass.set_bind_group(
-                    1,
-                    &rendered_entity.entity_bind_group,
-                    &[meta.uniform_offset as u32],
-                );
+                    rpass.set_pipeline(
+                        self.render_pipelines
+                            .get(&entity.state)
+                            .expect("Specified renderer state is not found"),
+                    );
+                    let meta = rendered_entity
+                        .meta_list
+                        .get(i)
+                        .expect("The length of meta_list must match with entities");
 
-                if let Some(rt) = &self.dynamic_renderer.rendered_texture {
-                    if let Some(texture_meta) = &meta.texture {
+                    i += 1;
+
+                    if let Some(meta) = meta {
+                        self.prepare_entity(entity, meta, transform);
+
                         rpass.set_bind_group(
-                            4,
-                            &rt.texture_bind_group,
-                            &[texture_meta.uniform_offset as u32],
+                            1,
+                            &rendered_entity.entity_bind_group,
+                            &[meta.uniform_offset as u32],
                         );
-                    }
-                }
 
-                rpass.set_vertex_buffer(0, meta.vertex_buf.slice(..));
-                match &meta.index_buf {
-                    Some(index_buf) => {
-                        rpass.set_index_buffer(index_buf.slice(..), wgpu::IndexFormat::Uint16);
-                        rpass.draw_indexed(0..meta.index_length, 0, 0..1);
+                        if let Some(rt) = &self.dynamic_renderer.rendered_texture {
+                            rpass.set_bind_group(4, &rt.texture_bind_group, &[]);
+                        }
+
+                        rpass.set_vertex_buffer(0, meta.vertex_buf.slice(..));
+                        match &meta.index_buf {
+                            Some(index_buf) => {
+                                rpass.set_index_buffer(
+                                    index_buf.slice(..),
+                                    wgpu::IndexFormat::Uint16,
+                                );
+                                rpass.draw_indexed(0..meta.index_length, 0, 0..1);
+                            }
+                            None => rpass.draw(0..meta.vertex_length, 0..1),
+                        }
                     }
-                    None => rpass.draw(0..meta.vertex_length, 0..1),
-                }
-            }
+                },
+            );
         }
         encoder.pop_debug_group();
 
@@ -1012,55 +1044,52 @@ impl<Event> Renderer<Event> {
         frame.present();
     }
 
-    fn prepare_entity(&self, entity: &Entity, meta: &RenderedEntityMeta) {
+    fn prepare_entity(&self, entity: &Entity, meta: &RenderedEntityMeta, transform: &Transform) {
         let renderer_entity = &self.dynamic_renderer.rendered_entity;
         let buf = EntityUniformBuffer {
-            transform: Mat4::from_scale_rotation_translation(
-                entity.dimension().as_glam(),
-                Quat::from_rotation_x(entity.rotation_x())
-                    .mul_quat(Quat::from_rotation_y(entity.rotation_y()))
-                    .mul_quat(Quat::from_rotation_z(entity.rotation_z())),
-                entity.position().as_glam(),
-            )
-            .to_cols_array_2d(),
-            color: rgba_to_array(entity.fill_color()),
-            reflection: Reflection::from_style(entity.reflection()),
+            transform: transform.as_mat4().to_cols_array_2d(),
+            color: rgba_to_array(&entity.fill_color),
+            reflection: Reflection::from_style(&entity.reflection),
+            tex_idx: entity.tex_idx.unwrap_or(-1),
+            padding: [0.; 3],
         };
+
         self.dynamic_renderer.queue.write_buffer(
             &renderer_entity.entity_uniform_buf,
             meta.uniform_offset,
             bytemuck::bytes_of(&buf),
         );
-
-        if let Some(rt) = &self.dynamic_renderer.rendered_texture {
-            if let Some(tex_meta) = &meta.texture {
-                self.dynamic_renderer.queue.write_buffer(
-                    &rt.texture_uniform_buf,
-                    tex_meta.uniform_offset,
-                    bytemuck::bytes_of(&tex_meta.tex_info),
-                );
-            };
-        }
     }
 
-    fn prepare_shadow_entity(&self, entity: &Entity, meta: &RenderedEntityMeta) {
+    fn prepare_shadow_entity(
+        &self,
+        entity: &Entity,
+        meta: &RenderedEntityMeta,
+        transform: &Transform,
+    ) {
         let renderer_entity = &self.shadow_baker.entity;
         let buf = EntityUniformBuffer {
-            transform: Mat4::from_scale_rotation_translation(
-                entity.dimension().as_glam(),
-                Quat::from_rotation_x(entity.rotation_x())
-                    .mul_quat(Quat::from_rotation_y(entity.rotation_y()))
-                    .mul_quat(Quat::from_rotation_z(entity.rotation_z())),
-                entity.position().as_glam(),
-            )
-            .to_cols_array_2d(),
-            color: rgba_to_array(entity.fill_color()),
-            reflection: Reflection::from_style(entity.reflection()),
+            transform: transform.as_mat4().to_cols_array_2d(),
+            color: rgba_to_array(&entity.fill_color),
+            reflection: Reflection::from_style(&entity.reflection),
+            tex_idx: entity.tex_idx.unwrap_or(-1),
+            padding: [0.; 3],
         };
         self.dynamic_renderer.queue.write_buffer(
             &renderer_entity.entity_uniform_buf,
             meta.uniform_offset,
             bytemuck::bytes_of(&buf),
         );
+    }
+}
+
+fn traverse_entities_with_transform<F>(entities: &[Entity], transform: &Transform, f: &mut F)
+where
+    F: FnMut(&Entity, &Transform),
+{
+    for entity in entities.iter() {
+        let transform = transform.mul(&entity.transform);
+        f(entity, &transform);
+        traverse_entities_with_transform(&entity.children, &transform, f)
     }
 }

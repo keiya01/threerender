@@ -1,15 +1,16 @@
 use std::rc::Rc;
 
 use examples_common::CustomEvent;
-use threerender::entity::{EntityDescriptor, EntityList, ReflectionStyle};
-use threerender::math::vec::Vec3;
+use threerender::color::rgb::{RGB, RGBA};
+use threerender::math::trs::{Rotation, Scale, Translation};
+use threerender::math::{Quat, Transform, Vec3};
 use threerender::mesh::EntityMesh;
 use threerender::mesh::{Plane, Sphere, Square};
 use threerender::renderer::Updater;
-use threerender::unit::{Rotation, Scale, Translation, RGB, RGBA};
+use threerender::traits::entity::{EntityDescriptor, ReflectionStyle};
 use threerender::{
-    CameraStyle, HemisphereLightStyle, LightBaseStyle, LightStyle, RendererBuilder, Scene,
-    ShadowOptions, ShadowStyle,
+    CameraStyle, EntityList, HemisphereLightStyle, LightBaseStyle, LightStyle, RendererBuilder,
+    Scene, ShadowOptions, ShadowStyle,
 };
 
 fn normalize(n: f32, v: f32) -> f32 {
@@ -53,12 +54,8 @@ impl Updater for App {
                     if self.prev_click_pos != (0., 0.) {
                         let distance_x = normalize((pos.x - self.prev_click_pos.0) as f32, -0.03);
                         let distance_y = normalize((pos.y - self.prev_click_pos.1) as f32, 0.3);
-                        let prev_rotate_y = scene.camera().position.rotation_y();
                         let prev_translate_y = scene.camera().position.translation_y();
-                        scene
-                            .camera_mut()
-                            .position_mut()
-                            .rotate_y(prev_rotate_y + distance_x);
+                        scene.camera_mut().position_mut().rotate_y(distance_x);
                         scene
                             .camera_mut()
                             .position_mut()
@@ -83,13 +80,11 @@ impl Updater for App {
 
         for entity in entity_list.items_mut() {
             // Rotate square
-            if entity.id() == "square1" {
-                let prev = entity.rotation_z();
-                entity.rotate_z(prev + 0.01);
+            if entity.id == "square1" {
+                entity.rotate_z(0.01);
             }
-            if entity.id() == "square2" {
-                let prev = entity.rotation_y();
-                entity.rotate_y(prev + 0.01);
+            if entity.id == "square2" {
+                entity.rotate_y(0.01);
             }
         }
     }
@@ -150,63 +145,75 @@ fn main() {
         Vec3::new(0., 1., 0.),
     ));
 
-    let plane = Plane::new([0, 1, 0]);
+    let plane = Plane::new([0, 1, 0], None);
     let plane = Rc::new(plane.use_entity());
     renderer_builder.push(EntityDescriptor {
         id: "plane".to_owned(),
-        mesh: plane,
+        mesh: Some(plane),
         fill_color: RGBA::new(163, 104, 64, 255),
-        position: Vec3::new(-3., -2., -3.),
-        dimension: Vec3::new(30., 30., 30.),
-        rotation: Vec3::new(0., -1., 0.),
+        transform: Transform::from_translation_rotation_scale(
+            Vec3::new(-3., -2., -3.),
+            Quat::from_axis_angle(0., -1., 0., 1.),
+            Vec3::new(30., 30., 30.),
+        ),
         state: Default::default(),
         reflection: Default::default(),
+        children: vec![],
     });
-    let sphere = Sphere::new(50, 50);
+    let sphere = Sphere::new(50, 50, None);
     let sphere = Rc::new(sphere.use_entity());
     renderer_builder.push(EntityDescriptor {
         id: "sphere".to_owned(),
-        mesh: sphere,
+        mesh: Some(sphere),
         fill_color: RGBA::new(255, 25, 255, 255),
-        position: Vec3::ZERO,
-        dimension: Vec3::ONE,
-        rotation: Vec3::ZERO,
+        transform: Transform::from_translation_rotation_scale(
+            Vec3::ZERO,
+            Quat::default(),
+            Vec3::ONE,
+        ),
         state: Default::default(),
         reflection: ReflectionStyle {
-            brightness: 10.,
-            shininess: 100.,
+            brightness: 1.,
+            shininess: 10.,
             specular: 1.,
         },
+        children: vec![],
     });
-    let square = Square::new();
+    let square = Square::new(None);
     let square = Rc::new(square.use_entity());
     renderer_builder.push(EntityDescriptor {
         id: "square1".to_owned(),
-        mesh: square.clone(),
+        mesh: Some(square.clone()),
         fill_color: RGBA::new(0, 255, 0, 255),
-        position: Vec3::new(0., 0., -3.),
-        dimension: Vec3::ONE,
-        rotation: Vec3::ZERO,
+        transform: Transform::from_translation_rotation_scale(
+            Vec3::new(0., 0., -3.),
+            Quat::default(),
+            Vec3::ONE,
+        ),
         state: Default::default(),
         reflection: ReflectionStyle {
             brightness: 10.,
             shininess: 100.,
             specular: 1.,
         },
+        children: vec![],
     });
     renderer_builder.push(EntityDescriptor {
         id: "square2".to_owned(),
-        mesh: square,
+        mesh: Some(square),
         fill_color: RGBA::new(255, 0, 0, 255),
-        position: Vec3::new(-3., 0., -1.),
-        dimension: Vec3::ONE,
-        rotation: Vec3::ZERO,
+        transform: Transform::from_translation_rotation_scale(
+            Vec3::new(-3., 0., -1.),
+            Quat::default(),
+            Vec3::ONE,
+        ),
         state: Default::default(),
         reflection: ReflectionStyle {
             brightness: 0.,
             shininess: 0.,
             specular: 0.1,
         },
+        children: vec![],
     });
 
     examples_common::start(

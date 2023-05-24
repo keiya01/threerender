@@ -21,13 +21,8 @@ pub enum MeshType {
     Texture,
 }
 
+#[derive(Debug, Clone)]
 pub enum TextureFormat {
-    RGBA,
-}
-
-pub struct TextureDescriptor {
-    pub width: u32,
-    pub height: u32,
-    pub format: TextureFormat,
-    pub data: Vec<u8>,
+    Rgba8,
+    Rgba16,
 }

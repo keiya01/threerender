@@ -1,17 +1,12 @@
 use std::f32::consts;
 
-use crate::{
-    math::vec::Vec3,
-    unit::{Rotation, Scale},
-};
+use crate::math::{Affine3A, Mat4, Quat, Vec3};
 use getset::{Getters, MutGetters, Setters};
-use glam::{Affine3A, Mat4, Quat};
-
-use crate::unit::Translation;
+use threerender_math::trs::{Rotation, Scale, Translation};
 
 pub struct CameraPosition {
     pub(crate) translation: Vec3,
-    pub(crate) rotation: Vec3,
+    pub(crate) rotation: Quat,
     pub(crate) scale: Vec3,
 }
 
@@ -19,7 +14,7 @@ impl CameraPosition {
     pub fn new(x: f32, y: f32, z: f32) -> Self {
         Self {
             translation: Vec3::new(x, y, z),
-            rotation: Vec3::ZERO,
+            rotation: Quat::default(),
             scale: Vec3::ONE,
         }
     }
@@ -28,7 +23,7 @@ impl Default for CameraPosition {
     fn default() -> Self {
         Self {
             translation: Vec3::ZERO,
-            rotation: Vec3::ZERO,
+            rotation: Quat::default(),
             scale: Vec3::ONE,
         }
     }
@@ -43,10 +38,10 @@ impl Translation for CameraPosition {
 }
 
 impl Rotation for CameraPosition {
-    fn rotation(&self) -> &Vec3 {
+    fn rotation(&self) -> &Quat {
         &self.rotation
     }
-    fn rotation_mut(&mut self) -> &mut Vec3 {
+    fn rotation_mut(&mut self) -> &mut Quat {
         &mut self.rotation
     }
 }
@@ -137,9 +132,7 @@ impl CameraStyle {
     pub(crate) fn calc_position_vec3(&self) -> Vec3 {
         let v = Affine3A::from_scale_rotation_translation(
             self.position.scale.as_glam(),
-            Quat::from_rotation_x(self.position.rotation.x)
-                .mul_quat(Quat::from_rotation_y(self.position.rotation.y))
-                .mul_quat(Quat::from_rotation_z(self.position.rotation.z)),
+            self.position.rotation.as_glam(),
             self.position.translation.as_glam(),
         )
         .transform_vector3(self.position.translation.as_glam());

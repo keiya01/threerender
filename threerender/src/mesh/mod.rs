@@ -1,4 +1,4 @@
 pub use threerender_traits::mesh::*;
 
-#[cfg(feature = "builtin_entities")]
+#[cfg(feature = "entities")]
 pub use threerender_entities::*;

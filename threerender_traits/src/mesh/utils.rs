@@ -1,11 +1,11 @@
 use bytemuck::{Pod, Zeroable};
-use threerender_math::vec::Vec3;
+use threerender_math::Vec3;
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, Pod, Zeroable)]
 pub struct Vertex {
-    pos: [f32; 4],
-    normal: [f32; 3],
+    pub pos: [f32; 4],
+    pub normal: [f32; 3],
 }
 
 impl Vertex {
@@ -22,7 +22,7 @@ pub fn vertex(pos: [f32; 4], normal: [f32; 3]) -> Vertex {
 }
 
 #[repr(C)]
-#[derive(Clone, Copy, Pod, Zeroable)]
+#[derive(Debug, Clone, Copy, Pod, Zeroable)]
 pub struct TextureVertex {
     pos: [f32; 4],
     normal: [f32; 3],

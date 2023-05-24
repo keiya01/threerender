@@ -64,6 +64,6 @@ cargo run -p examples_{PROJECT_NAME}
     - [ ] Level of details for polygon(LOD)
 - [ ] Font
 - [ ] Integration with 2D library like egui
-- [ ] Web support
+- [ ] Web support / Node.js support(native binding)
 - [ ] Convenient Math API for 3D development
 - [ ] OpenGL Support

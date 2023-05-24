@@ -3,13 +3,13 @@ use std::rc::Rc;
 use examples_common::CustomEvent;
 use rand::rngs::ThreadRng;
 use rand::{thread_rng, Rng};
-use threerender::entity::{EntityDescriptor, EntityList};
-use threerender::math::vec::Vec3;
+use threerender::color::rgb::RGBA;
+use threerender::math::{Quat, Transform, Vec3};
 use threerender::mesh::Sphere;
 use threerender::mesh::{EntityMesh, Mesh};
 use threerender::renderer::Updater;
-use threerender::unit::RGBA;
-use threerender::{CameraStyle, LightBaseStyle, LightStyle, RendererBuilder, Scene};
+use threerender::traits::entity::EntityDescriptor;
+use threerender::{CameraStyle, EntityList, LightBaseStyle, LightStyle, RendererBuilder, Scene};
 
 struct App {
     sphere: Rc<Mesh>,
@@ -29,13 +29,16 @@ impl Updater for App {
             let (r, g, b) = ((255. / x) as u8, (255. / y) as u8, (255. / z) as u8);
             entity_list.push(EntityDescriptor {
                 id: format!("sphere{}", entity_list.items().len()),
-                mesh: self.sphere.clone(),
+                mesh: Some(self.sphere.clone()),
                 fill_color: RGBA::new(r, g, b, 255),
-                position: Vec3::new(x, y, z),
-                dimension: Vec3::ONE,
-                rotation: Vec3::ZERO,
+                transform: Transform::from_translation_rotation_scale(
+                    Vec3::new(x, y, z),
+                    Quat::default(),
+                    Vec3::ONE,
+                ),
                 state: Default::default(),
                 reflection: Default::default(),
+                children: vec![],
             })
         }
     }
@@ -59,17 +62,20 @@ fn main() {
         None,
     ));
 
-    let sphere = Sphere::new(50, 50);
+    let sphere = Sphere::new(50, 50, None);
     let sphere = Rc::new(sphere.use_entity());
     renderer_builder.push(EntityDescriptor {
         id: "sphere".to_owned(),
-        mesh: sphere.clone(),
+        mesh: Some(sphere.clone()),
         fill_color: RGBA::new(255, 255, 255, 255),
-        position: Vec3::ZERO,
-        dimension: Vec3::ONE,
-        rotation: Vec3::ZERO,
+        transform: Transform::from_translation_rotation_scale(
+            Vec3::ZERO,
+            Quat::default(),
+            Vec3::ONE,
+        ),
         state: Default::default(),
         reflection: Default::default(),
+        children: vec![],
     });
 
     let rng = thread_rng();

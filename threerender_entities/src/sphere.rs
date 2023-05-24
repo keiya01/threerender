@@ -1,10 +1,12 @@
 use std::f32::consts::PI;
 use threerender_traits::mesh::{
-    texture, texture_vertex, vertex, EntityMesh, Mesh, TextureDescriptor, TextureFormat,
-    TextureMesh, TextureVertex, Vertex,
+    texture, texture_vertex, vertex, EntityMesh, Mesh, TextureFormat, TextureMesh, TextureVertex,
+    Vertex,
 };
 
-#[derive(Default)]
+use crate::TextureDescriptor;
+
+#[derive(Default, Debug)]
 pub struct Sphere {
     vertex: Option<Vec<Vertex>>,
     index: Option<Vec<u16>>,
@@ -17,11 +19,11 @@ pub struct Sphere {
 }
 
 impl Sphere {
-    pub fn new(slices: u16, stacks: u16) -> Self {
+    pub fn new(slices: u16, stacks: u16, texture_descriptor: Option<TextureDescriptor>) -> Self {
         Self {
             vertex: None,
             index: None,
-            texture_descriptor: None,
+            texture_descriptor,
             texture: None,
             slices,
             stacks,
@@ -154,11 +156,10 @@ impl TextureMesh for Sphere {
         &self.texture_descriptor.as_ref().unwrap().data
     }
 
-    fn use_texture(mut self, descriptor: TextureDescriptor) -> Mesh {
+    fn use_texture(mut self) -> Mesh {
         let (vertex, index) = self.make_texture_data();
         self.texture = Some(vertex);
         self.index = Some(index);
-        self.texture_descriptor = Some(descriptor);
         Mesh::Texture(Box::new(self))
     }
 }
