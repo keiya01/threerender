@@ -1,4 +1,4 @@
-use std::f32::consts::PI;
+use std::{f32::consts::PI, rc::Rc};
 use threerender_traits::mesh::{
     texture, texture_vertex, vertex, EntityMesh, Mesh, TextureFormat, TextureMesh, TextureVertex,
     Vertex,
@@ -135,7 +135,7 @@ impl EntityMesh for Sphere {
         let (vertex, index) = self.make_data();
         self.vertex = Some(vertex);
         self.index = Some(index);
-        Mesh::Entity(Box::new(self))
+        Mesh::Entity(Rc::new(self))
     }
 }
 
@@ -160,6 +160,6 @@ impl TextureMesh for Sphere {
         let (vertex, index) = self.make_texture_data();
         self.texture = Some(vertex);
         self.index = Some(index);
-        Mesh::Texture(Box::new(self))
+        Mesh::Texture(Rc::new(self))
     }
 }

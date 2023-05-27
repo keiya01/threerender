@@ -4,6 +4,7 @@ use crate::fetcher::err::FetcherError;
 
 pub type Buffer = Vec<u8>;
 
+/// A trait to handle I/O process.
 pub trait GltfFetcher {
     fn fetch(&self, uri: &str) -> Result<Buffer, FetcherError>;
     fn parse_data_url(&self, uri: &str) -> Result<Buffer, FetcherError>;
@@ -12,6 +13,7 @@ pub trait GltfFetcher {
     }
 }
 
+/// A trait to retrieve necessary image information.
 pub trait GltfImage {
     fn width(&self) -> u32;
     fn height(&self) -> u32;

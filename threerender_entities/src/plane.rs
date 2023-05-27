@@ -1,4 +1,4 @@
-use std::mem;
+use std::{mem, rc::Rc};
 
 use threerender_traits::mesh::{
     texture, texture_vertex, vertex, EntityMesh, Mesh, TextureFormat, TextureMesh, TextureVertex,
@@ -51,7 +51,7 @@ impl EntityMesh for Plane {
     }
 
     fn use_entity(self) -> Mesh {
-        Mesh::Entity(Box::new(self))
+        Mesh::Entity(Rc::new(self))
     }
 }
 
@@ -91,6 +91,6 @@ impl TextureMesh for Plane {
 
         self.texture = Some(tex_vert);
 
-        Mesh::Texture(Box::new(self))
+        Mesh::Texture(Rc::new(self))
     }
 }

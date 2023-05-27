@@ -1,4 +1,4 @@
-use std::{mem, rc::Rc};
+use std::rc::Rc;
 
 use anyhow::Result;
 use gltf::mesh::util::{ReadIndices, ReadTexCoords};
@@ -15,6 +15,7 @@ use threerender_traits::{
 use super::{
     err::GltfError,
     fetcher::{Buffer, GltfFetcher},
+    GltfHandler,
 };
 
 #[derive(Debug, Clone)]
@@ -35,6 +36,22 @@ impl GltfMesh {
             textures: None,
             material: None,
         }
+    }
+
+    fn prepare_textures(&mut self) {
+        let tex_coords = match &self.tex_coords {
+            Some(c) => c,
+            None => return,
+        };
+
+        let mut tex_vert = vec![];
+
+        for (idx, vert) in self.vertices.iter().enumerate() {
+            let tex = tex_coords.get(idx).expect("`texs` length is incorrect");
+            tex_vert.push(texture_vertex(*vert, *tex));
+        }
+
+        self.textures = Some(tex_vert);
     }
 }
 
@@ -95,24 +112,6 @@ impl TextureMesh for GltfMesh {
             .unwrap()
             .data
     }
-    fn use_texture(mut self) -> Mesh {
-        let mut tex_vert = vec![];
-
-        let verts = mem::take(&mut self.vertices);
-        for (idx, vert) in verts.into_iter().enumerate() {
-            let tex = *self
-                .tex_coords
-                .as_ref()
-                .unwrap()
-                .get(idx)
-                .expect("`texs` length is incorrect");
-            tex_vert.push(texture_vertex(vert, tex));
-        }
-
-        self.textures = Some(tex_vert);
-
-        Mesh::Texture(Box::new(self))
-    }
 }
 
 pub struct GltfLoader {
@@ -120,17 +119,29 @@ pub struct GltfLoader {
 }
 
 impl GltfLoader {
-    pub fn from_byte<F>(name: &str, bytes: &[u8], fetcher: F) -> Result<Self, GltfError>
+    pub fn from_byte<F, H>(
+        name: &str,
+        bytes: &[u8],
+        fetcher: F,
+        handler: H,
+    ) -> Result<Self, GltfError>
     where
         F: GltfFetcher,
+        H: GltfHandler,
     {
-        Self::load(name, gltf::Gltf::from_slice(bytes)?, fetcher)
+        Self::load(name, gltf::Gltf::from_slice(bytes)?, fetcher, handler)
     }
 
     // TODO: Support animation, material, skin, camera and so on.
-    fn load<F>(name: &str, data: gltf::Gltf, mut fetcher: F) -> Result<Self, GltfError>
+    fn load<F, H>(
+        name: &str,
+        data: gltf::Gltf,
+        mut fetcher: F,
+        handler: H,
+    ) -> Result<Self, GltfError>
     where
         F: GltfFetcher,
+        H: GltfHandler,
     {
         let buffers = Self::load_buffers(&data, &fetcher)?;
         let mut temp_meshes = vec![];
@@ -249,9 +260,11 @@ impl GltfLoader {
                     .material()
                     .index()
                     .and_then(|i| materials.get(i).cloned());
+
+                entity.prepare_textures();
             }
 
-            temp_meshes.push(entity);
+            temp_meshes.push(Rc::new(entity));
         }
 
         // Flatting glTF children of node with mesh index.
@@ -266,10 +279,10 @@ impl GltfLoader {
             entities
         }
 
-        let f = |node: &gltf::Node, children: Vec<EntityDescriptor>| {
-            let mesh = node.mesh();
-            let node_idx = node.index();
-            let node = GltfNode::from_node(node);
+        let f = |row_node: &gltf::Node, children: Vec<EntityDescriptor>| {
+            let mesh = row_node.mesh();
+            let node_idx = row_node.index();
+            let node = GltfNode::from_node(row_node);
             match mesh {
                 Some(mesh) => {
                     let mesh_idx = mesh.index();
@@ -282,13 +295,13 @@ impl GltfLoader {
                         .material
                         .as_ref()
                         .map_or_else(Default::default, |m| (m.base_color));
-                    let is_tex = mesh.tex_coords.is_some();
-                    EntityDescriptor {
+                    let is_tex: bool = mesh.tex_coords.is_some();
+                    let mut desc = EntityDescriptor {
                         id: format!("{name}:{node_idx}"),
-                        mesh: Some(Rc::new(match mesh.tex_coords {
-                            Some(ref coords) if !coords.is_empty() => mesh.use_texture(),
-                            _ => mesh.use_entity(),
-                        })),
+                        mesh: Some(match mesh.tex_coords {
+                            Some(ref coords) if !coords.is_empty() => Mesh::Texture(mesh.clone()),
+                            _ => Mesh::Entity(mesh.clone()),
+                        }),
                         fill_color: RGBA::from_f32(color[0], color[1], color[2], color[3]),
                         transform: node.local_transform,
                         reflection: ReflectionStyle::default(),
@@ -301,17 +314,23 @@ impl GltfLoader {
                             }),
                             ..Default::default()
                         },
-                    }
+                    };
+                    handler.on_create(&mut desc, Some(&mesh), row_node);
+                    desc
                 }
-                None => EntityDescriptor {
-                    id: format!("{name}:{node_idx}"),
-                    mesh: None,
-                    fill_color: RGBA::default(),
-                    transform: node.local_transform,
-                    reflection: ReflectionStyle::default(),
-                    children,
-                    state: EntityRendererState::default(),
-                },
+                None => {
+                    let mut desc = EntityDescriptor {
+                        id: format!("{name}:{node_idx}"),
+                        mesh: None,
+                        fill_color: RGBA::default(),
+                        transform: node.local_transform,
+                        reflection: ReflectionStyle::default(),
+                        children,
+                        state: EntityRendererState::default(),
+                    };
+                    handler.on_create(&mut desc, None, row_node);
+                    desc
+                }
             }
         };
 
@@ -327,6 +346,7 @@ impl GltfLoader {
                 children: search_node(scene.nodes().collect(), &f),
                 state: EntityRendererState::default(),
             });
+            handler.after_root(&mut entities, &scene);
         }
 
         Ok(Self { entities })
@@ -371,6 +391,8 @@ pub struct MaterialTextureDescriptor {
 pub struct Material {
     pub base_color: [f32; 4],
     pub base_color_texture: Option<MaterialTextureDescriptor>,
+    pub metalness: f32,
+    pub roughness: f32,
 }
 
 impl Material {
@@ -414,9 +436,14 @@ impl Material {
             None => None,
         };
 
+        let metalness = pbr.metallic_factor();
+        let roughness = pbr.roughness_factor();
+
         Ok(Self {
             base_color: color,
             base_color_texture,
+            metalness,
+            roughness,
         })
     }
 }

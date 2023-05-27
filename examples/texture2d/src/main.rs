@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use examples_common::CustomEvent;
 use image::EncodableLayout;
 use threerender::color::rgb::RGBA;
@@ -59,7 +57,7 @@ fn main() {
     ));
 
     let plane = Plane::new([0, 1, 0], None);
-    let plane = Rc::new(plane.use_entity());
+    let plane = plane.use_entity();
     renderer_builder.push(EntityDescriptor {
         id: "plane".to_owned(),
         mesh: Some(plane),
@@ -84,7 +82,7 @@ fn main() {
         format: TextureFormat::Rgba8,
         data: im.as_bytes().to_vec(),
     }));
-    let square = Rc::new(square.use_texture());
+    let square = square.use_texture();
     renderer_builder.push(EntityDescriptor {
         id: "square".to_owned(),
         mesh: Some(square),
@@ -108,7 +106,7 @@ fn main() {
             data: im.as_bytes().to_vec(),
         }),
     );
-    let plane = Rc::new(plane.use_texture());
+    let plane = plane.use_texture();
     renderer_builder.push(EntityDescriptor {
         id: "plane".to_owned(),
         mesh: Some(plane),
@@ -137,7 +135,7 @@ fn main() {
             data: globe_im.as_bytes().to_vec(),
         }),
     );
-    let sphere = Rc::new(sphere.use_texture());
+    let sphere = sphere.use_texture();
     renderer_builder.push(EntityDescriptor {
         id: "sphere".to_owned(),
         mesh: Some(sphere),

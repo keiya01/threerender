@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use threerender_math::Vec3;
 use threerender_traits::mesh::{EntityMesh, Mesh, Topology, Vertex};
 
@@ -52,6 +54,6 @@ impl EntityMesh for Line {
     }
 
     fn use_entity(self) -> Mesh {
-        Mesh::Entity(Box::new(self))
+        Mesh::Entity(Rc::new(self))
     }
 }

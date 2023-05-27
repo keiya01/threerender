@@ -23,6 +23,7 @@ impl DefaultFileSystemBasedFetcher {
 impl LoaderFetcher for DefaultFileSystemBasedFetcher {}
 
 impl GltfFetcher for DefaultFileSystemBasedFetcher {
+    /// Read data from specified path
     fn fetch(&self, uri: &str) -> Result<crate::gltf::fetcher::Buffer, FetcherError> {
         let path = Path::new(&self.resolve_path).join(uri);
         let mut f = File::open(path)?;
@@ -33,6 +34,7 @@ impl GltfFetcher for DefaultFileSystemBasedFetcher {
         Ok(buf)
     }
 
+    /// Parse and read Data URLs protocol
     fn parse_data_url(&self, uri: &str) -> Result<crate::gltf::fetcher::Buffer, FetcherError> {
         let uri = percent_encoding::percent_decode_str(uri)
             .decode_utf8()
@@ -73,6 +75,7 @@ impl GltfFetcher for DefaultFileSystemBasedFetcher {
         }
     }
 
+    /// Load the exact image buffer from the data buffer.
     fn load_image(&mut self, buf: Buffer) -> Result<Box<dyn GltfImage>, FetcherError> {
         let img = image::load_from_memory(&buf)?;
         Ok(Box::new(Image::from_image(img)))

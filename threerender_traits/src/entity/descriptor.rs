@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use getset::{Getters, MutGetters, Setters};
 use threerender_color::rgb::RGBA;
 use threerender_math::Transform;
@@ -10,7 +8,7 @@ use crate::mesh::{Mesh, MeshType, PolygonMode, Topology};
 #[derive(Debug, Clone)]
 pub struct EntityDescriptor {
     pub id: String,
-    pub mesh: Option<Rc<Mesh>>,
+    pub mesh: Option<Mesh>,
     pub fill_color: RGBA,
     pub transform: Transform,
     pub reflection: ReflectionStyle,
@@ -56,7 +54,7 @@ impl EntityDescriptor {
         match self.state.mesh_type {
             Some(_) => {}
             None => {
-                self.state.mesh_type = match self.mesh.as_deref() {
+                self.state.mesh_type = match self.mesh {
                     Some(Mesh::Entity(_)) => Some(MeshType::Entity),
                     Some(Mesh::Texture(_)) => Some(MeshType::Texture),
                     _ => None,
@@ -94,25 +92,21 @@ impl Eq for EntityRendererState {}
 
 #[derive(Debug, Clone, Getters, MutGetters, Setters)]
 pub struct ReflectionStyle {
-    pub brightness: f32,
-    pub shininess: f32,
+    pub intensity: f32,
     pub specular: f32,
 }
 
 impl Default for ReflectionStyle {
     fn default() -> Self {
         Self {
-            brightness: 0.,
-            shininess: 0.,
-            specular: 1.,
+            intensity: 0.,
+            specular: 0.,
         }
     }
 }
 
 #[cfg(test)]
 mod test {
-    use std::rc::Rc;
-
     use threerender_color::rgb::RGBA;
 
     use crate::mesh::{DefaultMesh, EntityMesh};
@@ -135,7 +129,7 @@ mod test {
     fn test_recursive_count() {
         let mut descriptor = EntityDescriptor {
             id: "".to_string(),
-            mesh: Some(Rc::new(DefaultMesh.use_entity())),
+            mesh: Some(DefaultMesh.use_entity()),
             fill_color: RGBA::default(),
             transform: Default::default(),
             reflection: super::ReflectionStyle::default(),

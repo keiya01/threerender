@@ -384,7 +384,7 @@ impl DynamicRenderer {
                     let (vertex_buf, index_buf, vertex_length) =
                         RenderedEntity::make_entity(&mesh, device);
 
-                    let tex_idx_for_entity = if let Mesh::Texture(texture_mesh) = mesh.as_ref() {
+                    let tex_idx_for_entity = if let Mesh::Texture(texture_mesh) = &mesh {
                         let (sampler, view) =
                             RenderedTexture::make_texture(texture_mesh.as_ref(), device, queue);
 
@@ -468,7 +468,7 @@ impl DynamicRenderer {
                     let (vertex_buf, index_buf, vertex_length) =
                         RenderedEntity::make_entity(&mesh, &self.device);
 
-                    let tex_idx = if let Mesh::Texture(texture_mesh) = mesh.as_ref() {
+                    let tex_idx = if let Mesh::Texture(texture_mesh) = &mesh {
                         RenderedTexture::create_or_update(
                             texture_mesh.as_ref(),
                             &self.device,

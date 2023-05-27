@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use examples_common::CustomEvent;
 use threerender::color::rgb::RGBA;
 use threerender::math::trs::Rotation;
@@ -73,10 +71,11 @@ fn main() {
     ];
 
     let lines = Line::new(points);
-    let lines = Rc::new(lines.use_entity());
+    let lines = lines.use_entity();
+    let topology = lines.topology();
     renderer_builder.push(EntityDescriptor {
         id: "lines".to_owned(),
-        mesh: Some(lines.clone()),
+        mesh: Some(lines),
         fill_color: RGBA::new(255, 0, 0, 255),
         transform: Transform::from_translation_rotation_scale(
             Vec3::new(0., 0., 0.),
@@ -84,7 +83,7 @@ fn main() {
             Vec3::ONE,
         ),
         state: EntityRendererState {
-            topology: lines.topology(),
+            topology,
             ..Default::default()
         },
         reflection: Default::default(),
@@ -101,10 +100,11 @@ fn main() {
     }
 
     let points = Point::new(circles);
-    let points = Rc::new(points.use_entity());
+    let points = points.use_entity();
+    let topology = points.topology();
     renderer_builder.push(EntityDescriptor {
         id: "circle".to_owned(),
-        mesh: Some(points.clone()),
+        mesh: Some(points),
         fill_color: RGBA::new(0, 0, 0, 255),
         transform: Transform::from_translation_rotation_scale(
             Vec3::new(0., 0., 0.),
@@ -112,7 +112,7 @@ fn main() {
             Vec3::ONE,
         ),
         state: EntityRendererState {
-            topology: points.topology(),
+            topology,
             ..Default::default()
         },
         reflection: Default::default(),

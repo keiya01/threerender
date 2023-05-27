@@ -108,7 +108,7 @@ fn fs_main(vertex: VertexOutput) -> @location(0) vec4<f32> {
             if ulight.model == 1u {
                 let light = calc_directional_light(world_normal, vertex.local_position, vertex.normal, ulight);
 
-                let reflection = calc_reflection(camera_position, vertex.local_position, world_normal, ulight.position, entity.reflection);
+                let reflection = calc_specular_reflection(camera_position, vertex.local_position, world_normal, ulight.position, entity.reflection);
 
                 // shadow
                 if ulight.shadow.use_shadow == 1u {

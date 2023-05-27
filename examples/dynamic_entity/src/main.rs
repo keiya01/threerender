@@ -5,14 +5,14 @@ use rand::rngs::ThreadRng;
 use rand::{thread_rng, Rng};
 use threerender::color::rgb::RGBA;
 use threerender::math::{Quat, Transform, Vec3};
+use threerender::mesh::Mesh;
 use threerender::mesh::Sphere;
-use threerender::mesh::{EntityMesh, Mesh};
 use threerender::renderer::Updater;
 use threerender::traits::entity::EntityDescriptor;
 use threerender::{CameraStyle, EntityList, LightBaseStyle, LightStyle, RendererBuilder, Scene};
 
 struct App {
-    sphere: Rc<Mesh>,
+    sphere: Mesh,
     rng: ThreadRng,
 }
 
@@ -62,8 +62,8 @@ fn main() {
         None,
     ));
 
-    let sphere = Sphere::new(50, 50, None);
-    let sphere = Rc::new(sphere.use_entity());
+    let sphere = Rc::new(Sphere::new(50, 50, None));
+    let sphere = Mesh::Entity(sphere);
     renderer_builder.push(EntityDescriptor {
         id: "sphere".to_owned(),
         mesh: Some(sphere.clone()),

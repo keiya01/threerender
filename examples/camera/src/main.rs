@@ -4,7 +4,7 @@ use examples_common::CustomEvent;
 use threerender::color::rgb::{RGB, RGBA};
 use threerender::math::trs::{Rotation, Scale, Translation};
 use threerender::math::{Quat, Transform, Vec3};
-use threerender::mesh::EntityMesh;
+use threerender::mesh::{EntityMesh, Mesh};
 use threerender::mesh::{Plane, Sphere, Square};
 use threerender::renderer::Updater;
 use threerender::traits::entity::{EntityDescriptor, ReflectionStyle};
@@ -146,7 +146,7 @@ fn main() {
     ));
 
     let plane = Plane::new([0, 1, 0], None);
-    let plane = Rc::new(plane.use_entity());
+    let plane = plane.use_entity();
     renderer_builder.push(EntityDescriptor {
         id: "plane".to_owned(),
         mesh: Some(plane),
@@ -161,7 +161,7 @@ fn main() {
         children: vec![],
     });
     let sphere = Sphere::new(50, 50, None);
-    let sphere = Rc::new(sphere.use_entity());
+    let sphere = sphere.use_entity();
     renderer_builder.push(EntityDescriptor {
         id: "sphere".to_owned(),
         mesh: Some(sphere),
@@ -173,14 +173,13 @@ fn main() {
         ),
         state: Default::default(),
         reflection: ReflectionStyle {
-            brightness: 1.,
-            shininess: 10.,
-            specular: 1.,
+            specular: 10.,
+            intensity: 100.,
         },
         children: vec![],
     });
     let square = Square::new(None);
-    let square = Rc::new(square.use_entity());
+    let square = Mesh::Entity(Rc::new(square));
     renderer_builder.push(EntityDescriptor {
         id: "square1".to_owned(),
         mesh: Some(square.clone()),
@@ -192,9 +191,8 @@ fn main() {
         ),
         state: Default::default(),
         reflection: ReflectionStyle {
-            brightness: 10.,
-            shininess: 100.,
-            specular: 1.,
+            specular: 10.,
+            intensity: 100.,
         },
         children: vec![],
     });
@@ -209,9 +207,8 @@ fn main() {
         ),
         state: Default::default(),
         reflection: ReflectionStyle {
-            brightness: 0.,
-            shininess: 0.,
-            specular: 0.1,
+            intensity: 0.,
+            specular: 0.,
         },
         children: vec![],
     });

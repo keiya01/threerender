@@ -16,22 +16,18 @@ use super::unit::rgb_to_array;
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
 pub struct Reflection {
-    brightness: f32,
-    shininess: f32,
+    intensity: f32,
     specular: f32,
-    _padding1: [f32; 4],
-    _padding2: [f32; 1],
+    _padding: [f32; 2],
 }
 
 impl Reflection {
     pub(super) fn from_style(style: &ReflectionStyle) -> Self {
         let reflection = style;
         Self {
-            brightness: reflection.brightness,
-            shininess: reflection.shininess,
-            specular: reflection.shininess,
-            _padding1: [0., 0., 0., 0.],
-            _padding2: [0.],
+            intensity: reflection.intensity,
+            specular: reflection.specular,
+            _padding: [0., 0.],
         }
     }
 }

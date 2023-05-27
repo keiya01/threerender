@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use examples_common::CustomEvent;
 use threerender::color::rgb::RGBA;
 use threerender::math::trs::{Rotation, Scale};
@@ -102,7 +100,7 @@ fn main() {
     ));
 
     let sphere = Sphere::new(50, 50, None);
-    let sphere = Rc::new(sphere.use_entity());
+    let sphere = sphere.use_entity();
     renderer_builder.push(EntityDescriptor {
         id: "sphere".to_owned(),
         mesh: Some(sphere),
@@ -117,7 +115,7 @@ fn main() {
         children: vec![],
     });
     let square = Square::new(None);
-    let square = Rc::new(square.use_entity());
+    let square = square.use_entity();
     renderer_builder.push(EntityDescriptor {
         id: "square1".to_owned(),
         mesh: Some(square.clone()),

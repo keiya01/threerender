@@ -1,5 +1,4 @@
 use std::fs::canonicalize;
-use std::rc::Rc;
 
 use examples_common::CustomEvent;
 use threerender::color::rgb::{RGB, RGBA};
@@ -14,7 +13,7 @@ use threerender::{
     RendererBuilder, Scene, ShadowOptions, ShadowStyle,
 };
 use threerender_loader::fetcher::DefaultFileSystemBasedFetcher;
-use threerender_loader::gltf::GltfLoader;
+use threerender_loader::gltf::{DefaultGltfHandler, GltfLoader};
 
 fn normalize(n: f32, v: f32) -> f32 {
     if n == 0. {
@@ -140,7 +139,7 @@ fn main() {
     ));
 
     let plane = Plane::new([0, 1, 0], None);
-    let plane = Rc::new(plane.use_entity());
+    let plane = plane.use_entity();
     renderer_builder.push(EntityDescriptor {
         id: "plane".to_owned(),
         mesh: Some(plane),
@@ -169,6 +168,7 @@ fn main() {
         DefaultFileSystemBasedFetcher::with_resolve_path(
             canonicalize("./examples/gltf/assets/cylinderEngine").unwrap(),
         ),
+        DefaultGltfHandler,
     )
     .unwrap();
     renderer_builder.push(EntityDescriptor {

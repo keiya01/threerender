@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::{fmt::Debug, rc::Rc};
 
 use super::{
     types::Topology,
@@ -6,10 +6,10 @@ use super::{
     MeshType, TextureFormat,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Mesh {
-    Entity(Box<dyn EntityMesh>),
-    Texture(Box<dyn TextureMesh>),
+    Entity(Rc<dyn EntityMesh>),
+    Texture(Rc<dyn TextureMesh>),
 }
 
 impl Mesh {
@@ -64,7 +64,7 @@ pub trait EntityMesh: Debug {
     where
         Self: Sized + 'static,
     {
-        Mesh::Entity(Box::new(self))
+        Mesh::Entity(Rc::new(self))
     }
 }
 
@@ -85,5 +85,10 @@ pub trait TextureMesh: Debug + EntityMesh {
     /// Texture data
     fn data(&self) -> &[u8];
     /// Make mesh from texture entity.
-    fn use_texture(self) -> Mesh;
+    fn use_texture(self) -> Mesh
+    where
+        Self: Sized + 'static,
+    {
+        Mesh::Texture(Rc::new(self))
+    }
 }
