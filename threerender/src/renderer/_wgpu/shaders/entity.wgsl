@@ -27,11 +27,10 @@ var<uniform> entity: Entity;
 
 struct VertexOutput {
     @location(0) color: vec4<f32>,
-    @location(1) normal: vec3<f32>,
-    @location(2) local_normal: vec3<f32>,
-    @location(3) local_position: vec4<f32>,
+    @location(1) world_normal: vec3<f32>,
+    @location(2) world_position: vec4<f32>,
 #ifdef USE_TEXTURE
-    @location(4) tex_coords: vec2<f32>,
+    @location(3) tex_coords: vec2<f32>,
 #end
     @builtin(position) position: vec4<f32>,
 };
@@ -47,16 +46,15 @@ fn vs_main(
 #end
 ) -> VertexOutput {
     let w = entity.transform;
-    let local_position = entity.transform * position;
+    let local_position = w * position;
     let entity_position = uscene.model * local_position;
 
     var result: VertexOutput;
 
     result.color = entity.color;
     result.position = entity_position;
-    result.local_normal = mat3x3<f32>(w.x.xyz, w.y.xyz, w.z.xyz) * vec3<f32>(normal.xyz);
-    result.local_position = local_position;
-    result.normal = normal;
+    result.world_normal = normalize(w * vec4<f32>(normal, 0.0)).xyz;
+    result.world_position = local_position;
 #ifdef USE_TEXTURE
     result.tex_coords = tex_coords;
 #end
@@ -99,23 +97,22 @@ var sams: binding_array<sampler>;
 fn fs_main(vertex: VertexOutput) -> @location(0) vec4<f32> {
     var color: vec4<f32> = vec4(0.);
     let camera_position = vec4(uscene.eye, 1.0);
-    let world_normal = normalize(entity.transform * vec4<f32>(vertex.normal, 0.0)).xyz;
     for(var i = 0u; i < min(uscene.num_lights, #{MAX_LIGHT_NUM}u); i += 1u) {
         let ulight = ulights[i];
         if ulight.model != 0u {
 
             // Directional light
             if ulight.model == 1u {
-                let light = calc_directional_light(world_normal, vertex.local_position, vertex.normal, ulight);
+                let light = calc_directional_light(vertex.world_normal, vertex.world_position, ulight);
 
-                let reflection = calc_specular_reflection(camera_position, vertex.local_position, world_normal, ulight.position, entity.reflection);
+                let reflection = calc_specular_reflection(camera_position, vertex.world_position, vertex.world_normal, ulight.position, entity.reflection);
 
                 // shadow
                 if ulight.shadow.use_shadow == 1u {
                     color += ulight.ambient + calc_directional_shadow(
                         i,
-                        vertex.local_normal,
-                        vertex.local_position,
+                        vertex.world_normal,
+                        vertex.world_position,
                         light,
                         ulight.shadow,
                         t_shadow,
@@ -128,7 +125,7 @@ fn fs_main(vertex: VertexOutput) -> @location(0) vec4<f32> {
 
             // Hemisphere light
             if ulight.model == 2u {
-                let light = calc_hemisphere_light(entity.transform, vertex.local_position, vertex.normal, ulight);
+                let light = calc_hemisphere_light(vertex.world_position, vertex.world_normal, ulight);
 
                 color += ulight.ambient + light.color;
             }
