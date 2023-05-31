@@ -1,19 +1,26 @@
+use std::rc::Rc;
+
 use getset::{Getters, MutGetters, Setters};
 use threerender_color::rgb::RGBA;
 use threerender_math::Transform;
 
-use crate::mesh::{Mesh, MeshType, PolygonMode, Topology};
+use crate::{
+    image::Image,
+    mesh::{Mesh, PolygonMode, Topology},
+};
 
 /// A descriptor to setup an entity to the renderer.
 #[derive(Debug, Clone)]
 pub struct EntityDescriptor {
     pub id: String,
-    pub mesh: Option<Mesh>,
+    pub mesh: Option<Rc<dyn Mesh>>,
     pub fill_color: RGBA,
     pub transform: Transform,
     pub reflection: ReflectionStyle,
     pub children: Vec<EntityDescriptor>,
     pub state: EntityRendererState,
+    pub texture: Option<Rc<dyn Image>>,
+    pub normal_map: Option<Rc<dyn Image>>,
 }
 
 impl Default for EntityDescriptor {
@@ -26,6 +33,8 @@ impl Default for EntityDescriptor {
             reflection: ReflectionStyle::default(),
             children: vec![],
             state: EntityRendererState::default(),
+            texture: None,
+            normal_map: None,
         }
     }
 }
@@ -49,24 +58,10 @@ impl EntityDescriptor {
         }
         cnt
     }
-
-    pub fn infer_mesh_type(&mut self) {
-        match self.state.mesh_type {
-            Some(_) => {}
-            None => {
-                self.state.mesh_type = match self.mesh {
-                    Some(Mesh::Entity(_)) => Some(MeshType::Entity),
-                    Some(Mesh::Texture(_)) => Some(MeshType::Texture),
-                    _ => None,
-                };
-            }
-        };
-    }
 }
 
 #[derive(Default, Clone, Copy, Debug)]
 pub struct RendererState {
-    pub mesh_type: MeshType,
     pub topology: Topology,
     pub polygon_mode: PolygonMode,
 }
@@ -75,7 +70,6 @@ pub struct RendererState {
 pub struct EntityRendererState {
     pub topology: Topology,
     pub polygon_mode: PolygonMode,
-    pub mesh_type: Option<MeshType>,
 }
 
 impl EntityRendererState {
@@ -83,7 +77,6 @@ impl EntityRendererState {
         Self {
             topology: state.topology,
             polygon_mode: state.polygon_mode,
-            mesh_type: Some(state.mesh_type),
         }
     }
 }
@@ -107,17 +100,19 @@ impl Default for ReflectionStyle {
 
 #[cfg(test)]
 mod test {
+    use std::{cell::RefCell, rc::Rc};
+
     use threerender_color::rgb::RGBA;
 
-    use crate::mesh::{DefaultMesh, EntityMesh};
+    use crate::mesh::{DefaultMesh, Mesh, Vertex};
 
     use super::EntityDescriptor;
 
     #[derive(Debug)]
     struct Entity;
-    impl EntityMesh for Entity {
-        fn vertex(&self) -> &[crate::mesh::Vertex] {
-            &[]
+    impl Mesh for Entity {
+        fn vertex(&self) -> Rc<RefCell<Vec<Vertex>>> {
+            Rc::new(RefCell::new(vec![]))
         }
 
         fn index(&self) -> Option<&[u16]> {
@@ -129,12 +124,14 @@ mod test {
     fn test_recursive_count() {
         let mut descriptor = EntityDescriptor {
             id: "".to_string(),
-            mesh: Some(DefaultMesh.use_entity()),
+            mesh: Some(Rc::new(DefaultMesh)),
             fill_color: RGBA::default(),
             transform: Default::default(),
             reflection: super::ReflectionStyle::default(),
             children: vec![],
             state: super::EntityRendererState::default(),
+            texture: None,
+            normal_map: None,
         };
         let mut descriptor_no_mesh = EntityDescriptor {
             id: "".to_string(),
@@ -144,6 +141,8 @@ mod test {
             reflection: super::ReflectionStyle::default(),
             children: vec![],
             state: super::EntityRendererState::default(),
+            texture: None,
+            normal_map: None,
         };
         descriptor.children.push(descriptor.clone());
         descriptor_no_mesh.children.push(descriptor.clone());

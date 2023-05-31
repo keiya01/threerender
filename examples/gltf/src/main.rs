@@ -1,10 +1,10 @@
 use std::fs::canonicalize;
+use std::rc::Rc;
 
 use examples_common::CustomEvent;
 use threerender::color::rgb::{RGB, RGBA};
 use threerender::math::trs::{Rotation, Scale, Translation};
 use threerender::math::{Quat, Transform, Vec3};
-use threerender::mesh::EntityMesh;
 use threerender::mesh::Plane;
 use threerender::renderer::Updater;
 use threerender::traits::entity::{EntityDescriptor, ReflectionStyle};
@@ -135,11 +135,10 @@ fn main() {
             sky_color: RGB::new(232, 244, 252),
             ground_color: RGB::new(216, 210, 205),
         },
-        Vec3::new(0., 1., 0.),
+        Vec3::new(0., 100., 0.),
     ));
 
-    let plane = Plane::new([0, 1, 0], None);
-    let plane = plane.use_entity();
+    let plane = Rc::new(Plane::new([0, 1, 0], None));
     renderer_builder.push(EntityDescriptor {
         id: "plane".to_owned(),
         mesh: Some(plane),
@@ -152,14 +151,21 @@ fn main() {
         state: Default::default(),
         reflection: Default::default(),
         children: vec![],
+        ..Default::default()
     });
 
     let gltf_loader = GltfLoader::from_byte(
         "model",
+        #[cfg(feature = "avocado")]
+        include_bytes!("../assets/avocado/Avocado.gltf"),
         #[cfg(feature = "duck")]
         include_bytes!("../assets/duck/Duck.gltf"),
         #[cfg(feature = "cylinder_engine")]
         include_bytes!("../assets/cylinderEngine/2CylinderEngine.gltf"),
+        #[cfg(feature = "avocado")]
+        DefaultFileSystemBasedFetcher::with_resolve_path(
+            canonicalize("./examples/gltf/assets/avocado").unwrap(),
+        ),
         #[cfg(feature = "duck")]
         DefaultFileSystemBasedFetcher::with_resolve_path(
             canonicalize("./examples/gltf/assets/duck").unwrap(),
@@ -176,10 +182,14 @@ fn main() {
         mesh: None,
         fill_color: RGBA::default(),
         transform: Transform {
+            #[cfg(feature = "avocado")]
+            translation: Vec3::new(0., 1., 0.),
             #[cfg(feature = "duck")]
             translation: Vec3::new(0., 1., 0.),
             #[cfg(feature = "cylinder_engine")]
             translation: Vec3::new(0., 8., 0.),
+            #[cfg(feature = "avocado")]
+            scale: Vec3::new(300., 300., 300.),
             #[cfg(feature = "duck")]
             scale: Vec3::new(10., 10., 10.),
             #[cfg(feature = "cylinder_engine")]
@@ -189,6 +199,7 @@ fn main() {
         state: Default::default(),
         reflection: ReflectionStyle::default(),
         children: gltf_loader.entities,
+        ..Default::default()
     });
 
     examples_common::start(

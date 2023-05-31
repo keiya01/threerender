@@ -10,3 +10,4 @@ threerender_math = { path = "../threerender_math" }
 threerender_color = { path = "../threerender_color" }
 bytemuck = { version = "1.12.3", features = ["derive"]}
 getset = "0.1.2"
+image = "0.24.5"

@@ -3,15 +3,15 @@ use std::{borrow::Cow, collections::HashMap, mem, rc::Rc};
 use glam::Mat4;
 use threerender_traits::entity::{EntityRendererState, RendererState};
 use wgpu::{
-    util::align_to, vertex_attr_array, Adapter, BindGroup, BindGroupLayout, Buffer, Device,
+    util::align_to, vertex_attr_array, BindGroup, BindGroupLayout, Buffer, Device,
     PrimitiveTopology, Queue, RenderPipeline, ShaderModule, TextureView,
 };
 
-use crate::mesh::{MeshType, PolygonMode, TextureVertex, Topology, Vertex};
+use crate::mesh::{PolygonMode, Topology, Vertex};
 
 use super::{
     processor::{ProcessOption, Processor},
-    scene::{is_storage_supported, Scene},
+    scene::Scene,
     RenderedEntity,
 };
 
@@ -31,7 +31,6 @@ impl ShadowBaker {
     const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 
     pub(super) fn new(
-        adapter: &Adapter,
         device: &Device,
         entity_len: usize,
         scene: &Scene,
@@ -65,11 +64,8 @@ impl ShadowBaker {
                 }
             };
 
-        let support_storage = is_storage_supported(adapter, device);
-
         // Load the shaders from disk
-        let mut entity_shader: Option<Rc<ShaderModule>> = None;
-        let mut texture_shader: Option<Rc<ShaderModule>> = None;
+        let mut shaders: Option<Rc<ShaderModule>> = None;
 
         let mut render_pipelines = HashMap::new();
 
@@ -80,33 +76,18 @@ impl ShadowBaker {
                 continue;
             }
 
-            let (shader, vertex_buf_size, vertex_buf_attr) =
-                match &key.mesh_type.expect("RendererState should have mesh type") {
-                    MeshType::Entity => (
-                        lazy_load_shader(
-                            &mut entity_shader,
-                            ProcessOption {
-                                use_texture: false,
-                                support_storage,
-                                max_light_num: scene.scene.max_light_num,
-                            },
-                        ),
-                        mem::size_of::<Vertex>() as wgpu::BufferAddress,
-                        vertex_attr_array![0 => Float32x4, 1 => Float32x3].to_vec(),
-                    ),
-                    MeshType::Texture => (
-                        lazy_load_shader(
-                            &mut texture_shader,
-                            ProcessOption {
-                                use_texture: true,
-                                support_storage,
-                                max_light_num: scene.scene.max_light_num,
-                            },
-                        ),
-                        mem::size_of::<TextureVertex>() as wgpu::BufferAddress,
-                        vertex_attr_array![0 => Float32x4, 1 => Float32x3, 2 => Float32x2].to_vec(),
-                    ),
-                };
+            let shader = lazy_load_shader(
+                &mut shaders,
+                ProcessOption {
+                    has_texture: false,
+                    max_light_num: scene.scene.max_light_num,
+                },
+            );
+
+            let (vertex_buf_size, vertex_buf_attr) = (
+                mem::size_of::<Vertex>() as wgpu::BufferAddress,
+                vertex_attr_array![0 => Float32x4, 1 => Float32x3, 2 => Float32x2].to_vec(),
+            );
 
             let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                 label: Some("ShadowBaker"),

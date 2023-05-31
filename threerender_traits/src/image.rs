@@ -1,18 +1,38 @@
-use std::mem;
+use std::fmt::Debug;
 
-use image::DynamicImage;
-use threerender_traits::mesh::TextureFormat;
+use image::{load_from_memory, DynamicImage, ImageResult};
 
-use crate::gltf::fetcher::{Buffer, GltfImage};
+use crate::{mesh::TextureFormat, types::Buffer};
 
-pub struct Image {
-    width: u32,
-    height: u32,
-    format: TextureFormat,
-    data: Buffer,
+/// A trait to retrieve necessary image information.
+pub trait Image: Debug {
+    /// Texture width
+    fn width(&self) -> u32;
+    /// Texture height
+    fn height(&self) -> u32;
+    /// Texture format
+    fn format(&self) -> &TextureFormat;
+    /// Texture row data
+    fn data(&self) -> &Buffer;
+    /// Texture bytes per pixel
+    fn bytes_per_pixel(&self) -> u32 {
+        4
+    }
 }
 
-impl Image {
+#[derive(Debug, Clone)]
+pub struct DefaultImage {
+    pub width: u32,
+    pub height: u32,
+    pub format: TextureFormat,
+    pub data: Buffer,
+}
+
+impl DefaultImage {
+    pub fn from_buffer(buffer: &[u8]) -> ImageResult<Self> {
+        Ok(Self::from_image(load_from_memory(buffer)?))
+    }
+
     // TODO: improve image format data
     pub fn from_image(img: DynamicImage) -> Self {
         let width = img.width();
@@ -40,17 +60,17 @@ impl Image {
     }
 }
 
-impl GltfImage for Image {
+impl Image for DefaultImage {
     fn width(&self) -> u32 {
         self.width
     }
     fn height(&self) -> u32 {
         self.height
     }
-    fn format(&self) -> TextureFormat {
-        self.format.clone()
+    fn format(&self) -> &TextureFormat {
+        &self.format
     }
-    fn data(&mut self) -> Buffer {
-        mem::take(&mut self.data)
+    fn data(&self) -> &Buffer {
+        &self.data
     }
 }

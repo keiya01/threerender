@@ -5,8 +5,8 @@ use glam::{Affine3A, Mat4};
 use threerender_math::trs::Translation;
 use threerender_traits::entity::ReflectionStyle;
 use wgpu::{
-    util::DeviceExt, Adapter, BindGroup, BindGroupLayout, Buffer, BufferAddress, Device, Queue,
-    Sampler, Texture, TextureView,
+    util::DeviceExt, BindGroup, BindGroupLayout, Buffer, BufferAddress, Device, Queue, Sampler,
+    Texture, TextureView,
 };
 
 use crate::{HemisphereLightStyle, LightModel, LightStyle, Scene as AbstractedScene, ShadowStyle};
@@ -103,17 +103,14 @@ pub(super) struct LightUniform {
 }
 
 impl LightUniform {
-    fn new(device: &Device, lights: Vec<Light>, is_storage_supported: bool) -> Self {
+    fn new(device: &Device, lights: Vec<Light>) -> Self {
         // Create light style uniforms
         let light_uniform_size = (lights.len() * mem::size_of::<Light>()) as wgpu::BufferAddress;
         let light_storage_buf = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Light Uniform"),
             size: light_uniform_size,
-            usage: if is_storage_supported {
-                wgpu::BufferUsages::STORAGE
-            } else {
-                wgpu::BufferUsages::UNIFORM
-            } | wgpu::BufferUsages::COPY_SRC
+            usage: wgpu::BufferUsages::UNIFORM
+                | wgpu::BufferUsages::COPY_SRC
                 | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
@@ -363,8 +360,7 @@ pub struct Scene {
 }
 
 impl Scene {
-    pub(super) fn new(adapter: &Adapter, device: &Device, scene: AbstractedScene) -> Self {
-        let is_storage_supported = is_storage_supported(adapter, device);
+    pub(super) fn new(device: &Device, scene: AbstractedScene) -> Self {
         let scene_uniform = SceneUniform::new(device, SceneData::from_style(&scene));
         let mut has_shadow = false;
         let light_data = scene
@@ -379,7 +375,7 @@ impl Scene {
                 Light::from_light_style(light)
             })
             .collect();
-        let light_uniform = LightUniform::new(device, light_data, is_storage_supported);
+        let light_uniform = LightUniform::new(device, light_data);
         let shadow_uniform = ShadowUniform::new(
             device,
             has_shadow,
@@ -412,12 +408,4 @@ impl Scene {
             .collect();
         self.light_uniform.update(queue);
     }
-}
-
-pub(super) fn is_storage_supported(adapter: &Adapter, device: &Device) -> bool {
-    adapter
-        .get_downlevel_capabilities()
-        .flags
-        .contains(wgpu::DownlevelFlags::VERTEX_STORAGE)
-        && device.limits().max_storage_buffers_per_shader_stage > 0
 }

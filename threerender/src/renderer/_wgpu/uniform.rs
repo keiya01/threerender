@@ -9,5 +9,6 @@ pub(super) struct EntityUniformBuffer {
     pub(super) color: [f32; 4],
     pub(super) reflection: Reflection,
     pub(super) tex_idx: i32,
+    pub(super) normal_idx: i32,
     pub(super) padding: [f32; 3],
 }

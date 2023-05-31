@@ -1,7 +1,10 @@
 use std::{borrow::Cow, collections::HashMap, marker::PhantomData, mem, num::NonZeroU32, rc::Rc};
 
 use threerender_math::Transform;
-use threerender_traits::entity::{EntityDescriptor, EntityRendererState};
+use threerender_traits::{
+    entity::{EntityDescriptor, EntityRendererState},
+    image::Image,
+};
 use wgpu::{
     util::{align_to, DeviceExt},
     vertex_attr_array, BindGroup, BindGroupLayout, Buffer, BufferAddress, Device, Features,
@@ -11,9 +14,7 @@ use wgpu::{
 
 use crate::{
     entity::{Entity, EntityList},
-    mesh::{
-        Mesh, MeshType, PolygonMode, TextureFormat, TextureMesh, TextureVertex, Topology, Vertex,
-    },
+    mesh::{PolygonMode, TextureFormat, Topology, Vertex},
     renderer::Updater,
     utils::vec::count_some,
     RendererBuilder,
@@ -21,7 +22,7 @@ use crate::{
 
 use super::{
     processor::{ProcessOption, Processor},
-    scene::{is_storage_supported, Reflection, Scene},
+    scene::{Reflection, Scene},
     shadow::ShadowBaker,
     uniform::EntityUniformBuffer,
     unit::{rgba_to_array, rgba_to_array_64},
@@ -46,25 +47,17 @@ pub struct RenderedEntity {
 }
 
 impl RenderedEntity {
-    fn make_entity(mesh: &Mesh, device: &Device) -> (Buffer, Option<Buffer>, u32) {
-        let vertex = match mesh.mesh_type() {
-            MeshType::Entity => (Some(mesh.vertex()), None),
-            MeshType::Texture => (None, Some(mesh.texture().expect("Texture is not found"))),
-        };
-        let vertex_buf = match vertex {
-            (Some(vertex), None) => device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Vertex Buffer"),
-                contents: bytemuck::cast_slice(vertex),
-                usage: wgpu::BufferUsages::VERTEX,
-            }),
-            (None, Some(texture)) => device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Texture Vertex Buffer"),
-                contents: bytemuck::cast_slice(texture),
-                usage: wgpu::BufferUsages::VERTEX,
-            }),
-            _ => unreachable!(),
-        };
-        let index_buf = mesh.index().map(|index| {
+    fn make_entity(
+        vertex: &[Vertex],
+        index: Option<&[u16]>,
+        device: &Device,
+    ) -> (Buffer, Option<Buffer>, u32) {
+        let vertex_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Vertex Buffer"),
+            contents: bytemuck::cast_slice(vertex),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+        let index_buf = index.map(|index| {
             device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("Index Buffer"),
                 contents: bytemuck::cast_slice(index),
@@ -72,11 +65,7 @@ impl RenderedEntity {
             })
         });
 
-        let vertex_length = match vertex {
-            (Some(v), None) => v.len(),
-            (None, Some(v)) => v.len(),
-            _ => unreachable!(),
-        } as u32;
+        let vertex_length = vertex.len() as u32;
 
         (vertex_buf, index_buf, vertex_length)
     }
@@ -147,22 +136,18 @@ impl RenderedEntity {
 pub struct RenderedTexture {
     pub(super) texture_view_array: Vec<TextureView>,
     pub(super) sampler_array: Vec<Sampler>,
-    texture_bind_group: BindGroup,
-    texture_bind_group_layout: BindGroupLayout,
+    texture_bind_group: Option<BindGroup>,
+    texture_bind_group_layout: Option<BindGroupLayout>,
 
     cur_tex_idx: u32,
 }
 
 impl RenderedTexture {
-    fn make_texture(
-        texture_mesh: &dyn TextureMesh,
-        device: &Device,
-        queue: &Queue,
-    ) -> (Sampler, TextureView) {
+    fn make_texture(image: &dyn Image, device: &Device, queue: &Queue) -> (Sampler, TextureView) {
         let texture = {
-            let buf = texture_mesh.data();
-            let width = texture_mesh.width();
-            let height = texture_mesh.height();
+            let buf = image.data();
+            let width = image.width();
+            let height = image.height();
 
             let size = wgpu::Extent3d {
                 width,
@@ -175,7 +160,7 @@ impl RenderedTexture {
                 mip_level_count: 1,
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
-                format: match texture_mesh.format() {
+                format: match image.format() {
                     TextureFormat::Rgba8 => wgpu::TextureFormat::Rgba8Unorm,
                     TextureFormat::Rgba16 => wgpu::TextureFormat::Rgba16Unorm,
                 },
@@ -187,7 +172,7 @@ impl RenderedTexture {
                 buf,
                 wgpu::ImageDataLayout {
                     offset: 0,
-                    bytes_per_row: Some(width * texture_mesh.bytes_per_pixel()),
+                    bytes_per_row: Some(width * image.bytes_per_pixel()),
                     rows_per_image: None,
                 },
                 size,
@@ -261,49 +246,39 @@ impl RenderedTexture {
         (texture_bind_group_layout, texture_bind_group)
     }
 
-    fn create_or_update(
-        texture_mesh: &dyn TextureMesh,
+    fn update(
+        image: &dyn Image,
         device: &Device,
         queue: &Queue,
-        rendered_texture: &mut Option<RenderedTexture>,
+        rendered_texture: &mut RenderedTexture,
     ) {
-        let (sampler, view) = Self::make_texture(texture_mesh, device, queue);
+        let (sampler, view) = Self::make_texture(image, device, queue);
 
         let (mut texture_view_array, mut sampler_array) = (vec![view], vec![sampler]);
 
-        if let Some(rt) = rendered_texture {
-            texture_view_array.append(&mut rt.texture_view_array);
-            sampler_array.append(&mut rt.sampler_array);
-        }
+        texture_view_array.append(&mut rendered_texture.texture_view_array);
+        sampler_array.append(&mut rendered_texture.sampler_array);
 
         let (texture_bind_group_layout, texture_bind_group) =
-            Self::make_bind_group(device, &texture_view_array, &sampler_array);
+            if !texture_view_array.is_empty() && !sampler_array.is_empty() {
+                let (a, b) = Self::make_bind_group(device, &texture_view_array, &sampler_array);
+                (Some(a), Some(b))
+            } else {
+                (None, None)
+            };
 
-        match rendered_texture {
-            Some(rt) => {
-                rt.texture_view_array = texture_view_array;
-                rt.sampler_array = sampler_array;
+        rendered_texture.texture_view_array = texture_view_array;
+        rendered_texture.sampler_array = sampler_array;
 
-                rt.texture_bind_group_layout = texture_bind_group_layout;
-                rt.texture_bind_group = texture_bind_group;
-            }
-            None => {
-                *rendered_texture = Some(RenderedTexture {
-                    texture_view_array,
-                    sampler_array,
-                    texture_bind_group,
-                    texture_bind_group_layout,
-                    cur_tex_idx: 0,
-                });
-            }
-        }
+        rendered_texture.texture_bind_group_layout = texture_bind_group_layout;
+        rendered_texture.texture_bind_group = texture_bind_group;
     }
 }
 
 // This has a role to update the entity in render process dynamically.
 pub(super) struct DynamicRenderer {
     pub(super) rendered_entity: RenderedEntity,
-    pub(super) rendered_texture: Option<RenderedTexture>,
+    pub(super) rendered_texture: RenderedTexture,
     pub(super) device: Device,
     pub(super) queue: Queue,
 }
@@ -330,19 +305,21 @@ impl DynamicRenderer {
         let (entity_bind_group_layout, entity_bind_group) =
             RenderedEntity::make_bind_group(&device, entity_uniform_size, &entity_uniform_buf);
 
-        let rendered_texture = if !texture_view_array.is_empty() && !sampler_array.is_empty() {
-            let (texture_bind_group_layout, texture_bind_group) =
-                RenderedTexture::make_bind_group(&device, &texture_view_array, &sampler_array);
+        let (texture_bind_group_layout, texture_bind_group) =
+            if !texture_view_array.is_empty() && !sampler_array.is_empty() {
+                let (a, b) =
+                    RenderedTexture::make_bind_group(&device, &texture_view_array, &sampler_array);
+                (Some(a), Some(b))
+            } else {
+                (None, None)
+            };
 
-            Some(RenderedTexture {
-                texture_view_array,
-                sampler_array,
-                texture_bind_group_layout,
-                texture_bind_group,
-                cur_tex_idx: tex_idx,
-            })
-        } else {
-            None
+        let rendered_texture = RenderedTexture {
+            texture_view_array,
+            sampler_array,
+            texture_bind_group_layout,
+            texture_bind_group,
+            cur_tex_idx: tex_idx,
         };
 
         DynamicRenderer {
@@ -377,21 +354,43 @@ impl DynamicRenderer {
             state,
             children,
             reflection,
+            texture,
+            normal_map,
         } in descriptors.into_iter()
         {
-            let tex_idx_for_entity = match mesh {
+            let (tex_idx_for_entity, normal_map_idx) = match mesh {
                 Some(mesh) => {
-                    let (vertex_buf, index_buf, vertex_length) =
-                        RenderedEntity::make_entity(&mesh, device);
+                    let vertex = match normal_map {
+                        Some(_) => mesh.as_ref().as_tangent_space(),
+                        None => mesh.as_ref().vertex(),
+                    };
+                    let (vertex_buf, index_buf, vertex_length) = RenderedEntity::make_entity(
+                        vertex.borrow().as_slice(),
+                        mesh.as_ref().index(),
+                        device,
+                    );
 
-                    let tex_idx_for_entity = if let Mesh::Texture(texture_mesh) = &mesh {
+                    let tex_idx_for_entity = if let Some(texture) = &texture {
                         let (sampler, view) =
-                            RenderedTexture::make_texture(texture_mesh.as_ref(), device, queue);
+                            RenderedTexture::make_texture(texture.as_ref(), device, queue);
 
                         texture_view_array.push(view);
                         sampler_array.push(sampler);
 
                         Some(*tex_idx as i32)
+                    } else {
+                        None
+                    };
+
+                    let normal_map_idx = if let Some(normal_map) = &normal_map {
+                        // FIXME(@keiya01): Handle image error
+                        let (sampler, view) =
+                            RenderedTexture::make_texture(normal_map.as_ref(), device, queue);
+
+                        texture_view_array.push(view);
+                        sampler_array.push(sampler);
+
+                        Some((*tex_idx + 1) as i32)
                     } else {
                         None
                     };
@@ -409,12 +408,15 @@ impl DynamicRenderer {
                     if tex_idx_for_entity.is_some() {
                         *tex_idx += 1;
                     }
+                    if normal_map_idx.is_some() {
+                        *tex_idx += 1;
+                    }
 
-                    tex_idx_for_entity
+                    (tex_idx_for_entity, normal_map_idx)
                 }
                 None => {
                     meta_list.push(None);
-                    None
+                    (None, None)
                 }
             };
 
@@ -429,6 +431,8 @@ impl DynamicRenderer {
 
             meta_list.append(&mut meta_list2);
 
+            // Storing all texture(includes the map) into single texture array
+            // and access by using the index.
             entities.push(Entity {
                 id,
                 fill_color,
@@ -437,6 +441,7 @@ impl DynamicRenderer {
                 reflection,
                 children,
                 tex_idx: tex_idx_for_entity,
+                normal_map_idx,
             });
         }
 
@@ -461,28 +466,55 @@ impl DynamicRenderer {
             state,
             children,
             reflection,
+            texture,
+            normal_map,
         } in descriptors.into_iter()
         {
-            let tex_idx_for_entity = match mesh {
+            let (tex_idx_for_entity, normal_map_idx) = match mesh {
                 Some(mesh) => {
-                    let (vertex_buf, index_buf, vertex_length) =
-                        RenderedEntity::make_entity(&mesh, &self.device);
+                    let vertex = match normal_map {
+                        Some(_) => mesh.as_ref().as_tangent_space(),
+                        None => mesh.as_ref().vertex(),
+                    };
+                    let (vertex_buf, index_buf, vertex_length) = RenderedEntity::make_entity(
+                        vertex.borrow().as_slice(),
+                        mesh.as_ref().index(),
+                        &self.device,
+                    );
 
-                    let tex_idx = if let Mesh::Texture(texture_mesh) = &mesh {
-                        RenderedTexture::create_or_update(
-                            texture_mesh.as_ref(),
+                    let tex_idx = if let Some(texture) = &texture {
+                        RenderedTexture::update(
+                            texture.as_ref(),
                             &self.device,
                             &self.queue,
                             &mut self.rendered_texture,
                         );
 
-                        let tex_idx = self.rendered_texture.as_ref().unwrap().cur_tex_idx;
-                        self.rendered_texture.as_mut().unwrap().cur_tex_idx += 1;
+                        let tex_idx = self.rendered_texture.cur_tex_idx;
+                        self.rendered_texture.cur_tex_idx += 1;
 
                         Some(tex_idx as i32)
                     } else {
                         None
                     };
+
+                    let normal_map_idx = if let Some(normal_map) = &normal_map {
+                        // FIXME(@keiya01): Handle image error
+                        RenderedTexture::update(
+                            normal_map.as_ref(),
+                            &self.device,
+                            &self.queue,
+                            &mut self.rendered_texture,
+                        );
+
+                        let tex_idx = self.rendered_texture.cur_tex_idx;
+                        self.rendered_texture.cur_tex_idx += 1;
+
+                        Some((tex_idx + 1) as i32)
+                    } else {
+                        None
+                    };
+
                     meta_list.push(Some(RenderedEntityMeta {
                         uniform_offset: idx * entity_uniform_alignment,
                         vertex_buf,
@@ -493,11 +525,11 @@ impl DynamicRenderer {
                     // Must update only when mesh is exist
                     idx += 1;
 
-                    tex_idx
+                    (tex_idx, normal_map_idx)
                 }
                 None => {
                     meta_list.push(None);
-                    None
+                    (None, None)
                 }
             };
 
@@ -514,6 +546,7 @@ impl DynamicRenderer {
                 reflection,
                 children,
                 tex_idx: tex_idx_for_entity,
+                normal_map_idx,
             });
         }
 
@@ -531,8 +564,7 @@ impl EntityList for DynamicRenderer {
     }
 
     // FIXME(@kaiye01): Support updating ShadowBaker when entity is added.
-    fn push(&mut self, mut descriptor: EntityDescriptor) {
-        descriptor.infer_mesh_type();
+    fn push(&mut self, descriptor: EntityDescriptor) {
         let entity_length = count_some(&self.rendered_entity.meta_list);
         let (entity_uniform_size, entity_uniform_buf, entity_uniform_alignment) =
             RenderedEntity::make_uniform(
@@ -625,18 +657,16 @@ impl<Event> Renderer<Event> {
 
         surface.configure(&device, &config);
 
-        let scene = Scene::new(&adapter, &device, renderer_builder.scene.take().unwrap());
+        let scene = Scene::new(&device, renderer_builder.scene.take().unwrap());
 
         let mesh_length = renderer_builder.mesh_length();
         let dynamic_renderer = DynamicRenderer::new(device, queue, &mut renderer_builder);
 
         // Load the shaders from disk
-        let mut entity_shader: Option<Rc<ShaderModule>> = None;
-        let mut texture_shader: Option<Rc<ShaderModule>> = None;
+        let mut shaders: Option<Rc<ShaderModule>> = None;
 
         let shader_str = include_str!("shaders/entity.wgsl");
         let mut processor = Processor::new(shader_str);
-        let mut tex_processor = Processor::new(shader_str);
 
         let lazy_load_shader = |shader: &mut Option<Rc<ShaderModule>>,
                                 processor: &mut Processor,
@@ -662,8 +692,8 @@ impl<Event> Renderer<Event> {
             &scene.shadow_uniform.bind_group_layout,
         ];
 
-        if let Some(rt) = &dynamic_renderer.rendered_texture {
-            bind_group_layouts.push(&rt.texture_bind_group_layout);
+        if let Some(layout) = &dynamic_renderer.rendered_texture.texture_bind_group_layout {
+            bind_group_layouts.push(layout);
         }
 
         let pipeline_layout =
@@ -675,7 +705,10 @@ impl<Event> Renderer<Event> {
                     push_constant_ranges: &[],
                 });
 
-        let support_storage = is_storage_supported(&adapter, &dynamic_renderer.device);
+        let has_tex = dynamic_renderer
+            .rendered_texture
+            .texture_bind_group_layout
+            .is_some();
 
         let mut render_pipelines = HashMap::new();
         let states = renderer_builder.states.clone();
@@ -685,36 +718,16 @@ impl<Event> Renderer<Event> {
                 continue;
             }
 
-            let (shader, vertex_buf_size, vertex_buf_attr) =
-                match &key.mesh_type.expect("RendererState should have mesh type.") {
-                    MeshType::Entity => (
-                        lazy_load_shader(
-                            &mut entity_shader,
-                            &mut processor,
-                            ProcessOption {
-                                use_texture: false,
-                                support_storage,
-                                max_light_num: scene.scene.max_light_num,
-                            },
-                        ),
-                        mem::size_of::<Vertex>() as wgpu::BufferAddress,
-                        vertex_attr_array![0 => Float32x4, 1 => Float32x3].to_vec(),
-                    ),
-                    MeshType::Texture if dynamic_renderer.rendered_texture.is_some() => (
-                        lazy_load_shader(
-                            &mut texture_shader,
-                            &mut tex_processor,
-                            ProcessOption {
-                                use_texture: true,
-                                support_storage,
-                                max_light_num: scene.scene.max_light_num,
-                            },
-                        ),
-                        mem::size_of::<TextureVertex>() as wgpu::BufferAddress,
-                        vertex_attr_array![0 => Float32x4, 1 => Float32x3, 2 => Float32x2].to_vec(),
-                    ),
-                    _ => continue,
-                };
+            let shader = lazy_load_shader(
+                &mut shaders,
+                &mut processor,
+                ProcessOption {
+                    has_texture: has_tex,
+                    max_light_num: scene.scene.max_light_num,
+                },
+            );
+
+            let (vertex_buf_size, vertex_buf_attr) = (mem::size_of::<Vertex>() as wgpu::BufferAddress, vertex_attr_array![0 => Float32x4, 1 => Float32x3, 2 => Float32x2, 3 => Float32x3, 4 => Float32x3].to_vec());
 
             let render_pipeline =
                 dynamic_renderer
@@ -765,7 +778,6 @@ impl<Event> Renderer<Event> {
         }
 
         let shadow_baker = ShadowBaker::new(
-            &adapter,
             &dynamic_renderer.device,
             mesh_length,
             &scene,
@@ -909,11 +921,6 @@ impl<Event> Renderer<Event> {
                         &rendered_entity.entities,
                         &Transform::default(),
                         &mut |entity, transform| {
-                            if entity.state.mesh_type.is_none() {
-                                i += 1;
-                                return;
-                            }
-
                             rpass.set_pipeline(
                                 self.shadow_baker
                                     .render_pipelines
@@ -993,11 +1000,6 @@ impl<Event> Renderer<Event> {
                 &rendered_entity.entities,
                 &Transform::default(),
                 &mut |entity, transform| {
-                    if entity.state.mesh_type.is_none() {
-                        i += 1;
-                        return;
-                    }
-
                     rpass.set_pipeline(
                         self.render_pipelines
                             .get(&entity.state)
@@ -1019,8 +1021,10 @@ impl<Event> Renderer<Event> {
                             &[meta.uniform_offset as u32],
                         );
 
-                        if let Some(rt) = &self.dynamic_renderer.rendered_texture {
-                            rpass.set_bind_group(4, &rt.texture_bind_group, &[]);
+                        if let Some(bind_group) =
+                            &self.dynamic_renderer.rendered_texture.texture_bind_group
+                        {
+                            rpass.set_bind_group(4, bind_group, &[]);
                         }
 
                         rpass.set_vertex_buffer(0, meta.vertex_buf.slice(..));
@@ -1044,6 +1048,7 @@ impl<Event> Renderer<Event> {
         frame.present();
     }
 
+    // FIXME(@keiya01): Dirty check
     fn prepare_entity(&self, entity: &Entity, meta: &RenderedEntityMeta, transform: &Transform) {
         let renderer_entity = &self.dynamic_renderer.rendered_entity;
         let buf = EntityUniformBuffer {
@@ -1051,6 +1056,7 @@ impl<Event> Renderer<Event> {
             color: rgba_to_array(&entity.fill_color),
             reflection: Reflection::from_style(&entity.reflection),
             tex_idx: entity.tex_idx.unwrap_or(-1),
+            normal_idx: entity.normal_map_idx.unwrap_or(-1),
             padding: [0.; 3],
         };
 
@@ -1061,6 +1067,7 @@ impl<Event> Renderer<Event> {
         );
     }
 
+    // FIXME(@keiya01): Dirty check
     fn prepare_shadow_entity(
         &self,
         entity: &Entity,
@@ -1073,6 +1080,7 @@ impl<Event> Renderer<Event> {
             color: rgba_to_array(&entity.fill_color),
             reflection: Reflection::from_style(&entity.reflection),
             tex_idx: entity.tex_idx.unwrap_or(-1),
+            normal_idx: entity.normal_map_idx.unwrap_or(-1),
             padding: [0.; 3],
         };
         self.dynamic_renderer.queue.write_buffer(

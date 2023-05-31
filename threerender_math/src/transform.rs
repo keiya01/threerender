@@ -52,15 +52,15 @@ impl Transform {
     pub fn mul(&self, node: &Self) -> Self {
         Self {
             translation: self.transform_point(node.translation),
-            rotation: self.rotation.mul(node.rotation),
-            scale: self.scale.mul(node.scale),
+            rotation: self.rotation * node.rotation,
+            scale: self.scale * node.scale,
         }
     }
 
     pub fn transform_point(&self, mut point: Vec3) -> Vec3 {
-        point = self.scale.mul(point);
-        point = self.rotation.mul_vec3(point);
-        point = self.translation.add(point);
+        point = self.scale * point;
+        point = self.rotation * point;
+        point = self.translation + point;
         point
     }
 

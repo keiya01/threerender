@@ -9,6 +9,7 @@ publish = false
 [features]
 default = ["wgpu", "duck"]
 duck = []
+avocado = []
 cylinder_engine = []
 
 [dependencies]

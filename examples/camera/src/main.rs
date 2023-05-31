@@ -4,7 +4,6 @@ use examples_common::CustomEvent;
 use threerender::color::rgb::{RGB, RGBA};
 use threerender::math::trs::{Rotation, Scale, Translation};
 use threerender::math::{Quat, Transform, Vec3};
-use threerender::mesh::{EntityMesh, Mesh};
 use threerender::mesh::{Plane, Sphere, Square};
 use threerender::renderer::Updater;
 use threerender::traits::entity::{EntityDescriptor, ReflectionStyle};
@@ -145,8 +144,7 @@ fn main() {
         Vec3::new(0., 1., 0.),
     ));
 
-    let plane = Plane::new([0, 1, 0], None);
-    let plane = plane.use_entity();
+    let plane = Rc::new(Plane::new([0, 1, 0], None));
     renderer_builder.push(EntityDescriptor {
         id: "plane".to_owned(),
         mesh: Some(plane),
@@ -159,9 +157,9 @@ fn main() {
         state: Default::default(),
         reflection: Default::default(),
         children: vec![],
+        ..Default::default()
     });
-    let sphere = Sphere::new(50, 50, None);
-    let sphere = sphere.use_entity();
+    let sphere = Rc::new(Sphere::new(50, 50, None));
     renderer_builder.push(EntityDescriptor {
         id: "sphere".to_owned(),
         mesh: Some(sphere),
@@ -177,9 +175,9 @@ fn main() {
             intensity: 100.,
         },
         children: vec![],
+        ..Default::default()
     });
-    let square = Square::new(None);
-    let square = Mesh::Entity(Rc::new(square));
+    let square = Rc::new(Square::new(None));
     renderer_builder.push(EntityDescriptor {
         id: "square1".to_owned(),
         mesh: Some(square.clone()),
@@ -195,6 +193,7 @@ fn main() {
             intensity: 100.,
         },
         children: vec![],
+        ..Default::default()
     });
     renderer_builder.push(EntityDescriptor {
         id: "square2".to_owned(),
@@ -211,6 +210,7 @@ fn main() {
             specular: 0.,
         },
         children: vec![],
+        ..Default::default()
     });
 
     examples_common::start(

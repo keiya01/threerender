@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{cell::RefCell, rc::Rc};
 
 use anyhow::Result;
 use gltf::mesh::util::{ReadIndices, ReadTexCoords};
@@ -6,23 +6,17 @@ use threerender_color::rgb::RGBA;
 use threerender_math::Transform;
 use threerender_traits::{
     entity::{EntityDescriptor, EntityRendererState, ReflectionStyle},
-    mesh::{
-        texture_vertex, vertex, EntityMesh, Mesh, MeshType, TextureFormat, TextureMesh,
-        TextureVertex, Vertex,
-    },
+    image::{DefaultImage, Image},
+    mesh::{vertex, Mesh, Vertex},
+    types::Buffer,
 };
 
-use super::{
-    err::GltfError,
-    fetcher::{Buffer, GltfFetcher},
-    GltfHandler,
-};
+use super::{err::GltfError, fetcher::GltfFetcher, GltfHandler};
 
 #[derive(Debug, Clone)]
 pub struct GltfMesh {
-    pub vertices: Vec<Vertex>,
+    pub vertices: Rc<RefCell<Vec<Vertex>>>,
     pub indices: Option<Vec<u16>>,
-    pub textures: Option<Vec<TextureVertex>>,
     pub tex_coords: Option<Vec<[f32; 2]>>,
     pub material: Option<Material>,
 }
@@ -30,10 +24,9 @@ pub struct GltfMesh {
 impl GltfMesh {
     fn new() -> Self {
         Self {
-            vertices: vec![],
+            vertices: Rc::new(RefCell::new(vec![])),
             indices: None,
             tex_coords: None,
-            textures: None,
             material: None,
         }
     }
@@ -44,20 +37,16 @@ impl GltfMesh {
             None => return,
         };
 
-        let mut tex_vert = vec![];
-
-        for (idx, vert) in self.vertices.iter().enumerate() {
+        for (idx, vert) in self.vertices.borrow_mut().iter_mut().enumerate() {
             let tex = tex_coords.get(idx).expect("`texs` length is incorrect");
-            tex_vert.push(texture_vertex(*vert, *tex));
+            vert.tex = *tex;
         }
-
-        self.textures = Some(tex_vert);
     }
 }
 
-impl EntityMesh for GltfMesh {
-    fn vertex(&self) -> &[Vertex] {
-        &self.vertices
+impl Mesh for GltfMesh {
+    fn vertex(&self) -> Rc<RefCell<Vec<Vertex>>> {
+        self.vertices.clone()
     }
 
     fn index(&self) -> Option<&[u16]> {
@@ -65,52 +54,6 @@ impl EntityMesh for GltfMesh {
             Some(idx) => Some(idx),
             None => None,
         }
-    }
-}
-
-impl TextureMesh for GltfMesh {
-    fn texture(&self) -> Option<&[TextureVertex]> {
-        self.textures.as_ref().map(|t| &t[..])
-    }
-    fn width(&self) -> u32 {
-        self.material
-            .as_ref()
-            .unwrap()
-            .base_color_texture
-            .as_ref()
-            .unwrap()
-            .size
-            .0
-    }
-    fn height(&self) -> u32 {
-        self.material
-            .as_ref()
-            .unwrap()
-            .base_color_texture
-            .as_ref()
-            .unwrap()
-            .size
-            .1
-    }
-    fn format(&self) -> &TextureFormat {
-        &self
-            .material
-            .as_ref()
-            .unwrap()
-            .base_color_texture
-            .as_ref()
-            .unwrap()
-            .format
-    }
-    fn data(&self) -> &[u8] {
-        &self
-            .material
-            .as_ref()
-            .unwrap()
-            .base_color_texture
-            .as_ref()
-            .unwrap()
-            .data
     }
 }
 
@@ -175,6 +118,7 @@ impl GltfLoader {
                         .map(|p| {
                             entity
                                 .vertices
+                                .borrow_mut()
                                 .push(vertex([p[0], p[1], p[2], 1.], [1.; 3]))
                         })
                         .collect();
@@ -182,7 +126,13 @@ impl GltfLoader {
                 if let Some(normals) = normals {
                     let _: Vec<_> = normals
                         .enumerate()
-                        .map(|(i, n)| entity.vertices.get_mut(i).map(|v| v.normal = n))
+                        .map(|(i, n)| {
+                            entity
+                                .vertices
+                                .borrow_mut()
+                                .get_mut(i)
+                                .map(|v| v.normal = n)
+                        })
                         .collect();
                 }
 
@@ -268,18 +218,20 @@ impl GltfLoader {
         }
 
         // Flatting glTF children of node with mesh index.
-        fn search_node<F>(nodes: Vec<gltf::Node>, f: &F) -> Vec<EntityDescriptor>
+        fn search_node<F>(nodes: Vec<gltf::Node>, f: &F) -> Result<Vec<EntityDescriptor>, GltfError>
         where
-            F: Fn(&gltf::Node, Vec<EntityDescriptor>) -> EntityDescriptor,
+            F: Fn(&gltf::Node, Vec<EntityDescriptor>) -> Result<EntityDescriptor, GltfError>,
         {
             let mut entities = vec![];
             for node in nodes {
-                entities.push(f(&node, search_node(node.children().collect(), f)));
+                entities.push(f(&node, search_node(node.children().collect(), f)?)?);
             }
-            entities
+            Ok(entities)
         }
 
-        let f = |row_node: &gltf::Node, children: Vec<EntityDescriptor>| {
+        let f = |row_node: &gltf::Node,
+                 children: Vec<EntityDescriptor>|
+         -> Result<EntityDescriptor, GltfError> {
             let mesh = row_node.mesh();
             let node_idx = row_node.index();
             let node = GltfNode::from_node(row_node);
@@ -291,32 +243,33 @@ impl GltfLoader {
                         .expect("Mesh length hos to match with node index");
                     let mesh = mesh.clone();
                     #[allow(unused_parens)]
-                    let (color) = mesh
-                        .material
-                        .as_ref()
-                        .map_or_else(Default::default, |m| (m.base_color));
-                    let is_tex: bool = mesh.tex_coords.is_some();
+                    let (color, texture, normal_map) =
+                        mesh.material.as_ref().map_or_else(Default::default, |m| {
+                            (
+                                m.base_color,
+                                m.base_color_texture.as_ref().map(|b| b.image.clone()),
+                                m.normal_map.clone(),
+                            )
+                        });
+
+                    let normal_map = match normal_map {
+                        Some(n) => Some(Rc::new(DefaultImage::from_buffer(&n)?) as Rc<dyn Image>),
+                        None => None,
+                    };
+
                     let mut desc = EntityDescriptor {
                         id: format!("{name}:{node_idx}"),
-                        mesh: Some(match mesh.tex_coords {
-                            Some(ref coords) if !coords.is_empty() => Mesh::Texture(mesh.clone()),
-                            _ => Mesh::Entity(mesh.clone()),
-                        }),
+                        mesh: Some(mesh.clone()),
                         fill_color: RGBA::from_f32(color[0], color[1], color[2], color[3]),
                         transform: node.local_transform,
                         reflection: ReflectionStyle::default(),
                         children,
-                        state: EntityRendererState {
-                            mesh_type: Some(if is_tex {
-                                MeshType::Texture
-                            } else {
-                                MeshType::Entity
-                            }),
-                            ..Default::default()
-                        },
+                        state: EntityRendererState::default(),
+                        texture,
+                        normal_map,
                     };
                     handler.on_create(&mut desc, Some(&mesh), row_node);
-                    desc
+                    Ok(desc)
                 }
                 None => {
                     let mut desc = EntityDescriptor {
@@ -327,9 +280,11 @@ impl GltfLoader {
                         reflection: ReflectionStyle::default(),
                         children,
                         state: EntityRendererState::default(),
+                        texture: None,
+                        normal_map: None,
                     };
                     handler.on_create(&mut desc, None, row_node);
-                    desc
+                    Ok(desc)
                 }
             }
         };
@@ -343,8 +298,10 @@ impl GltfLoader {
                 fill_color: RGBA::default(),
                 transform: Transform::default(),
                 reflection: ReflectionStyle::default(),
-                children: search_node(scene.nodes().collect(), &f),
+                children: search_node(scene.nodes().collect(), &f)?,
                 state: EntityRendererState::default(),
+                texture: None,
+                normal_map: None,
             });
             handler.after_root(&mut entities, &scene);
         }
@@ -382,9 +339,7 @@ impl GltfLoader {
 
 #[derive(Debug, Clone)]
 pub struct MaterialTextureDescriptor {
-    data: Rc<Vec<u8>>,
-    size: (u32, u32),
-    format: TextureFormat,
+    image: Rc<dyn Image>,
 }
 
 #[derive(Debug, Clone)]
@@ -393,6 +348,7 @@ pub struct Material {
     pub base_color_texture: Option<MaterialTextureDescriptor>,
     pub metalness: f32,
     pub roughness: f32,
+    pub normal_map: Option<Buffer>,
 }
 
 impl Material {
@@ -405,33 +361,9 @@ impl Material {
 
         let base_color_texture = match pbr.base_color_texture() {
             Some(v) => {
-                let data = match v.texture().source().source() {
-                    gltf::image::Source::View {
-                        view,
-                        mime_type: _mime_type,
-                    } => match view.buffer().source() {
-                        gltf::buffer::Source::Uri(uri) => {
-                            if check_if_data_uri(uri) {
-                                fetcher.parse_data_url(uri)?
-                            } else {
-                                fetcher.fetch(uri)?
-                            }
-                        }
-                        gltf::buffer::Source::Bin => {
-                            unimplemented!()
-                        }
-                    },
-                    gltf::image::Source::Uri {
-                        uri,
-                        mime_type: _mime_type,
-                    } => fetcher.fetch(uri)?,
-                };
-                let mut img = fetcher.load_image(data)?;
-                Some(MaterialTextureDescriptor {
-                    data: Rc::new(img.data()),
-                    size: (img.width(), img.height()),
-                    format: img.format(),
-                })
+                let data = get_buffer_from_source(&v.texture().source().source(), fetcher)?;
+                let img = fetcher.load_image(data)?;
+                Some(MaterialTextureDescriptor { image: img })
             }
             None => None,
         };
@@ -439,11 +371,20 @@ impl Material {
         let metalness = pbr.metallic_factor();
         let roughness = pbr.roughness_factor();
 
+        let normal_map = match material.normal_texture() {
+            Some(n) => Some(get_buffer_from_source(
+                &n.texture().source().source(),
+                fetcher,
+            )?),
+            None => None,
+        };
+
         Ok(Self {
             base_color: color,
             base_color_texture,
             metalness,
             roughness,
+            normal_map,
         })
     }
 }
@@ -481,4 +422,31 @@ fn test_check_if_data_uri() {
         "data:text/plain;base64,SGVsbG8sIFdvcmxkIQ=="
     ));
     assert!(!check_if_data_uri("https://example.com"));
+}
+
+fn get_buffer_from_source<F>(source: &gltf::image::Source, fetcher: &F) -> Result<Buffer, GltfError>
+where
+    F: GltfFetcher,
+{
+    Ok(match source {
+        gltf::image::Source::View {
+            view,
+            mime_type: _mime_type,
+        } => match view.buffer().source() {
+            gltf::buffer::Source::Uri(uri) => {
+                if check_if_data_uri(uri) {
+                    fetcher.parse_data_url(uri)?
+                } else {
+                    fetcher.fetch(uri)?
+                }
+            }
+            gltf::buffer::Source::Bin => {
+                unimplemented!()
+            }
+        },
+        gltf::image::Source::Uri {
+            uri,
+            mime_type: _mime_type,
+        } => fetcher.fetch(uri)?,
+    })
 }

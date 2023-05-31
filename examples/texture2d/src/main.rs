@@ -1,12 +1,13 @@
+use std::rc::Rc;
+
 use examples_common::CustomEvent;
-use image::EncodableLayout;
 use threerender::color::rgb::RGBA;
 use threerender::math::trs::Rotation;
 use threerender::math::{Quat, Transform, Vec3};
-use threerender::mesh::{EntityMesh, TextureMesh};
-use threerender::mesh::{Plane, Sphere, Square, TextureDescriptor, TextureFormat};
+use threerender::mesh::{BuiltInEntityOption, Plane, Sphere, Square};
 use threerender::renderer::Updater;
 use threerender::traits::entity::{EntityDescriptor, EntityRendererState};
+use threerender::traits::image::DefaultImage;
 use threerender::{
     CameraStyle, EntityList, LightBaseStyle, LightStyle, RendererBuilder, Scene, ShadowStyle,
 };
@@ -56,8 +57,7 @@ fn main() {
         Some(ShadowStyle::default()),
     ));
 
-    let plane = Plane::new([0, 1, 0], None);
-    let plane = plane.use_entity();
+    let plane = Rc::new(Plane::new([0, 1, 0], None));
     renderer_builder.push(EntityDescriptor {
         id: "plane".to_owned(),
         mesh: Some(plane),
@@ -72,17 +72,9 @@ fn main() {
         ..Default::default()
     });
 
-    let im = image::load_from_memory(include_bytes!("../sample.jpg")).unwrap();
-    let im = im.to_rgba8();
-    let (width, height) = im.dimensions();
+    let im = include_bytes!("../sample.jpg");
 
-    let square = Square::new(Some(TextureDescriptor {
-        width,
-        height,
-        format: TextureFormat::Rgba8,
-        data: im.as_bytes().to_vec(),
-    }));
-    let square = square.use_texture();
+    let square = Rc::new(Square::new(Some(BuiltInEntityOption { use_texture: true })));
     renderer_builder.push(EntityDescriptor {
         id: "square".to_owned(),
         mesh: Some(square),
@@ -94,19 +86,16 @@ fn main() {
         ),
         state: EntityRendererState::default(),
         reflection: Default::default(),
+        texture: Some(Rc::new(
+            DefaultImage::from_buffer(im).expect("Image load error"),
+        )),
         ..Default::default()
     });
 
-    let plane = Plane::new(
+    let plane = Rc::new(Plane::new(
         [0, 1, 0],
-        Some(TextureDescriptor {
-            width,
-            height,
-            format: TextureFormat::Rgba8,
-            data: im.as_bytes().to_vec(),
-        }),
-    );
-    let plane = plane.use_texture();
+        Some(BuiltInEntityOption { use_texture: true }),
+    ));
     renderer_builder.push(EntityDescriptor {
         id: "plane".to_owned(),
         mesh: Some(plane),
@@ -118,24 +107,17 @@ fn main() {
         ),
         state: EntityRendererState::default(),
         reflection: Default::default(),
+        texture: Some(Rc::new(
+            DefaultImage::from_buffer(im).expect("Image load error"),
+        )),
         ..Default::default()
     });
 
-    let globe_im = image::load_from_memory(include_bytes!("../globe.jpg")).unwrap();
-    let globe_im = globe_im.to_rgba8();
-    let (globe_width, globe_height) = globe_im.dimensions();
-
-    let sphere = Sphere::new(
+    let sphere = Rc::new(Sphere::new(
         50,
         50,
-        Some(TextureDescriptor {
-            width: globe_width,
-            height: globe_height,
-            format: TextureFormat::Rgba8,
-            data: globe_im.as_bytes().to_vec(),
-        }),
-    );
-    let sphere = sphere.use_texture();
+        Some(BuiltInEntityOption { use_texture: true }),
+    ));
     renderer_builder.push(EntityDescriptor {
         id: "sphere".to_owned(),
         mesh: Some(sphere),
@@ -147,6 +129,9 @@ fn main() {
         ),
         state: EntityRendererState::default(),
         reflection: Default::default(),
+        texture: Some(Rc::new(
+            DefaultImage::from_buffer(include_bytes!("../globe.jpg")).expect("Image load error"),
+        )),
         ..Default::default()
     });
     examples_common::start(renderer_builder, Box::new(App));

@@ -12,7 +12,7 @@ use threerender::traits::entity::EntityDescriptor;
 use threerender::{CameraStyle, EntityList, LightBaseStyle, LightStyle, RendererBuilder, Scene};
 
 struct App {
-    sphere: Mesh,
+    sphere: Rc<dyn Mesh>,
     rng: ThreadRng,
 }
 
@@ -39,6 +39,7 @@ impl Updater for App {
                 state: Default::default(),
                 reflection: Default::default(),
                 children: vec![],
+                ..Default::default()
             })
         }
     }
@@ -63,7 +64,6 @@ fn main() {
     ));
 
     let sphere = Rc::new(Sphere::new(50, 50, None));
-    let sphere = Mesh::Entity(sphere);
     renderer_builder.push(EntityDescriptor {
         id: "sphere".to_owned(),
         mesh: Some(sphere.clone()),
@@ -76,6 +76,7 @@ fn main() {
         state: Default::default(),
         reflection: Default::default(),
         children: vec![],
+        ..Default::default()
     });
 
     let rng = thread_rng();

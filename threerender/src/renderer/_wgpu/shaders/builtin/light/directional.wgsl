@@ -1,5 +1,4 @@
-fn calc_directional_light(world_normal: vec3<f32>, position: vec4<f32>, ulight: UniformLight) -> DirectionalLight {
-    let light_position = vec4<f32>(ulight.position, 1.0);
+fn calc_directional_light(world_normal: vec3<f32>, position: vec4<f32>, ulight: UniformLight, light_position: vec4<f32>) -> DirectionalLight {
     let blightness = vec4<f32>(ulight.brightness);
 
     let light_normal = normalize(calc_affine_normal(light_position, position).xyz);
