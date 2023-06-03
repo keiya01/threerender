@@ -6,7 +6,6 @@ var<uniform> umodel: mat4x4<f32>;
 
 struct Entity {
     transform: mat4x4<f32>,
-    color: vec4<f32>,
 }
 
 @group(1)

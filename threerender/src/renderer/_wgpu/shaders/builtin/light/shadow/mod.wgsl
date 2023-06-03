@@ -1,2 +1,2 @@
 #include builtin::light::shadow::uniforms
-#include builtin::light::shadow::directional
+#include builtin::light::shadow::mask

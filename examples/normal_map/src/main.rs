@@ -1,19 +1,17 @@
-use std::fs::canonicalize;
 use std::rc::Rc;
 
 use examples_common::CustomEvent;
 use threerender::color::rgb::{RGB, RGBA};
 use threerender::math::trs::{Rotation, Scale, Translation};
 use threerender::math::{Quat, Transform, Vec3};
-use threerender::mesh::Plane;
+use threerender::mesh::{Plane, Sphere, Square, BuiltInEntityOption};
 use threerender::renderer::Updater;
 use threerender::traits::entity::{EntityDescriptor, ReflectionStyle};
+use threerender::traits::image::DefaultImage;
 use threerender::{
-    CameraPosition, CameraStyle, EntityList, HemisphereLightStyle, LightBaseStyle, LightStyle,
-    RendererBuilder, Scene, ShadowOptions, ShadowStyle,
+    CameraStyle, EntityList, HemisphereLightStyle, LightBaseStyle, LightStyle, RendererBuilder,
+    Scene, ShadowOptions, ShadowStyle,
 };
-use threerender_loader::fetcher::DefaultFileSystemBasedFetcher;
-use threerender_loader::gltf::{DefaultGltfHandler, GltfLoader};
 
 fn normalize(n: f32, v: f32) -> f32 {
     if n == 0. {
@@ -47,7 +45,7 @@ impl App {
 impl Updater for App {
     type Event = CustomEvent;
 
-    fn update(&mut self, _entity_list: &mut dyn EntityList, scene: &mut Scene, event: Self::Event) {
+    fn update(&mut self, entity_list: &mut dyn EntityList, scene: &mut Scene, event: Self::Event) {
         match event {
             CustomEvent::MouseDown => self.dragging = true,
             CustomEvent::MouseUp => self.dragging = false,
@@ -80,9 +78,12 @@ impl Updater for App {
             _ => {}
         }
 
-        for entity in _entity_list.items_mut() {
+        for entity in entity_list.items_mut() {
             // Rotate square
-            if entity.id == "model" {
+            if entity.id == "square1" {
+                entity.rotate_z(0.01);
+            }
+            if entity.id == "square2" {
                 entity.rotate_y(0.01);
             }
         }
@@ -100,19 +101,18 @@ fn main() {
         width: width as f32,
         height: height as f32,
         far: 1000.,
-        position: CameraPosition::new(0., 50., -50.),
         ..Default::default()
     });
 
     // TODO: This should be able to set by each light's shadow setting
     renderer_builder.set_shadow_options(ShadowOptions {
-        map_size: (2056, 2056),
+        map_size: (1028, 1028),
     });
 
     renderer_builder.add_light(LightStyle::with_directional(
         "directional1".to_owned(),
         LightBaseStyle {
-            position: Vec3::new(50., 60., -50.),
+            position: Vec3::new(5., 6., 5.),
             ..Default::default()
         },
         Some(ShadowStyle {
@@ -126,7 +126,7 @@ fn main() {
     renderer_builder.add_light(LightStyle::with_directional(
         "directional2".to_owned(),
         LightBaseStyle {
-            position: Vec3::new(-50., 60., -50.),
+            position: Vec3::new(-5., 6., 5.),
             ..Default::default()
         },
         Some(ShadowStyle {
@@ -142,7 +142,7 @@ fn main() {
             sky_color: RGB::new(232, 244, 252),
             ground_color: RGB::new(216, 210, 205),
         },
-        Vec3::new(0., 100., 0.),
+        Vec3::new(0., 1., 0.),
     ));
 
     let plane = Rc::new(Plane::new([0, 1, 0], None));
@@ -151,7 +151,7 @@ fn main() {
         mesh: Some(plane),
         fill_color: RGBA::new(163, 104, 64, 255),
         transform: Transform::from_translation_rotation_scale(
-            Vec3::new(-3., -2., 0.),
+            Vec3::new(-3., -2., -3.),
             Quat::from_axis_angle(0., -1., 0., 1.),
             Vec3::new(30., 30., 30.),
         ),
@@ -160,52 +160,60 @@ fn main() {
         children: vec![],
         ..Default::default()
     });
-
-    let gltf_loader = GltfLoader::from_byte(
-        "model",
-        #[cfg(feature = "avocado")]
-        include_bytes!("../assets/avocado/Avocado.gltf"),
-        #[cfg(feature = "duck")]
-        include_bytes!("../assets/duck/Duck.gltf"),
-        #[cfg(feature = "cylinder_engine")]
-        include_bytes!("../assets/cylinderEngine/2CylinderEngine.gltf"),
-        #[cfg(feature = "avocado")]
-        DefaultFileSystemBasedFetcher::with_resolve_path(
-            canonicalize("./examples/gltf/assets/avocado").unwrap(),
-        ),
-        #[cfg(feature = "duck")]
-        DefaultFileSystemBasedFetcher::with_resolve_path(
-            canonicalize("./examples/gltf/assets/duck").unwrap(),
-        ),
-        #[cfg(feature = "cylinder_engine")]
-        DefaultFileSystemBasedFetcher::with_resolve_path(
-            canonicalize("./examples/gltf/assets/cylinderEngine").unwrap(),
-        ),
-        DefaultGltfHandler,
-    )
-    .unwrap();
+    let sphere = Rc::new(Sphere::new(50, 50, None));
     renderer_builder.push(EntityDescriptor {
-        id: "model".to_string(),
-        mesh: None,
-        fill_color: RGBA::default(),
-        transform: Transform {
-            #[cfg(feature = "avocado")]
-            translation: Vec3::new(0., 1., 0.),
-            #[cfg(feature = "duck")]
-            translation: Vec3::new(0., 1., 0.),
-            #[cfg(feature = "cylinder_engine")]
-            translation: Vec3::new(0., 8., 0.),
-            #[cfg(feature = "avocado")]
-            scale: Vec3::new(300., 300., 300.),
-            #[cfg(feature = "duck")]
-            scale: Vec3::new(10., 10., 10.),
-            #[cfg(feature = "cylinder_engine")]
-            scale: Vec3::new(0.05, 0.05, 0.05),
-            ..Default::default()
-        },
+        id: "sphere".to_owned(),
+        mesh: Some(sphere),
+        fill_color: RGBA::new(255, 25, 255, 255),
+        transform: Transform::from_translation_rotation_scale(
+            Vec3::ZERO,
+            Quat::default(),
+            Vec3::ONE,
+        ),
         state: Default::default(),
-        reflection: ReflectionStyle::default(),
-        children: gltf_loader.entities,
+        reflection: ReflectionStyle {
+            specular: 10.,
+            intensity: 100.,
+        },
+        children: vec![],
+        ..Default::default()
+    });
+    let square = Rc::new(Square::new(Some(BuiltInEntityOption { use_texture: true })));
+    renderer_builder.push(EntityDescriptor {
+        id: "square1".to_owned(),
+        mesh: Some(square.clone()),
+        fill_color: RGBA::new(20, 55, 0, 255),
+        transform: Transform::from_translation_rotation_scale(
+            Vec3::new(0., 0., -3.),
+            Quat::default(),
+            Vec3::ONE,
+        ),
+        state: Default::default(),
+        reflection: ReflectionStyle {
+            specular: 10.,
+            intensity: 100.,
+        },
+        children: vec![],
+        normal_map: Some(Rc::new(DefaultImage::from_buffer(include_bytes!("../assets/cube-normal.png")).expect("Image load error"))),
+        ..Default::default()
+    });
+    let square = Rc::new(Square::new(Some(BuiltInEntityOption { use_texture: true })));
+    renderer_builder.push(EntityDescriptor {
+        id: "square2".to_owned(),
+        mesh: Some(square),
+        fill_color: RGBA::new(255, 0, 0, 255),
+        transform: Transform::from_translation_rotation_scale(
+            Vec3::new(-3., 0., -1.),
+            Quat::default(),
+            Vec3::ONE,
+        ),
+        state: Default::default(),
+        reflection: ReflectionStyle {
+            intensity: 0.,
+            specular: 0.,
+        },
+        children: vec![],
+        normal_map: Some(Rc::new(DefaultImage::from_buffer(include_bytes!("../assets/cube-normal.png")).expect("Image load error"))),
         ..Default::default()
     });
 

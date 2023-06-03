@@ -1,5 +1,6 @@
 use std::{borrow::Cow, collections::HashMap, marker::PhantomData, mem, num::NonZeroU32, rc::Rc};
 
+use glam::Mat3;
 use threerender_math::Transform;
 use threerender_traits::{
     entity::{EntityDescriptor, EntityRendererState},
@@ -24,7 +25,7 @@ use super::{
     processor::{ProcessOption, Processor},
     scene::{Reflection, Scene},
     shadow::ShadowBaker,
-    uniform::EntityUniformBuffer,
+    uniform::{EntityUniformBuffer, ShadowEntityUniformBuffer},
     unit::{rgba_to_array, rgba_to_array_64},
 };
 
@@ -73,8 +74,8 @@ impl RenderedEntity {
     pub(super) fn make_uniform(
         device: &Device,
         length: usize,
+        entity_uniform_size: wgpu::BufferAddress,
     ) -> (wgpu::BufferAddress, Buffer, wgpu::BufferAddress) {
-        let entity_uniform_size = mem::size_of::<EntityUniformBuffer>() as wgpu::BufferAddress;
         let entity_uniform_alignment = {
             let alignment =
                 device.limits().min_uniform_buffer_offset_alignment as wgpu::BufferAddress;
@@ -287,7 +288,7 @@ impl DynamicRenderer {
     pub fn new(device: Device, queue: Queue, renderer_builder: &mut RendererBuilder) -> Self {
         let entity_length = renderer_builder.mesh_length();
         let (entity_uniform_size, entity_uniform_buf, entity_uniform_alignment) =
-            RenderedEntity::make_uniform(&device, entity_length);
+            RenderedEntity::make_uniform(&device, entity_length, mem::size_of::<EntityUniformBuffer>() as wgpu::BufferAddress);
 
         let mut texture_view_array = vec![];
         let mut sampler_array = vec![];
@@ -377,20 +378,27 @@ impl DynamicRenderer {
                         texture_view_array.push(view);
                         sampler_array.push(sampler);
 
-                        Some(*tex_idx as i32)
+                        let idx = *tex_idx as i32;
+
+                        *tex_idx += 1;
+
+                        Some(idx)
                     } else {
                         None
                     };
 
                     let normal_map_idx = if let Some(normal_map) = &normal_map {
-                        // FIXME(@keiya01): Handle image error
                         let (sampler, view) =
                             RenderedTexture::make_texture(normal_map.as_ref(), device, queue);
 
                         texture_view_array.push(view);
                         sampler_array.push(sampler);
 
-                        Some((*tex_idx + 1) as i32)
+                        let idx: i32 = *tex_idx as i32;
+
+                        *tex_idx += 1;
+
+                        Some(idx)
                     } else {
                         None
                     };
@@ -405,12 +413,6 @@ impl DynamicRenderer {
 
                     // Must update only when mesh is exist
                     *idx += 1;
-                    if tex_idx_for_entity.is_some() {
-                        *tex_idx += 1;
-                    }
-                    if normal_map_idx.is_some() {
-                        *tex_idx += 1;
-                    }
 
                     (tex_idx_for_entity, normal_map_idx)
                 }
@@ -571,6 +573,7 @@ impl EntityList for DynamicRenderer {
                 &self.device,
                 // Length of `Some` of meta_list will be equal with entity mesh length.
                 entity_length + descriptor.flatten_mesh_length(),
+                mem::size_of::<EntityUniformBuffer>() as wgpu::BufferAddress,
             );
 
         let (entity_bind_group_layout, entity_bind_group) =
@@ -936,7 +939,7 @@ impl<Event> Renderer<Event> {
                             i += 1;
 
                             if let Some(meta) = meta {
-                                self.prepare_shadow_entity(entity, meta, transform);
+                                self.prepare_shadow_entity(meta, transform);
                                 rpass.set_bind_group(
                                     1,
                                     &self.shadow_baker.entity.entity_bind_group,
@@ -1051,13 +1054,21 @@ impl<Event> Renderer<Event> {
     // FIXME(@keiya01): Dirty check
     fn prepare_entity(&self, entity: &Entity, meta: &RenderedEntityMeta, transform: &Transform) {
         let renderer_entity = &self.dynamic_renderer.rendered_entity;
+        let transform = transform.as_mat4();
+        let normal_transform = Mat3::from_mat4(transform).inverse().transpose().to_cols_array_2d();
         let buf = EntityUniformBuffer {
-            transform: transform.as_mat4().to_cols_array_2d(),
+            transform: transform.to_cols_array_2d(),
             color: rgba_to_array(&entity.fill_color),
             reflection: Reflection::from_style(&entity.reflection),
-            tex_idx: entity.tex_idx.unwrap_or(-1),
-            normal_idx: entity.normal_map_idx.unwrap_or(-1),
-            padding: [0.; 3],
+            tex_idx: [entity.tex_idx.unwrap_or(-1), 0, 0, 0],
+            normal_idx: [entity.normal_map_idx.unwrap_or(-1), 0, 0, 0],
+            #[rustfmt::skip]
+            normal_transform: [
+                [normal_transform[0][0], normal_transform[0][1], normal_transform[0][2], 0.],
+                [normal_transform[1][0], normal_transform[1][1], normal_transform[1][2], 0.],
+                [normal_transform[2][0], normal_transform[2][1], normal_transform[2][2], 0.],
+                [0., 0., 0., 0.],
+            ],
         };
 
         self.dynamic_renderer.queue.write_buffer(
@@ -1070,18 +1081,13 @@ impl<Event> Renderer<Event> {
     // FIXME(@keiya01): Dirty check
     fn prepare_shadow_entity(
         &self,
-        entity: &Entity,
         meta: &RenderedEntityMeta,
         transform: &Transform,
     ) {
         let renderer_entity = &self.shadow_baker.entity;
-        let buf = EntityUniformBuffer {
-            transform: transform.as_mat4().to_cols_array_2d(),
-            color: rgba_to_array(&entity.fill_color),
-            reflection: Reflection::from_style(&entity.reflection),
-            tex_idx: entity.tex_idx.unwrap_or(-1),
-            normal_idx: entity.normal_map_idx.unwrap_or(-1),
-            padding: [0.; 3],
+        let transform = transform.as_mat4();
+        let buf = ShadowEntityUniformBuffer {
+            transform: transform.to_cols_array_2d(),
         };
         self.dynamic_renderer.queue.write_buffer(
             &renderer_entity.entity_uniform_buf,

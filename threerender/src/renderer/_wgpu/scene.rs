@@ -18,7 +18,7 @@ use super::unit::rgb_to_array;
 pub struct Reflection {
     intensity: f32,
     specular: f32,
-    _padding: [f32; 2],
+    _padding: [f32; 6],
 }
 
 impl Reflection {
@@ -27,7 +27,7 @@ impl Reflection {
         Self {
             intensity: reflection.intensity,
             specular: reflection.specular,
-            _padding: [0., 0.],
+            _padding: [0.; 6],
         }
     }
 }

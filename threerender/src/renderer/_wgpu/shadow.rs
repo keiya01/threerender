@@ -12,7 +12,7 @@ use crate::mesh::{PolygonMode, Topology, Vertex};
 use super::{
     processor::{ProcessOption, Processor},
     scene::Scene,
-    RenderedEntity,
+    RenderedEntity, uniform::ShadowEntityUniformBuffer,
 };
 
 pub(super) struct ShadowEntityUniform {
@@ -38,7 +38,7 @@ impl ShadowBaker {
     ) -> Self {
         let camera = CameraUniform::with_mat4(device, scene.light_uniform.len());
         let (entity_uniform_size, entity_uniform_buf, _) =
-            RenderedEntity::make_uniform(device, entity_len);
+            RenderedEntity::make_uniform(device, entity_len, mem::size_of::<ShadowEntityUniformBuffer>() as wgpu::BufferAddress);
         let (entity_bind_group_layout, entity_bind_group) =
             RenderedEntity::make_bind_group(device, entity_uniform_size, &entity_uniform_buf);
 
