@@ -16,6 +16,7 @@ pub struct Entity {
     pub state: EntityRendererState,
     pub normal_map_idx: Option<i32>,
     pub tex_idx: Option<i32>,
+    pub receive_shadow: bool,
 }
 
 impl Translation for Entity {

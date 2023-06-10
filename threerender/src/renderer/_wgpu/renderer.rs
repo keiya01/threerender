@@ -357,6 +357,7 @@ impl DynamicRenderer {
             reflection,
             texture,
             normal_map,
+            receive_shadow,
         } in descriptors.into_iter()
         {
             let (tex_idx_for_entity, normal_map_idx) = match mesh {
@@ -444,6 +445,7 @@ impl DynamicRenderer {
                 children,
                 tex_idx: tex_idx_for_entity,
                 normal_map_idx,
+                receive_shadow,
             });
         }
 
@@ -470,6 +472,7 @@ impl DynamicRenderer {
             reflection,
             texture,
             normal_map,
+            receive_shadow,
         } in descriptors.into_iter()
         {
             let (tex_idx_for_entity, normal_map_idx) = match mesh {
@@ -549,6 +552,7 @@ impl DynamicRenderer {
                 children,
                 tex_idx: tex_idx_for_entity,
                 normal_map_idx,
+                receive_shadow,
             });
         }
 
@@ -1069,6 +1073,7 @@ impl<Event> Renderer<Event> {
                 [normal_transform[2][0], normal_transform[2][1], normal_transform[2][2], 0.],
                 [0., 0., 0., 0.],
             ],
+            receive_shadow: [entity.receive_shadow as u32, 0, 0, 0],
         };
 
         self.dynamic_renderer.queue.write_buffer(

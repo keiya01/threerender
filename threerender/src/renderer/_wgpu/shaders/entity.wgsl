@@ -20,6 +20,8 @@ struct Entity {
     color: vec4<f32>,
     tex_idx: vec4<i32>,
     normal_idx: vec4<i32>,
+    // 0 or 1
+    receive_shadow: vec4<u32>,
     reflection: Reflection,
 }
 
@@ -168,7 +170,7 @@ fn fs_main(vertex: VertexOutput) -> @location(0) vec4<f32> {
                 let reflection = calc_specular_reflection(camera_position, vertex.tangent_or_local_position, normal, light_normal, entity.reflection);
 
                 // shadow
-                if ulight.shadow.use_shadow == 1u {
+                if ulight.shadow.use_shadow == 1u && entity.receive_shadow.x == 1u {
                     color += ulight.ambient + vec4(calc_shadow_mask(
                         i,
                         ulight.shadow.projection * vertex.local_position,

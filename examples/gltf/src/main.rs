@@ -13,7 +13,7 @@ use threerender::{
     RendererBuilder, Scene, ShadowOptions, ShadowStyle, ShadowType,
 };
 use threerender_loader::fetcher::DefaultFileSystemBasedFetcher;
-use threerender_loader::gltf::{DefaultGltfHandler, GltfLoader};
+use threerender_loader::gltf::{GltfLoader, GltfHandler};
 
 fn normalize(n: f32, v: f32) -> f32 {
     if n == 0. {
@@ -81,6 +81,25 @@ impl Updater for App {
         }
     }
 }
+
+#[derive(Debug)]
+struct OwnGltfHandler;
+
+impl GltfHandler for OwnGltfHandler {
+    fn on_create(
+            &self,
+            _descriptor: &mut EntityDescriptor,
+            _mesh: Option<&threerender_loader::gltf::GltfMesh>,
+            _row: &gltf::Node,
+        ) where
+            Self: Sized, {
+        #[cfg(feature = "avocado")]
+        {
+            _descriptor.receive_shadow = false;
+        }
+    }
+}
+
 
 fn main() {
     let (width, height) = (2000, 1500);
@@ -176,7 +195,7 @@ fn main() {
         DefaultFileSystemBasedFetcher::with_resolve_path(
             canonicalize("./examples/gltf/assets/cylinderEngine").unwrap(),
         ),
-        DefaultGltfHandler,
+        OwnGltfHandler,
     )
     .unwrap();
     renderer_builder.push(EntityDescriptor {
