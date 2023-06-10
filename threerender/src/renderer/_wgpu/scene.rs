@@ -1,4 +1,4 @@
-use std::{mem, f32::consts};
+use std::{f32::consts, mem};
 
 use bytemuck::{Pod, Zeroable};
 use glam::{Affine3A, Mat4};
@@ -265,7 +265,10 @@ impl ShadowUniform {
         }
     }
 
-    fn create_texture(device: &Device, map_size: (u32, u32)) -> (Sampler, Sampler, Texture, TextureView) {
+    fn create_texture(
+        device: &Device,
+        map_size: (u32, u32),
+    ) -> (Sampler, Sampler, Texture, TextureView) {
         // Create other resources
         let shadow_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("shadow sampler"),
@@ -306,7 +309,12 @@ impl ShadowUniform {
         });
         let shadow_view = shadow_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-        (shadow_sampler, shadow_sampler_comparison, shadow_texture, shadow_view)
+        (
+            shadow_sampler,
+            shadow_sampler_comparison,
+            shadow_texture,
+            shadow_view,
+        )
     }
 }
 

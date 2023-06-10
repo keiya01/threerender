@@ -13,7 +13,7 @@ use threerender::{
     RendererBuilder, Scene, ShadowOptions, ShadowStyle, ShadowType,
 };
 use threerender_loader::fetcher::DefaultFileSystemBasedFetcher;
-use threerender_loader::gltf::{GltfLoader, GltfHandler};
+use threerender_loader::gltf::{GltfHandler, GltfLoader};
 
 fn normalize(n: f32, v: f32) -> f32 {
     if n == 0. {
@@ -87,19 +87,19 @@ struct OwnGltfHandler;
 
 impl GltfHandler for OwnGltfHandler {
     fn on_create(
-            &self,
-            _descriptor: &mut EntityDescriptor,
-            _mesh: Option<&threerender_loader::gltf::GltfMesh>,
-            _row: &gltf::Node,
-        ) where
-            Self: Sized, {
+        &self,
+        _descriptor: &mut EntityDescriptor,
+        _mesh: Option<&threerender_loader::gltf::GltfMesh>,
+        _row: &gltf::Node,
+    ) where
+        Self: Sized,
+    {
         #[cfg(feature = "avocado")]
         {
             _descriptor.receive_shadow = false;
         }
     }
 }
-
 
 fn main() {
     let (width, height) = (2000, 1500);

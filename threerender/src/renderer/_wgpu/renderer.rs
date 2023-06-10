@@ -288,7 +288,11 @@ impl DynamicRenderer {
     pub fn new(device: Device, queue: Queue, renderer_builder: &mut RendererBuilder) -> Self {
         let entity_length = renderer_builder.mesh_length();
         let (entity_uniform_size, entity_uniform_buf, entity_uniform_alignment) =
-            RenderedEntity::make_uniform(&device, entity_length, mem::size_of::<EntityUniformBuffer>() as wgpu::BufferAddress);
+            RenderedEntity::make_uniform(
+                &device,
+                entity_length,
+                mem::size_of::<EntityUniformBuffer>() as wgpu::BufferAddress,
+            );
 
         let mut texture_view_array = vec![];
         let mut sampler_array = vec![];
@@ -823,7 +827,8 @@ impl<Event> Renderer<Event> {
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
                 format: Self::DEPTH_FORMAT,
-                usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                    | wgpu::TextureUsages::TEXTURE_BINDING,
                 label: None,
                 view_formats: &[],
             });
@@ -1059,7 +1064,10 @@ impl<Event> Renderer<Event> {
     fn prepare_entity(&self, entity: &Entity, meta: &RenderedEntityMeta, transform: &Transform) {
         let renderer_entity = &self.dynamic_renderer.rendered_entity;
         let transform = transform.as_mat4();
-        let normal_transform = Mat3::from_mat4(transform).inverse().transpose().to_cols_array_2d();
+        let normal_transform = Mat3::from_mat4(transform)
+            .inverse()
+            .transpose()
+            .to_cols_array_2d();
         let buf = EntityUniformBuffer {
             transform: transform.to_cols_array_2d(),
             color: rgba_to_array(&entity.fill_color),
@@ -1084,11 +1092,7 @@ impl<Event> Renderer<Event> {
     }
 
     // FIXME(@keiya01): Dirty check
-    fn prepare_shadow_entity(
-        &self,
-        meta: &RenderedEntityMeta,
-        transform: &Transform,
-    ) {
+    fn prepare_shadow_entity(&self, meta: &RenderedEntityMeta, transform: &Transform) {
         let renderer_entity = &self.shadow_baker.entity;
         let transform = transform.as_mat4();
         let buf = ShadowEntityUniformBuffer {
