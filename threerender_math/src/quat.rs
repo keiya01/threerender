@@ -1,3 +1,5 @@
+use std::ops::Mul;
+
 use crate::Vec3;
 
 #[derive(Debug, Clone, Copy)]
@@ -29,11 +31,11 @@ impl Quat {
         }
     }
 
-    pub fn mul(&self, a: Self) -> Self {
+    fn mul_origin(&self, a: Self) -> Self {
         Self::from_array(self.as_glam().mul_quat(a.as_glam()).to_array())
     }
 
-    pub fn mul_vec3(&self, a: Vec3) -> Vec3 {
+    pub fn mul_vec3_origin(&self, a: Vec3) -> Vec3 {
         Vec3::from_array(&self.as_glam().mul_vec3(a.as_glam()).to_array())
     }
 
@@ -51,5 +53,21 @@ impl Default for Quat {
             z: a[2],
             w: a[3],
         }
+    }
+}
+
+impl Mul<Quat> for Quat {
+    type Output = Quat;
+
+    fn mul(self, rhs: Quat) -> Self::Output {
+        self.mul_origin(rhs)
+    }
+}
+
+impl Mul<Vec3> for Quat {
+    type Output = Vec3;
+
+    fn mul(self, rhs: Vec3) -> Self::Output {
+        self.mul_vec3_origin(rhs)
     }
 }

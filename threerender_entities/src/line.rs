@@ -1,24 +1,28 @@
-use std::rc::Rc;
+use std::{cell::RefCell, rc::Rc};
 
 use threerender_math::Vec3;
-use threerender_traits::mesh::{EntityMesh, Mesh, Topology, Vertex};
+use threerender_traits::mesh::{Mesh, Topology, Vertex};
 
 #[derive(Debug)]
 pub struct Line {
-    vertex: Vec<Vertex>,
+    vertex: Rc<RefCell<Vec<Vertex>>>,
     index: Option<Vec<u16>>,
+    pub topology: Topology,
 }
 
 impl Line {
     pub fn new(points: Vec<Vec3>) -> Self {
         Self {
-            vertex: Self::vec_to_vertex(points),
+            vertex: Rc::new(RefCell::new(Self::vec_to_vertex(points))),
             index: None,
+            topology: Topology::LineList,
         }
     }
 
     pub fn push_vertex(&mut self, points: Vec<Vec3>) {
-        self.vertex.extend_from_slice(&Self::vec_to_vertex(points));
+        self.vertex
+            .borrow_mut()
+            .extend_from_slice(&Self::vec_to_vertex(points));
     }
 
     pub fn push_index(&mut self, v: [u16; 3]) {
@@ -37,9 +41,9 @@ impl Line {
     }
 }
 
-impl EntityMesh for Line {
-    fn vertex(&self) -> &[Vertex] {
-        &self.vertex
+impl Mesh for Line {
+    fn vertex(&self) -> Rc<RefCell<Vec<Vertex>>> {
+        self.vertex.clone()
     }
 
     fn index(&self) -> Option<&[u16]> {
@@ -51,9 +55,5 @@ impl EntityMesh for Line {
 
     fn topology(&self) -> Topology {
         Topology::LineList
-    }
-
-    fn use_entity(self) -> Mesh {
-        Mesh::Entity(Rc::new(self))
     }
 }

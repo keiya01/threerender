@@ -1,8 +1,5 @@
 use threerender_color::rgb::RGBA;
-use threerender_traits::{
-    entity::{EntityDescriptor, RendererState},
-    mesh::MeshType,
-};
+use threerender_traits::entity::{EntityDescriptor, RendererState};
 
 #[cfg(feature = "wgpu")]
 use crate::renderer::wgpu_builder::RendererSpecificAttributes;
@@ -36,7 +33,6 @@ impl Default for RendererBuilder {
             states: vec![
                 Default::default(),
                 RendererState {
-                    mesh_type: MeshType::Texture,
                     ..Default::default()
                 },
             ],
@@ -59,7 +55,6 @@ impl RendererBuilder {
     }
 
     pub fn push(&mut self, mut descriptor: EntityDescriptor) {
-        descriptor.infer_mesh_type();
         self.entities.push(descriptor);
     }
 

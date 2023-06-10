@@ -1,8 +1,10 @@
+use std::rc::Rc;
+
 use examples_common::CustomEvent;
 use threerender::color::rgb::RGBA;
 use threerender::math::trs::Rotation;
 use threerender::math::{Quat, Transform, Vec3};
-use threerender::mesh::{EntityMesh, Line, Point, Topology};
+use threerender::mesh::{Line, Point, Topology};
 
 use threerender::renderer::Updater;
 use threerender::traits::entity::{EntityDescriptor, EntityRendererState, RendererState};
@@ -70,12 +72,10 @@ fn main() {
         Vec3::new(-2., -2., 1.),
     ];
 
-    let lines = Line::new(points);
-    let lines = lines.use_entity();
-    let topology = lines.topology();
+    let lines = Rc::new(Line::new(points));
     renderer_builder.push(EntityDescriptor {
         id: "lines".to_owned(),
-        mesh: Some(lines),
+        mesh: Some(lines.clone()),
         fill_color: RGBA::new(255, 0, 0, 255),
         transform: Transform::from_translation_rotation_scale(
             Vec3::new(0., 0., 0.),
@@ -83,11 +83,12 @@ fn main() {
             Vec3::ONE,
         ),
         state: EntityRendererState {
-            topology,
+            topology: lines.topology,
             ..Default::default()
         },
         reflection: Default::default(),
         children: vec![],
+        ..Default::default()
     });
 
     let mut circles = vec![];
@@ -99,12 +100,10 @@ fn main() {
         circles.push(Vec3::new(x, y, 1.));
     }
 
-    let points = Point::new(circles);
-    let points = points.use_entity();
-    let topology = points.topology();
+    let points = Rc::new(Point::new(circles));
     renderer_builder.push(EntityDescriptor {
         id: "circle".to_owned(),
-        mesh: Some(points),
+        mesh: Some(points.clone()),
         fill_color: RGBA::new(0, 0, 0, 255),
         transform: Transform::from_translation_rotation_scale(
             Vec3::new(0., 0., 0.),
@@ -112,11 +111,12 @@ fn main() {
             Vec3::ONE,
         ),
         state: EntityRendererState {
-            topology,
+            topology: points.topology,
             ..Default::default()
         },
         reflection: Default::default(),
         children: vec![],
+        ..Default::default()
     });
 
     examples_common::start(renderer_builder, Box::new(App::new()));

@@ -2,13 +2,18 @@ use std::{
     fs::File,
     io::Read,
     path::{Path, PathBuf},
+    rc::Rc,
 };
 
 use base64::Engine;
+use threerender_traits::{
+    image::{DefaultImage, Image},
+    types::Buffer,
+};
 
-use crate::gltf::fetcher::{Buffer, GltfFetcher, GltfImage};
+use crate::gltf::fetcher::GltfFetcher;
 
-use super::{err::FetcherError, image::Image, LoaderFetcher};
+use super::{err::FetcherError, LoaderFetcher};
 
 pub struct DefaultFileSystemBasedFetcher {
     resolve_path: PathBuf,
@@ -24,7 +29,7 @@ impl LoaderFetcher for DefaultFileSystemBasedFetcher {}
 
 impl GltfFetcher for DefaultFileSystemBasedFetcher {
     /// Read data from specified path
-    fn fetch(&self, uri: &str) -> Result<crate::gltf::fetcher::Buffer, FetcherError> {
+    fn fetch(&self, uri: &str) -> Result<Buffer, FetcherError> {
         let path = Path::new(&self.resolve_path).join(uri);
         let mut f = File::open(path)?;
 
@@ -35,7 +40,7 @@ impl GltfFetcher for DefaultFileSystemBasedFetcher {
     }
 
     /// Parse and read Data URLs protocol
-    fn parse_data_url(&self, uri: &str) -> Result<crate::gltf::fetcher::Buffer, FetcherError> {
+    fn parse_data_url(&self, uri: &str) -> Result<Buffer, FetcherError> {
         let uri = percent_encoding::percent_decode_str(uri)
             .decode_utf8()
             .unwrap();
@@ -76,8 +81,8 @@ impl GltfFetcher for DefaultFileSystemBasedFetcher {
     }
 
     /// Load the exact image buffer from the data buffer.
-    fn load_image(&mut self, buf: Buffer) -> Result<Box<dyn GltfImage>, FetcherError> {
+    fn load_image(&mut self, buf: Buffer) -> Result<Rc<dyn Image>, FetcherError> {
         let img = image::load_from_memory(&buf)?;
-        Ok(Box::new(Image::from_image(img)))
+        Ok(Rc::new(DefaultImage::from_image(img)))
     }
 }

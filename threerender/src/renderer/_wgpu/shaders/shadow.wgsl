@@ -6,7 +6,6 @@ var<uniform> umodel: mat4x4<f32>;
 
 struct Entity {
     transform: mat4x4<f32>,
-    color: vec4<f32>,
 }
 
 @group(1)
@@ -18,9 +17,7 @@ var<uniform> entity: Entity;
 fn vs_bake(
     @location(0) position: vec4<f32>,
     @location(1) normal: vec3<f32>,
-#ifdef USE_TEXTURE
     @location(2) _tex_coords: vec2<f32>,
-#end
 ) -> @builtin(position) vec4<f32> {
     return umodel * entity.transform * position;
 }

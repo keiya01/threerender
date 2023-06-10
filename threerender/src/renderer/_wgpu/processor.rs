@@ -2,8 +2,7 @@ use shader_processor::{EnvType, ShaderProcessor};
 
 #[derive(Default)]
 pub(super) struct ProcessOption {
-    pub(super) use_texture: bool,
-    pub(super) support_storage: bool,
+    pub(super) has_texture: bool,
     pub(super) max_light_num: u32,
 }
 
@@ -42,14 +41,13 @@ impl<'a> Processor<'a> {
         // shadow builtin modules
         let p = make_builtin_path("light/shadow/uniforms");
         s.insert_builtin("light::shadow::uniforms", p);
-        let p = make_builtin_path("light/shadow/directional");
-        s.insert_builtin("light::shadow::directional", p);
+        let p = make_builtin_path("light/shadow/mask");
+        s.insert_builtin("light::shadow::mask", p);
         let p = make_builtin_path("light/shadow/mod");
         s.insert_builtin("light::shadow", p);
 
         // condition envs
-        s.insert_env("USE_TEXTURE", EnvType::Bool(option.use_texture));
-        s.insert_env("SUPPORT_STORAGE", EnvType::Bool(option.support_storage));
+        s.insert_env("HAS_TEXTURE", EnvType::Bool(option.has_texture));
         s.insert_env("MAX_LIGHT_NUM", EnvType::Number(option.max_light_num));
 
         s.process().unwrap()

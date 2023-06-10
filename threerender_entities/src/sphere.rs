@@ -1,39 +1,29 @@
-use std::{f32::consts::PI, rc::Rc};
-use threerender_traits::mesh::{
-    texture, texture_vertex, vertex, EntityMesh, Mesh, TextureFormat, TextureMesh, TextureVertex,
-    Vertex,
-};
+use std::{cell::RefCell, f32::consts::PI, rc::Rc};
+use threerender_traits::mesh::{texture, texture_vertex, vertex, Mesh, Vertex};
 
-use crate::TextureDescriptor;
+use crate::BuiltInEntityOption;
 
 #[derive(Default, Debug)]
 pub struct Sphere {
-    vertex: Option<Vec<Vertex>>,
-    index: Option<Vec<u16>>,
-
-    slices: u16,
-    stacks: u16,
-
-    texture_descriptor: Option<TextureDescriptor>,
-    texture: Option<Vec<TextureVertex>>,
+    vertex: Rc<RefCell<Vec<Vertex>>>,
+    index: Vec<u16>,
 }
 
 impl Sphere {
-    pub fn new(slices: u16, stacks: u16, texture_descriptor: Option<TextureDescriptor>) -> Self {
+    pub fn new(slices: u16, stacks: u16, options: Option<BuiltInEntityOption>) -> Self {
+        let (vertex, index) = if options.map(|v| v.use_texture).unwrap_or_default() {
+            Self::make_texture_data(slices, stacks)
+        } else {
+            Self::make_data(slices, stacks)
+        };
+
         Self {
-            vertex: None,
-            index: None,
-            texture_descriptor,
-            texture: None,
-            slices,
-            stacks,
+            vertex: Rc::new(RefCell::new(vertex)),
+            index,
         }
     }
 
-    fn make_data(&self) -> (Vec<Vertex>, Vec<u16>) {
-        let slices = self.slices;
-        let stacks = self.stacks;
-
+    fn make_data(slices: u16, stacks: u16) -> (Vec<Vertex>, Vec<u16>) {
         let mut vertices = vec![];
         let mut indices = vec![];
         for j in 0..stacks + 1 {
@@ -71,10 +61,7 @@ impl Sphere {
         (vertices, indices)
     }
 
-    fn make_texture_data(&self) -> (Vec<TextureVertex>, Vec<u16>) {
-        let slices = self.slices;
-        let stacks = self.stacks;
-
+    fn make_texture_data(slices: u16, stacks: u16) -> (Vec<Vertex>, Vec<u16>) {
         let mut vertices = vec![];
         let mut indices = vec![];
 
@@ -120,46 +107,12 @@ impl Sphere {
     }
 }
 
-impl EntityMesh for Sphere {
-    fn vertex(&self) -> &[Vertex] {
-        self.vertex
-            .as_ref()
-            .expect("You should invoke `use_entity` or `use_texture`.")
+impl Mesh for Sphere {
+    fn vertex(&self) -> Rc<RefCell<Vec<Vertex>>> {
+        self.vertex.clone()
     }
 
     fn index(&self) -> Option<&[u16]> {
-        self.index.as_ref().map(|v| &v[..])
-    }
-
-    fn use_entity(mut self) -> Mesh {
-        let (vertex, index) = self.make_data();
-        self.vertex = Some(vertex);
-        self.index = Some(index);
-        Mesh::Entity(Rc::new(self))
-    }
-}
-
-impl TextureMesh for Sphere {
-    fn texture(&self) -> Option<&[TextureVertex]> {
-        self.texture.as_ref().map(|t| &t[..])
-    }
-    fn width(&self) -> u32 {
-        self.texture_descriptor.as_ref().unwrap().width
-    }
-    fn height(&self) -> u32 {
-        self.texture_descriptor.as_ref().unwrap().height
-    }
-    fn format(&self) -> &TextureFormat {
-        &self.texture_descriptor.as_ref().unwrap().format
-    }
-    fn data(&self) -> &[u8] {
-        &self.texture_descriptor.as_ref().unwrap().data
-    }
-
-    fn use_texture(mut self) -> Mesh {
-        let (vertex, index) = self.make_texture_data();
-        self.texture = Some(vertex);
-        self.index = Some(index);
-        Mesh::Texture(Rc::new(self))
+        Some(&self.index)
     }
 }

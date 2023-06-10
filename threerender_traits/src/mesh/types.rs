@@ -14,13 +14,6 @@ pub enum PolygonMode {
     Point,
 }
 
-#[derive(Hash, Default, PartialEq, Eq, Debug, Clone, Copy)]
-pub enum MeshType {
-    #[default]
-    Entity,
-    Texture,
-}
-
 #[derive(Debug, Clone)]
 pub enum TextureFormat {
     Rgba8,

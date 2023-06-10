@@ -14,6 +14,7 @@ pub struct Entity {
     pub reflection: ReflectionStyle,
     pub children: Vec<Entity>,
     pub state: EntityRendererState,
+    pub normal_map_idx: Option<i32>,
     pub tex_idx: Option<i32>,
 }
 

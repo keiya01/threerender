@@ -1,8 +1,9 @@
+use std::rc::Rc;
+
 use examples_common::CustomEvent;
 use threerender::color::rgb::RGBA;
 use threerender::math::trs::{Rotation, Scale};
 use threerender::math::{Quat, Transform, Vec3};
-use threerender::mesh::EntityMesh;
 use threerender::mesh::{Plane, Sphere, Square};
 use threerender::renderer::Updater;
 use threerender::traits::entity::EntityDescriptor;
@@ -101,8 +102,7 @@ fn main() {
         Some(ShadowStyle::default()),
     ));
 
-    let plane = Plane::new([0, 1, 0], None);
-    let plane = plane.use_entity();
+    let plane = Rc::new(Plane::new([0, 1, 0], None));
     renderer_builder.push(EntityDescriptor {
         id: "plane".to_owned(),
         mesh: Some(plane),
@@ -116,8 +116,7 @@ fn main() {
         reflection: Default::default(),
         ..Default::default()
     });
-    let sphere = Sphere::new(50, 50, None);
-    let sphere = sphere.use_entity();
+    let sphere = Rc::new(Sphere::new(50, 50, None));
     renderer_builder.push(EntityDescriptor {
         id: "sphere".to_owned(),
         mesh: Some(sphere),
@@ -131,8 +130,7 @@ fn main() {
         reflection: Default::default(),
         ..Default::default()
     });
-    let square = Square::new(None);
-    let square = square.use_entity();
+    let square = Rc::new(Square::new(None));
     renderer_builder.push(EntityDescriptor {
         id: "square1".to_owned(),
         mesh: Some(square.clone()),
