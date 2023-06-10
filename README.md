@@ -40,7 +40,8 @@ cargo run -p examples_{PROJECT_NAME}
   - [x] Hemisphere light
 - [ ] Shadow
   - [x] Directional shadow
-  - [ ] Opacity
+  - [x] Opacity
+  - [x] Soft shadow(PCSS)
   - [ ] Point light shadow
   - [ ] Spot light shadow
 - [x] Multi light/shadow
@@ -52,7 +53,7 @@ cargo run -p examples_{PROJECT_NAME}
 - [ ] Model transparency
 - [ ] Extendable shader by user
 - [ ] Custom render process by implementing trait
-  - [ ] Shadow rendering(PSM, LSPSM, Blur)
+  - [ ] Shadow rendering
   - [ ] Ray tracing
 - [ ] Performance improvement
     - [ ] dirty check
