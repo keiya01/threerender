@@ -115,7 +115,11 @@ var t_shadow: texture_depth_2d_array;
 
 @group(3)
 @binding(1)
-var sampler_shadow: sampler_comparison;
+var sampler_shadow: sampler;
+
+@group(3)
+@binding(2)
+var sampler_shadow_comparison: sampler_comparison;
 
 #ifdef HAS_TEXTURE
 @group(4)
@@ -168,8 +172,10 @@ fn fs_main(vertex: VertexOutput) -> @location(0) vec4<f32> {
                     color += ulight.ambient + vec4(calc_shadow_mask(
                         i,
                         ulight.shadow.projection * vertex.local_position,
+                        ulight.shadow,
                         t_shadow,
-                        sampler_shadow
+                        sampler_shadow,
+                        sampler_shadow_comparison,
                     ) * light.color.xyz * ulight.shadow.alpha, 1.0) + reflection;
                 } else {
                     color += ulight.ambient + light.color + reflection;

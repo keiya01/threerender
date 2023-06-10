@@ -9,7 +9,7 @@ use threerender::renderer::Updater;
 use threerender::traits::entity::{EntityDescriptor, ReflectionStyle};
 use threerender::{
     CameraStyle, EntityList, HemisphereLightStyle, LightBaseStyle, LightStyle, RendererBuilder,
-    Scene, ShadowOptions, ShadowStyle,
+    Scene, ShadowOptions, ShadowStyle, ShadowType,
 };
 
 fn normalize(n: f32, v: f32) -> f32 {
@@ -111,13 +111,14 @@ fn main() {
     renderer_builder.add_light(LightStyle::with_directional(
         "directional1".to_owned(),
         LightBaseStyle {
-            position: Vec3::new(5., 6., 5.),
+            position: Vec3::new(5., 30., -5.),
             ..Default::default()
         },
         Some(ShadowStyle {
             far: 1000.,
             fov: 65.,
             alpha: 0.9,
+            shadow_type: ShadowType::PCSS,
             ..Default::default()
         }),
     ));
@@ -125,12 +126,13 @@ fn main() {
     renderer_builder.add_light(LightStyle::with_directional(
         "directional2".to_owned(),
         LightBaseStyle {
-            position: Vec3::new(-5., 6., 5.),
+            position: Vec3::new(-5., 30., 5.),
             ..Default::default()
         },
         Some(ShadowStyle {
             far: 1000.,
             fov: 65.,
+            shadow_type: ShadowType::PCSS,
             ..Default::default()
         }),
     ));
@@ -141,7 +143,7 @@ fn main() {
             sky_color: RGB::new(232, 244, 252),
             ground_color: RGB::new(216, 210, 205),
         },
-        Vec3::new(0., 1., 0.),
+        Vec3::new(0., 50., 0.),
     ));
 
     let plane = Rc::new(Plane::new([0, 1, 0], None));

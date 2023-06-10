@@ -44,6 +44,20 @@ impl Scene {
     }
 }
 
+pub enum ShadowType {
+    Normal,
+    PCSS,
+}
+
+impl ShadowType {
+    pub(crate) fn as_u32(&self) -> u32 {
+        match self {
+            ShadowType::Normal => 0,
+            ShadowType::PCSS => 1,
+        }
+    }
+}
+
 #[derive(Getters, MutGetters)]
 pub struct ShadowStyle {
     #[getset(get = "pub", get_mut = "pub")]
@@ -58,6 +72,8 @@ pub struct ShadowStyle {
     pub up: CameraUp,
     #[getset(get = "pub", get_mut = "pub")]
     pub alpha: f32,
+    #[getset(get = "pub", get_mut = "pub")]
+    pub shadow_type: ShadowType,
 }
 
 impl Default for ShadowStyle {
@@ -69,6 +85,7 @@ impl Default for ShadowStyle {
             center: CameraCenter::default(),
             up: CameraUp::default(),
             alpha: 1.,
+            shadow_type: ShadowType::Normal,
         }
     }
 }

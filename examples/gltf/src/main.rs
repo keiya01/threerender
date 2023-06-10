@@ -10,7 +10,7 @@ use threerender::renderer::Updater;
 use threerender::traits::entity::{EntityDescriptor, ReflectionStyle};
 use threerender::{
     CameraPosition, CameraStyle, EntityList, HemisphereLightStyle, LightBaseStyle, LightStyle,
-    RendererBuilder, Scene, ShadowOptions, ShadowStyle,
+    RendererBuilder, Scene, ShadowOptions, ShadowStyle, ShadowType,
 };
 use threerender_loader::fetcher::DefaultFileSystemBasedFetcher;
 use threerender_loader::gltf::{DefaultGltfHandler, GltfLoader};
@@ -79,13 +79,6 @@ impl Updater for App {
             }
             _ => {}
         }
-
-        for entity in _entity_list.items_mut() {
-            // Rotate square
-            if entity.id == "model" {
-                entity.rotate_y(0.01);
-            }
-        }
     }
 }
 
@@ -119,6 +112,7 @@ fn main() {
             far: 1000.,
             fov: 65.,
             alpha: 0.9,
+            shadow_type: ShadowType::PCSS,
             ..Default::default()
         }),
     ));
@@ -132,6 +126,7 @@ fn main() {
         Some(ShadowStyle {
             far: 1000.,
             fov: 65.,
+            shadow_type: ShadowType::PCSS,
             ..Default::default()
         }),
     ));
