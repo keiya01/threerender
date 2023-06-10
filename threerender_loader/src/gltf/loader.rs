@@ -267,6 +267,7 @@ impl GltfLoader {
                         state: EntityRendererState::default(),
                         texture,
                         normal_map,
+                        receive_shadow: true,
                     };
                     handler.on_create(&mut desc, Some(&mesh), row_node);
                     Ok(desc)
@@ -282,6 +283,7 @@ impl GltfLoader {
                         state: EntityRendererState::default(),
                         texture: None,
                         normal_map: None,
+                        receive_shadow: true,
                     };
                     handler.on_create(&mut desc, None, row_node);
                     Ok(desc)
@@ -302,6 +304,7 @@ impl GltfLoader {
                 state: EntityRendererState::default(),
                 texture: None,
                 normal_map: None,
+                receive_shadow: true,
             });
             handler.after_root(&mut entities, &scene);
         }

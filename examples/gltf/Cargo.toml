@@ -17,3 +17,4 @@ threerender = { path = "../../threerender" }
 threerender_loader = { path = "../../threerender_loader" }
 examples_common = { path = "../common" }
 wgpu = { git = "https://github.com/gfx-rs/wgpu", optional = true }
+gltf = { version = "1.1.0" }

@@ -12,6 +12,7 @@ pub(super) struct EntityUniformBuffer {
     pub(super) tex_idx: [i32; 4],
     // First value is used
     pub(super) normal_idx: [i32; 4],
+    pub(super) receive_shadow: [u32; 4],
     pub(super) reflection: Reflection,
 }
 

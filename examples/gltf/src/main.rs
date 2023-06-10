@@ -10,10 +10,10 @@ use threerender::renderer::Updater;
 use threerender::traits::entity::{EntityDescriptor, ReflectionStyle};
 use threerender::{
     CameraPosition, CameraStyle, EntityList, HemisphereLightStyle, LightBaseStyle, LightStyle,
-    RendererBuilder, Scene, ShadowOptions, ShadowStyle,
+    RendererBuilder, Scene, ShadowOptions, ShadowStyle, ShadowType,
 };
 use threerender_loader::fetcher::DefaultFileSystemBasedFetcher;
-use threerender_loader::gltf::{DefaultGltfHandler, GltfLoader};
+use threerender_loader::gltf::{GltfHandler, GltfLoader};
 
 fn normalize(n: f32, v: f32) -> f32 {
     if n == 0. {
@@ -79,12 +79,24 @@ impl Updater for App {
             }
             _ => {}
         }
+    }
+}
 
-        for entity in _entity_list.items_mut() {
-            // Rotate square
-            if entity.id == "model" {
-                entity.rotate_y(0.01);
-            }
+#[derive(Debug)]
+struct OwnGltfHandler;
+
+impl GltfHandler for OwnGltfHandler {
+    fn on_create(
+        &self,
+        _descriptor: &mut EntityDescriptor,
+        _mesh: Option<&threerender_loader::gltf::GltfMesh>,
+        _row: &gltf::Node,
+    ) where
+        Self: Sized,
+    {
+        #[cfg(feature = "avocado")]
+        {
+            _descriptor.receive_shadow = false;
         }
     }
 }
@@ -119,6 +131,7 @@ fn main() {
             far: 1000.,
             fov: 65.,
             alpha: 0.9,
+            shadow_type: ShadowType::PCSS,
             ..Default::default()
         }),
     ));
@@ -132,6 +145,7 @@ fn main() {
         Some(ShadowStyle {
             far: 1000.,
             fov: 65.,
+            shadow_type: ShadowType::PCSS,
             ..Default::default()
         }),
     ));
@@ -181,7 +195,7 @@ fn main() {
         DefaultFileSystemBasedFetcher::with_resolve_path(
             canonicalize("./examples/gltf/assets/cylinderEngine").unwrap(),
         ),
-        DefaultGltfHandler,
+        OwnGltfHandler,
     )
     .unwrap();
     renderer_builder.push(EntityDescriptor {

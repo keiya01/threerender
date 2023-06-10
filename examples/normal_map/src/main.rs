@@ -4,7 +4,7 @@ use examples_common::CustomEvent;
 use threerender::color::rgb::{RGB, RGBA};
 use threerender::math::trs::{Rotation, Scale, Translation};
 use threerender::math::{Quat, Transform, Vec3};
-use threerender::mesh::{Plane, Sphere, Square, BuiltInEntityOption};
+use threerender::mesh::{BuiltInEntityOption, Plane, Sphere, Square};
 use threerender::renderer::Updater;
 use threerender::traits::entity::{EntityDescriptor, ReflectionStyle};
 use threerender::traits::image::DefaultImage;
@@ -181,7 +181,7 @@ fn main() {
     let square = Rc::new(Square::new(Some(BuiltInEntityOption { use_texture: true })));
     renderer_builder.push(EntityDescriptor {
         id: "square1".to_owned(),
-        mesh: Some(square.clone()),
+        mesh: Some(square),
         fill_color: RGBA::new(20, 55, 0, 255),
         transform: Transform::from_translation_rotation_scale(
             Vec3::new(0., 0., -3.),
@@ -194,7 +194,10 @@ fn main() {
             intensity: 100.,
         },
         children: vec![],
-        normal_map: Some(Rc::new(DefaultImage::from_buffer(include_bytes!("../assets/cube-normal.png")).expect("Image load error"))),
+        normal_map: Some(Rc::new(
+            DefaultImage::from_buffer(include_bytes!("../assets/cube-normal.png"))
+                .expect("Image load error"),
+        )),
         ..Default::default()
     });
     let square = Rc::new(Square::new(Some(BuiltInEntityOption { use_texture: true })));
@@ -213,7 +216,10 @@ fn main() {
             specular: 0.,
         },
         children: vec![],
-        normal_map: Some(Rc::new(DefaultImage::from_buffer(include_bytes!("../assets/cube-normal.png")).expect("Image load error"))),
+        normal_map: Some(Rc::new(
+            DefaultImage::from_buffer(include_bytes!("../assets/cube-normal.png"))
+                .expect("Image load error"),
+        )),
         ..Default::default()
     });
 

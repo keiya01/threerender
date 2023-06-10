@@ -41,8 +41,12 @@ impl<'a> Processor<'a> {
         // shadow builtin modules
         let p = make_builtin_path("light/shadow/uniforms");
         s.insert_builtin("light::shadow::uniforms", p);
-        let p = make_builtin_path("light/shadow/mask");
-        s.insert_builtin("light::shadow::mask", p);
+        let p = make_builtin_path("light/shadow/utils");
+        s.insert_builtin("light::shadow::utils", p);
+        let p = make_builtin_path("light/shadow/normal");
+        s.insert_builtin("light::shadow::normal", p);
+        let p = make_builtin_path("light/shadow/pcss");
+        s.insert_builtin("light::shadow::pcss", p);
         let p = make_builtin_path("light/shadow/mod");
         s.insert_builtin("light::shadow", p);
 

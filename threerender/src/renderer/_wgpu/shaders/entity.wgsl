@@ -20,6 +20,8 @@ struct Entity {
     color: vec4<f32>,
     tex_idx: vec4<i32>,
     normal_idx: vec4<i32>,
+    // 0 or 1
+    receive_shadow: vec4<u32>,
     reflection: Reflection,
 }
 
@@ -115,7 +117,11 @@ var t_shadow: texture_depth_2d_array;
 
 @group(3)
 @binding(1)
-var sampler_shadow: sampler_comparison;
+var sampler_shadow: sampler;
+
+@group(3)
+@binding(2)
+var sampler_shadow_comparison: sampler_comparison;
 
 #ifdef HAS_TEXTURE
 @group(4)
@@ -164,12 +170,14 @@ fn fs_main(vertex: VertexOutput) -> @location(0) vec4<f32> {
                 let reflection = calc_specular_reflection(camera_position, vertex.tangent_or_local_position, normal, light_normal, entity.reflection);
 
                 // shadow
-                if ulight.shadow.use_shadow == 1u {
+                if ulight.shadow.use_shadow == 1u && entity.receive_shadow.x == 1u {
                     color += ulight.ambient + vec4(calc_shadow_mask(
                         i,
                         ulight.shadow.projection * vertex.local_position,
+                        ulight.shadow,
                         t_shadow,
-                        sampler_shadow
+                        sampler_shadow,
+                        sampler_shadow_comparison,
                     ) * light.color.xyz * ulight.shadow.alpha, 1.0) + reflection;
                 } else {
                     color += ulight.ambient + light.color + reflection;

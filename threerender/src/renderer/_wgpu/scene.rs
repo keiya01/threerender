@@ -1,4 +1,4 @@
-use std::mem;
+use std::{f32::consts, mem};
 
 use bytemuck::{Pod, Zeroable};
 use glam::{Affine3A, Mat4};
@@ -170,7 +170,12 @@ pub struct Shadow {
     use_shadow: u32,
     alpha: f32,
 
-    _padding: [f32; 2],
+    shadow_type: u32,
+
+    light_uv: f32,
+    near_plane: f32,
+
+    _padding: [f32; 3],
 }
 
 impl Shadow {
@@ -182,8 +187,10 @@ impl Shadow {
                 .to_cols_array_2d(),
             use_shadow: shadow.is_some() as u32,
             alpha: shadow.map(|s| s.alpha).unwrap_or(1.),
-
-            _padding: [0., 0.],
+            shadow_type: shadow.map_or(0, |s| s.shadow_type.as_u32()),
+            light_uv: shadow.map_or(0., |s| s.fov * consts::PI / 180.),
+            near_plane: shadow.map_or(0., |s| s.near),
+            _padding: [0., 0., 0.],
         }
     }
 }
@@ -200,7 +207,7 @@ impl ShadowUniform {
     const DEFAULT_MAX_LIGHT_LENGTH: u32 = 10;
 
     fn new(device: &Device, use_shadow: bool, map_size: (u32, u32)) -> Self {
-        let (sampler, texture, view) = Self::create_texture(device, map_size);
+        let (sampler, sampler_comparison, texture, view) = Self::create_texture(device, map_size);
 
         let shadow_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -219,6 +226,12 @@ impl ShadowUniform {
                     wgpu::BindGroupLayoutEntry {
                         binding: 1,
                         visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Comparison),
                         count: None,
                     },
@@ -236,6 +249,10 @@ impl ShadowUniform {
                     binding: 1,
                     resource: wgpu::BindingResource::Sampler(&sampler),
                 },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::Sampler(&sampler_comparison),
+                },
             ],
             label: None,
         });
@@ -248,10 +265,24 @@ impl ShadowUniform {
         }
     }
 
-    fn create_texture(device: &Device, map_size: (u32, u32)) -> (Sampler, Texture, TextureView) {
+    fn create_texture(
+        device: &Device,
+        map_size: (u32, u32),
+    ) -> (Sampler, Sampler, Texture, TextureView) {
         // Create other resources
         let shadow_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-            label: Some("shadow"),
+            label: Some("shadow sampler"),
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::FilterMode::Nearest,
+            ..Default::default()
+        });
+        // Create other resources
+        let shadow_sampler_comparison = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("shadow sampler comparison"),
             address_mode_u: wgpu::AddressMode::ClampToEdge,
             address_mode_v: wgpu::AddressMode::ClampToEdge,
             address_mode_w: wgpu::AddressMode::ClampToEdge,
@@ -278,7 +309,12 @@ impl ShadowUniform {
         });
         let shadow_view = shadow_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-        (shadow_sampler, shadow_texture, shadow_view)
+        (
+            shadow_sampler,
+            shadow_sampler_comparison,
+            shadow_texture,
+            shadow_view,
+        )
     }
 }
 

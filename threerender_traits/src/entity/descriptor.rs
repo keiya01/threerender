@@ -21,6 +21,7 @@ pub struct EntityDescriptor {
     pub state: EntityRendererState,
     pub texture: Option<Rc<dyn Image>>,
     pub normal_map: Option<Rc<dyn Image>>,
+    pub receive_shadow: bool,
 }
 
 impl Default for EntityDescriptor {
@@ -35,6 +36,7 @@ impl Default for EntityDescriptor {
             state: EntityRendererState::default(),
             texture: None,
             normal_map: None,
+            receive_shadow: true,
         }
     }
 }
@@ -132,6 +134,7 @@ mod test {
             state: super::EntityRendererState::default(),
             texture: None,
             normal_map: None,
+            receive_shadow: true,
         };
         let mut descriptor_no_mesh = EntityDescriptor {
             id: "".to_string(),
@@ -143,6 +146,7 @@ mod test {
             state: super::EntityRendererState::default(),
             texture: None,
             normal_map: None,
+            receive_shadow: true,
         };
         descriptor.children.push(descriptor.clone());
         descriptor_no_mesh.children.push(descriptor.clone());
