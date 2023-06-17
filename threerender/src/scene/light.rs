@@ -12,6 +12,7 @@ pub enum LightModel {
     OFF,
     Directional,
     Hemisphere,
+    Ambient,
 }
 
 #[derive(Clone)]
@@ -34,8 +35,6 @@ pub struct LightBaseStyle {
     // The alpha chanel is always ignored. This is to align buffer for wgsl.
     #[getset(get = "pub", set = "pub")]
     pub color: RGB,
-    #[getset(get = "pub", set = "pub")]
-    pub ambient: RGB,
     pub position: Vec3,
     pub rotation: Quat,
     #[getset(get = "pub", set = "pub")]
@@ -64,7 +63,6 @@ impl Default for LightBaseStyle {
     fn default() -> Self {
         Self {
             color: RGB::new(255, 255, 255),
-            ambient: RGB::new(0, 0, 0),
             position: Vec3::new(0., 3., 2.),
             rotation: Quat::default(),
             brightness: 1.,
@@ -107,6 +105,18 @@ impl LightStyle {
             hemisphere: Some(hemisphere),
             model: LightModel::Hemisphere,
             shadow: None,
+        }
+    }
+
+    pub fn with_ambient(id: String, color: RGB) -> Self {
+        Self {
+            id,
+            base: LightBaseStyle {
+                color,
+                ..Default::default()
+            },
+            model: LightModel::Ambient,
+            ..Default::default()
         }
     }
 }

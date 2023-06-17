@@ -19,6 +19,8 @@ pub struct Scene {
     pub(super) shadow_options: Option<ShadowOptions>,
     #[getset(get = "pub", get_mut = "pub")]
     pub(super) max_light_num: u32,
+    #[getset(get = "pub", get_mut = "pub")]
+    pub(super) msaa_samples: u32,
 }
 
 impl Default for Scene {
@@ -30,6 +32,7 @@ impl Default for Scene {
             camera: Default::default(),
             shadow_options: Default::default(),
             max_light_num: 10,
+            msaa_samples: 1,
         }
     }
 }
@@ -71,7 +74,7 @@ pub struct ShadowStyle {
     #[getset(get = "pub", get_mut = "pub")]
     pub up: CameraUp,
     #[getset(get = "pub", get_mut = "pub")]
-    pub alpha: f32,
+    pub opacity: f32,
     #[getset(get = "pub", get_mut = "pub")]
     pub shadow_type: ShadowType,
 }
@@ -84,7 +87,7 @@ impl Default for ShadowStyle {
             far: 1000.,
             center: CameraCenter::default(),
             up: CameraUp::default(),
-            alpha: 1.,
+            opacity: 1.,
             shadow_type: ShadowType::Normal,
         }
     }

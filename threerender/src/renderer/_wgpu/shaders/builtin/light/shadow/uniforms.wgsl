@@ -2,7 +2,7 @@ struct UniformShadow {
     projection: mat4x4<f32>,
     // 0 or 1
     use_shadow: u32,
-    alpha: f32,
+    opacity: f32,
 
     // 0: Normal shadow
     // 1: PCSS

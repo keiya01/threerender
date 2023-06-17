@@ -171,16 +171,16 @@ fn fs_main(vertex: VertexOutput) -> @location(0) vec4<f32> {
 
                 // shadow
                 if ulight.shadow.use_shadow == 1u && entity.receive_shadow.x == 1u {
-                    color += ulight.ambient + vec4(calc_shadow_mask(
+                    color += vec4(clamp(calc_shadow_mask(
                         i,
                         ulight.shadow.projection * vertex.local_position,
                         ulight.shadow,
                         t_shadow,
                         sampler_shadow,
                         sampler_shadow_comparison,
-                    ) * light.color.xyz * ulight.shadow.alpha, 1.0) + reflection;
+                    ) + (1. - ulight.shadow.opacity), 0.0, 1.0) * light.color.xyz, 1.0) + reflection;
                 } else {
-                    color += ulight.ambient + light.color + reflection;
+                    color += light.color + reflection;
                 }
             }
 
@@ -188,7 +188,12 @@ fn fs_main(vertex: VertexOutput) -> @location(0) vec4<f32> {
             if ulight.model == 2u {
                 let light = calc_hemisphere_light(light_normal, normal, ulight);
 
-                color += ulight.ambient + light.color;
+                color += light.color;
+            }
+
+            // Ambient light
+            if ulight.model == 3u {
+                color += ulight.color;
             }
         }
     }

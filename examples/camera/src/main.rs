@@ -117,7 +117,6 @@ fn main() {
         Some(ShadowStyle {
             far: 1000.,
             fov: 65.,
-            alpha: 0.9,
             shadow_type: ShadowType::PCSS,
             ..Default::default()
         }),

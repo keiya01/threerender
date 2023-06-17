@@ -56,7 +56,6 @@ impl HemisphereLight {
 pub struct Light {
     // The alpha chanel is always ignored. This is to align buffer for wgsl.
     color: [f32; 4],
-    ambient: [f32; 4],
     position: [f32; 3],
     brightness: f32,
     model: u32,
@@ -70,10 +69,8 @@ pub struct Light {
 impl Light {
     fn from_light_style(style: &LightStyle) -> Self {
         let color = rgb_to_array(style.base().color());
-        let ambient = rgb_to_array(style.base().ambient());
         Self {
             color: [color[0], color[1], color[2], 1.],
-            ambient: [ambient[0], ambient[1], ambient[2], 1.],
             position: Affine3A::from_rotation_translation(
                 style.base().rotation.as_glam(),
                 style.base().translation().as_glam(),
@@ -85,6 +82,7 @@ impl Light {
                 LightModel::OFF => 0,
                 LightModel::Directional => 1,
                 LightModel::Hemisphere => 2,
+                LightModel::Ambient => 3,
             },
 
             _padding: [0., 0., 0.],
@@ -168,7 +166,7 @@ pub struct Shadow {
     // The alpha chanel is always ignored. This is to align buffer for wgsl.
     projection: [[f32; 4]; 4],
     use_shadow: u32,
-    alpha: f32,
+    opacity: f32,
 
     shadow_type: u32,
 
@@ -186,7 +184,7 @@ impl Shadow {
                 .map_or_else(|| Mat4::ZERO, |s| s.transform(light))
                 .to_cols_array_2d(),
             use_shadow: shadow.is_some() as u32,
-            alpha: shadow.map(|s| s.alpha).unwrap_or(1.),
+            opacity: shadow.map(|s| s.opacity).unwrap_or(1.),
             shadow_type: shadow.map_or(0, |s| s.shadow_type.as_u32()),
             light_uv: shadow.map_or(0., |s| s.fov * consts::PI / 180.),
             near_plane: shadow.map_or(0., |s| s.near),

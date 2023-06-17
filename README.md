@@ -193,6 +193,11 @@ cargo run -p examples_{PROJECT_NAME}
   - [ ] Shadow rendering
   - [ ] Ray tracing
 - [ ] Performance improvement
+    - [ ] Multiple render target
+      - https://threejs.org/docs/#api/en/renderers/WebGLMultipleRenderTargets
+      - User can customize own renderer like the deferred rendering
+        - https://github.com/mrdoob/three.js/issues/5180
+        - https://github.com/mrdoob/three.js/issues/2624
     - [ ] dirty check
     - [ ] Optimize multi object like cloning object and transfer vertex more efficiently
     - [ ] Mip map for texture

@@ -118,7 +118,6 @@ fn main() {
         Some(ShadowStyle {
             far: 1000.,
             fov: 65.,
-            alpha: 0.9,
             ..Default::default()
         }),
     ));

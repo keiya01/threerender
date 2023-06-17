@@ -120,20 +120,20 @@ fn main() {
 
     // TODO: This should be able to set by each light's shadow setting
     renderer_builder.set_shadow_options(ShadowOptions {
-        map_size: (2056, 2056),
+        map_size: (4096, 4096),
     });
 
     renderer_builder.add_light(LightStyle::with_directional(
         "directional1".to_owned(),
         LightBaseStyle {
-            position: Vec3::new(50., 60., -50.),
+            position: Vec3::new(50., 80., -70.),
             ..Default::default()
         },
         Some(ShadowStyle {
             far: 1000.,
             fov: 65.,
-            alpha: 0.9,
             shadow_type: ShadowType::PCSS,
+            opacity: 0.3,
             ..Default::default()
         }),
     ));
@@ -141,13 +141,14 @@ fn main() {
     renderer_builder.add_light(LightStyle::with_directional(
         "directional2".to_owned(),
         LightBaseStyle {
-            position: Vec3::new(-50., 60., -50.),
+            position: Vec3::new(-50., 80., -70.),
             ..Default::default()
         },
         Some(ShadowStyle {
             far: 1000.,
             fov: 65.,
             shadow_type: ShadowType::PCSS,
+            opacity: 0.8,
             ..Default::default()
         }),
     ));
