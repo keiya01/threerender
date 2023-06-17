@@ -116,6 +116,8 @@ fn main() {
         ..Default::default()
     });
 
+    renderer_builder.set_msaa_samples(8);
+
     // TODO: This should be able to set by each light's shadow setting
     renderer_builder.set_shadow_options(ShadowOptions {
         map_size: (2056, 2056),

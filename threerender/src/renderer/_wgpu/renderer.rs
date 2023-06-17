@@ -668,7 +668,7 @@ impl<Event> Renderer<Event> {
 
         surface.configure(&device, &config);
 
-        let scene = Scene::new(&device, renderer_builder.scene.take().unwrap());
+        let scene = Scene::new(&device, renderer_builder.scene.take().unwrap(), &adapter, &config);
 
         let mesh_length = renderer_builder.mesh_length();
         let dynamic_renderer = DynamicRenderer::new(device, queue, &mut renderer_builder);
@@ -782,7 +782,10 @@ impl<Event> Renderer<Event> {
                             stencil: wgpu::StencilState::default(),
                             bias: wgpu::DepthBiasState::default(),
                         }),
-                        multisample: wgpu::MultisampleState::default(),
+                        multisample: wgpu::MultisampleState {
+                            count: scene.config.max_samples.min(scene.scene.msaa_samples),
+                            ..Default::default()
+                        },
                         multiview: None,
                     });
             render_pipelines.insert(key, render_pipeline);
@@ -824,7 +827,7 @@ impl<Event> Renderer<Event> {
                     depth_or_array_layers: 1,
                 },
                 mip_level_count: 1,
-                sample_count: 1,
+                sample_count: self.scene.config.max_samples.min(self.scene.scene.msaa_samples),
                 dimension: wgpu::TextureDimension::D2,
                 format: Self::DEPTH_FORMAT,
                 usage: wgpu::TextureUsages::RENDER_ATTACHMENT
@@ -865,13 +868,6 @@ impl<Event> Renderer<Event> {
     pub fn draw(&self) {
         let rendered_entity = &self.dynamic_renderer.rendered_entity;
 
-        let frame = self
-            .surface
-            .get_current_texture()
-            .expect("Failed to acquire next swap chain texture");
-        let view = frame
-            .texture
-            .create_view(&wgpu::TextureViewDescriptor::default());
         let mut encoder = self
             .dynamic_renderer
             .device
@@ -974,6 +970,39 @@ impl<Event> Renderer<Event> {
             encoder.pop_debug_group();
         }
 
+        let frame = self
+            .surface
+            .get_current_texture()
+            .expect("Failed to acquire next swap chain texture");
+
+        let msaa_samples = self.scene.config.max_samples.min(self.scene.scene.msaa_samples);
+        let texture = self
+            .dynamic_renderer
+            .device
+            .create_texture(&wgpu::TextureDescriptor {
+                size: wgpu::Extent3d {
+                    width: self.config.width,
+                    height: self.config.height,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: msaa_samples,
+                dimension: wgpu::TextureDimension::D2,
+                format: self.config.format,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+                label: None,
+                view_formats: &[],
+            });
+        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+
+        let resolve_target = frame.texture.create_view(&wgpu::TextureViewDescriptor::default());
+
+        let (view, resolve_target, store) = if msaa_samples <= 1 {
+            (resolve_target, None, true)
+        } else {
+            (view, Some(&resolve_target), false)
+        };
+
         // forward pass
         encoder.push_debug_group("forward rendering pass");
         {
@@ -981,7 +1010,7 @@ impl<Event> Renderer<Event> {
                 label: None,
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &view,
-                    resolve_target: None,
+                    resolve_target,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {
                             r: self.background[0],
@@ -989,7 +1018,7 @@ impl<Event> Renderer<Event> {
                             b: self.background[2],
                             a: self.background[3],
                         }),
-                        store: true,
+                        store,
                     },
                 })],
                 depth_stencil_attachment: self.scene.forward_depth.as_ref().map(|view| {

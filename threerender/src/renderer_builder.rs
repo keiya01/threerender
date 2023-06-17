@@ -100,6 +100,13 @@ impl RendererBuilder {
             .shadow_options = Some(options);
     }
 
+    pub fn set_msaa_samples(&mut self, samples: u32) {
+        self.scene
+            .as_mut()
+            .expect("RendererBuilder has been consumed")
+            .msaa_samples = samples;
+    }
+
     pub fn set_width(&mut self, width: u32) {
         self.width = width;
     }

@@ -6,7 +6,7 @@ use threerender_math::trs::Translation;
 use threerender_traits::entity::ReflectionStyle;
 use wgpu::{
     util::DeviceExt, BindGroup, BindGroupLayout, Buffer, BufferAddress, Device, Queue, Sampler,
-    Texture, TextureView,
+    Texture, TextureView, Adapter,
 };
 
 use crate::{HemisphereLightStyle, LightModel, LightStyle, Scene as AbstractedScene, ShadowStyle};
@@ -387,16 +387,21 @@ impl SceneUniform {
     }
 }
 
+pub(super) struct SceneConfig {
+    pub(super) max_samples: u32,
+}
+
 pub struct Scene {
     pub(super) scene_uniform: SceneUniform,
     pub(super) light_uniform: LightUniform,
     pub(super) shadow_uniform: ShadowUniform,
     pub(super) forward_depth: Option<TextureView>,
+    pub(super) config: SceneConfig,
     pub scene: AbstractedScene,
 }
 
 impl Scene {
-    pub(super) fn new(device: &Device, scene: AbstractedScene) -> Self {
+    pub(super) fn new(device: &Device, scene: AbstractedScene, adapter: &Adapter, config: &wgpu::SurfaceConfiguration) -> Self {
         let scene_uniform = SceneUniform::new(device, SceneData::from_style(&scene));
         let mut has_shadow = false;
         let light_data = scene
@@ -420,6 +425,7 @@ impl Scene {
                 .as_ref()
                 .map_or_else(|| ShadowStyle::DEFAULT_MAP_SIZE, |s| *s.map_size()),
         );
+        let sample_flags = adapter.get_texture_format_features(config.format).flags;
 
         Scene {
             scene_uniform,
@@ -427,6 +433,7 @@ impl Scene {
             shadow_uniform,
             forward_depth: None,
             scene,
+            config: SceneConfig { max_samples: max_samples(&sample_flags) },
         }
     }
 
@@ -443,5 +450,19 @@ impl Scene {
             .map(Light::from_light_style)
             .collect();
         self.light_uniform.update(queue);
+    }
+}
+
+fn max_samples(sample_flags: &wgpu::TextureFormatFeatureFlags) -> u32 {
+    if sample_flags.contains(wgpu::TextureFormatFeatureFlags::MULTISAMPLE_X16) {
+        16
+    } else if sample_flags.contains(wgpu::TextureFormatFeatureFlags::MULTISAMPLE_X8) {
+        8
+    } else if sample_flags.contains(wgpu::TextureFormatFeatureFlags::MULTISAMPLE_X4) {
+        4
+    } else if sample_flags.contains(wgpu::TextureFormatFeatureFlags::MULTISAMPLE_X2) {
+        2
+    } else {
+        1
     }
 }
