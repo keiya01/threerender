@@ -5,8 +5,8 @@ use glam::{Affine3A, Mat4};
 use threerender_math::trs::Translation;
 use threerender_traits::entity::ReflectionStyle;
 use wgpu::{
-    util::DeviceExt, BindGroup, BindGroupLayout, Buffer, BufferAddress, Device, Queue, Sampler,
-    Texture, TextureView, Adapter,
+    util::DeviceExt, Adapter, BindGroup, BindGroupLayout, Buffer, BufferAddress, Device, Queue,
+    Sampler, Texture, TextureView,
 };
 
 use crate::{HemisphereLightStyle, LightModel, LightStyle, Scene as AbstractedScene, ShadowStyle};
@@ -399,7 +399,12 @@ pub struct Scene {
 }
 
 impl Scene {
-    pub(super) fn new(device: &Device, scene: AbstractedScene, adapter: &Adapter, config: &wgpu::SurfaceConfiguration) -> Self {
+    pub(super) fn new(
+        device: &Device,
+        scene: AbstractedScene,
+        adapter: &Adapter,
+        config: &wgpu::SurfaceConfiguration,
+    ) -> Self {
         let scene_uniform = SceneUniform::new(device, SceneData::from_style(&scene));
         let mut has_shadow = false;
         let light_data = scene
@@ -431,7 +436,9 @@ impl Scene {
             shadow_uniform,
             forward_depth: None,
             scene,
-            config: SceneConfig { max_samples: max_samples(&sample_flags) },
+            config: SceneConfig {
+                max_samples: max_samples(&sample_flags),
+            },
         }
     }
 

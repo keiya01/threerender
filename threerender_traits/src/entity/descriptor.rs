@@ -62,34 +62,16 @@ impl EntityDescriptor {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct RendererState {
     pub topology: Topology,
     pub polygon_mode: PolygonMode,
 }
 
-impl Default for RendererState {
-    fn default() -> Self {
-        Self {
-            topology: Default::default(),
-            polygon_mode: Default::default(),
-        }
-    }
-}
-
-#[derive(Hash, PartialEq, Debug, Clone)]
+#[derive(Hash, PartialEq, Debug, Clone, Default)]
 pub struct EntityRendererState {
     pub topology: Topology,
     pub polygon_mode: PolygonMode,
-}
-
-impl Default for EntityRendererState {
-    fn default() -> Self {
-        Self {
-            topology: Default::default(),
-            polygon_mode: Default::default(),
-        }
-    }
 }
 
 impl EntityRendererState {

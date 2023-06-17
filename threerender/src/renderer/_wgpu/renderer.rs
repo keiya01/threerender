@@ -668,7 +668,12 @@ impl<Event> Renderer<Event> {
 
         surface.configure(&device, &config);
 
-        let scene = Scene::new(&device, renderer_builder.scene.take().unwrap(), &adapter, &config);
+        let scene = Scene::new(
+            &device,
+            renderer_builder.scene.take().unwrap(),
+            &adapter,
+            &config,
+        );
 
         let mesh_length = renderer_builder.mesh_length();
         let dynamic_renderer = DynamicRenderer::new(device, queue, &mut renderer_builder);
@@ -827,7 +832,11 @@ impl<Event> Renderer<Event> {
                     depth_or_array_layers: 1,
                 },
                 mip_level_count: 1,
-                sample_count: self.scene.config.max_samples.min(self.scene.scene.msaa_samples),
+                sample_count: self
+                    .scene
+                    .config
+                    .max_samples
+                    .min(self.scene.scene.msaa_samples),
                 dimension: wgpu::TextureDimension::D2,
                 format: Self::DEPTH_FORMAT,
                 usage: wgpu::TextureUsages::RENDER_ATTACHMENT
@@ -975,7 +984,11 @@ impl<Event> Renderer<Event> {
             .get_current_texture()
             .expect("Failed to acquire next swap chain texture");
 
-        let msaa_samples = self.scene.config.max_samples.min(self.scene.scene.msaa_samples);
+        let msaa_samples = self
+            .scene
+            .config
+            .max_samples
+            .min(self.scene.scene.msaa_samples);
         let texture = self
             .dynamic_renderer
             .device
@@ -995,7 +1008,9 @@ impl<Event> Renderer<Event> {
             });
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-        let resolve_target = frame.texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let resolve_target = frame
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
 
         let (view, resolve_target, store) = if msaa_samples <= 1 {
             (resolve_target, None, true)
