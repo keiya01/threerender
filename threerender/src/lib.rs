@@ -103,7 +103,7 @@ fn main() {
                 event: winit::event::WindowEvent::CloseRequested,
                 ..
             } => *control_flow = winit::event_loop::ControlFlow::Exit,
-            winit::event::Event::RedrawRequested(_) => {    
+            winit::event::Event::RedrawRequested(_) => {
                 renderer.draw();
             }
             _ => {},

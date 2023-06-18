@@ -115,54 +115,10 @@ fn main() {
                 event: winit::event::WindowEvent::CloseRequested,
                 ..
             } => *control_flow = winit::event_loop::ControlFlow::Exit,
-            winit::event::Event::RedrawRequested(_) => {    
+            winit::event::Event::RedrawRequested(_) => {
                 renderer.draw();
             }
             _ => {},
-        }
-    });
-}
-```
-
-You need to define a window management system by yourself because threerender is just a rendering engine for 3D.  
-But you can set up window system easily by using [winit](https://github.com/rust-windowing/winit) like the following.
-
-```rust
-fn window(renderer_builder: RendererBuilder, mut updater: Box<dyn Updater<Event = ()>>) {
-    let event_loop = winit::event_loop::EventLoop::new();
-    let window = winit::window::Window::new(&event_loop).unwrap();
-    window.set_inner_size(winit::dpi::PhysicalSize::new(
-        renderer_builder.width(),
-        renderer_builder.height(),
-    ));
-
-    let mut renderer = Renderer::new(&window, renderer_builder);
-
-    event_loop.run(move |event, _, control_flow| {
-        *control_flow = winit::event_loop::ControlFlow::Wait;
-        match event {
-            winit::event::Event::WindowEvent {
-                event: winit::event::WindowEvent::Resized(size),
-                ..
-            } => {
-                renderer.resize(size.width, size.height);
-
-                // For macos
-                window.request_redraw();
-            }
-            winit::event::Event::WindowEvent {
-                event: winit::event::WindowEvent::CloseRequested,
-                ..
-            } => *control_flow = winit::event_loop::ControlFlow::Exit,
-            winit::event::Event::RedrawRequested(_) => {
-                renderer.update(&mut *updater, ());
-
-                // For macos
-                window.request_redraw();
-
-                renderer.draw();
-            }
-            _ => {}
         }
     });
 }
