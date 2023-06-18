@@ -1,13 +1,13 @@
 use std::rc::Rc;
 
-use examples_common::CustomEvent;
+use examples_common::{CustomEvent, Updater};
 use threerender::color::rgb::RGBA;
 use threerender::math::trs::{Rotation, Scale};
 use threerender::math::{Quat, Transform, Vec3};
 use threerender::mesh::{Sphere, Square};
-use threerender::renderer::Updater;
+use threerender::renderer::Renderer;
 use threerender::traits::entity::EntityDescriptor;
-use threerender::{CameraStyle, EntityList, LightBaseStyle, LightStyle, RendererBuilder, Scene};
+use threerender::{CameraStyle, LightBaseStyle, LightStyle, RendererBuilder};
 
 #[derive(Default)]
 struct State {
@@ -31,15 +31,18 @@ impl App {
 impl Updater for App {
     type Event = CustomEvent;
 
-    fn update(&mut self, entity_list: &mut dyn EntityList, scene: &mut Scene, _event: Self::Event) {
-        // Rotate light
-        scene
-            .get_light_mut("directional")
-            .unwrap()
-            .base_mut()
-            .rotate_y(-0.05);
+    fn update(&mut self, renderer: &mut Renderer, _event: Self::Event) {
+        {
+            // Rotate light
+            renderer
+                .scene_mut()
+                .get_light_mut("directional")
+                .unwrap()
+                .base_mut()
+                .rotate_y(-0.05);
+        }
 
-        for entity in entity_list.items_mut() {
+        for entity in renderer.entities_mut() {
             // Scale sphere
             if entity.id == "sphere" {
                 if entity

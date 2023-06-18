@@ -1,15 +1,15 @@
 use std::rc::Rc;
 
-use examples_common::CustomEvent;
+use examples_common::{CustomEvent, Updater};
 use rand::rngs::ThreadRng;
 use rand::{thread_rng, Rng};
 use threerender::color::rgb::RGBA;
 use threerender::math::{Quat, Transform, Vec3};
 use threerender::mesh::Mesh;
 use threerender::mesh::Sphere;
-use threerender::renderer::Updater;
+use threerender::renderer::Renderer;
 use threerender::traits::entity::EntityDescriptor;
-use threerender::{CameraStyle, EntityList, LightBaseStyle, LightStyle, RendererBuilder, Scene};
+use threerender::{CameraStyle, LightBaseStyle, LightStyle, RendererBuilder};
 
 struct App {
     sphere: Rc<dyn Mesh>,
@@ -19,7 +19,7 @@ struct App {
 impl Updater for App {
     type Event = CustomEvent;
 
-    fn update(&mut self, entity_list: &mut dyn EntityList, _scene: &mut Scene, event: Self::Event) {
+    fn update(&mut self, renderer: &mut Renderer, event: Self::Event) {
         if let CustomEvent::MouseDown = event {
             let (x, y, z): (f32, f32, f32) = (
                 self.rng.gen_range((-2.)..3.),
@@ -27,8 +27,8 @@ impl Updater for App {
                 self.rng.gen_range((-2.)..3.),
             );
             let (r, g, b) = ((255. / x) as u8, (255. / y) as u8, (255. / z) as u8);
-            entity_list.push(EntityDescriptor {
-                id: format!("sphere{}", entity_list.items().len()),
+            renderer.push_entity(EntityDescriptor {
+                id: format!("sphere{}", renderer.entities().len()),
                 mesh: Some(self.sphere.clone()),
                 fill_color: RGBA::new(r, g, b, 255),
                 transform: Transform::from_translation_rotation_scale(

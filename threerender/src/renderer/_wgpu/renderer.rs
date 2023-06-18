@@ -1,4 +1,4 @@
-use std::{borrow::Cow, collections::HashMap, marker::PhantomData, mem, num::NonZeroU32, rc::Rc};
+use std::{borrow::Cow, collections::HashMap, mem, num::NonZeroU32, rc::Rc};
 
 use glam::Mat3;
 use threerender_math::Transform;
@@ -14,9 +14,8 @@ use wgpu::{
 };
 
 use crate::{
-    entity::{Entity, EntityList},
+    entity::Entity,
     mesh::{PolygonMode, TextureFormat, Topology, Vertex},
-    renderer::Updater,
     utils::vec::count_some,
     RendererBuilder,
 };
@@ -564,43 +563,8 @@ impl DynamicRenderer {
     }
 }
 
-impl EntityList for DynamicRenderer {
-    fn items(&self) -> &[Entity] {
-        &self.rendered_entity.entities
-    }
-
-    fn items_mut(&mut self) -> &mut [Entity] {
-        &mut self.rendered_entity.entities
-    }
-
-    // FIXME(@kaiye01): Support updating ShadowBaker when entity is added.
-    fn push(&mut self, descriptor: EntityDescriptor) {
-        let entity_length = count_some(&self.rendered_entity.meta_list);
-        let (entity_uniform_size, entity_uniform_buf, entity_uniform_alignment) =
-            RenderedEntity::make_uniform(
-                &self.device,
-                // Length of `Some` of meta_list will be equal with entity mesh length.
-                entity_length + descriptor.flatten_mesh_length(),
-                mem::size_of::<EntityUniformBuffer>() as wgpu::BufferAddress,
-            );
-
-        let (entity_bind_group_layout, entity_bind_group) =
-            RenderedEntity::make_bind_group(&self.device, entity_uniform_size, &entity_uniform_buf);
-
-        let idx = entity_length as u64;
-        let (mut entities, mut metas) =
-            self.update_recursive_entity(vec![descriptor], &idx, &entity_uniform_alignment);
-
-        self.rendered_entity.entities.append(&mut entities);
-        self.rendered_entity.entity_uniform_buf = entity_uniform_buf;
-        self.rendered_entity.entity_bind_group_layout = entity_bind_group_layout;
-        self.rendered_entity.entity_bind_group = entity_bind_group;
-        self.rendered_entity.meta_list.append(&mut metas);
-    }
-}
-
 // The struct is immutable basically.
-pub struct Renderer<Event> {
+pub struct Renderer {
     pub(super) dynamic_renderer: DynamicRenderer,
     pub(super) config: SurfaceConfiguration,
     pub(super) surface: Surface,
@@ -608,11 +572,67 @@ pub struct Renderer<Event> {
     background: [f64; 4],
     render_pipelines: HashMap<EntityRendererState, RenderPipeline>,
     shadow_baker: ShadowBaker,
-
-    phantom_event: PhantomData<Event>,
 }
 
-impl<Event> Renderer<Event> {
+// Public interfaces
+impl Renderer {
+    pub fn entities(&self) -> &[Entity] {
+        &self.dynamic_renderer.rendered_entity.entities
+    }
+
+    pub fn entities_mut(&mut self) -> &mut [Entity] {
+        &mut self.dynamic_renderer.rendered_entity.entities
+    }
+
+    // FIXME(@kaiye01): Support updating ShadowBaker when entity is added.
+    pub fn push_entity(&mut self, descriptor: EntityDescriptor) {
+        let entity_length = count_some(&self.dynamic_renderer.rendered_entity.meta_list);
+        let (entity_uniform_size, entity_uniform_buf, entity_uniform_alignment) =
+            RenderedEntity::make_uniform(
+                &self.dynamic_renderer.device,
+                // Length of `Some` of meta_list will be equal with entity mesh length.
+                entity_length + descriptor.flatten_mesh_length(),
+                mem::size_of::<EntityUniformBuffer>() as wgpu::BufferAddress,
+            );
+
+        let (entity_bind_group_layout, entity_bind_group) = RenderedEntity::make_bind_group(
+            &self.dynamic_renderer.device,
+            entity_uniform_size,
+            &entity_uniform_buf,
+        );
+
+        let idx = entity_length as u64;
+        let (mut entities, mut metas) = self.dynamic_renderer.update_recursive_entity(
+            vec![descriptor],
+            &idx,
+            &entity_uniform_alignment,
+        );
+
+        self.dynamic_renderer
+            .rendered_entity
+            .entities
+            .append(&mut entities);
+        self.dynamic_renderer.rendered_entity.entity_uniform_buf = entity_uniform_buf;
+        self.dynamic_renderer
+            .rendered_entity
+            .entity_bind_group_layout = entity_bind_group_layout;
+        self.dynamic_renderer.rendered_entity.entity_bind_group = entity_bind_group;
+        self.dynamic_renderer
+            .rendered_entity
+            .meta_list
+            .append(&mut metas);
+    }
+
+    pub fn scene(&self) -> &crate::scene::Scene {
+        &self.scene.scene
+    }
+
+    pub fn scene_mut(&mut self) -> &mut crate::scene::Scene {
+        &mut self.scene.scene
+    }
+}
+
+impl Renderer {
     const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 
     pub fn new<
@@ -810,7 +830,6 @@ impl<Event> Renderer<Event> {
             scene,
             background: rgba_to_array_64(&renderer_builder.background),
             render_pipelines,
-            phantom_event: PhantomData,
             shadow_baker,
         };
 
@@ -862,11 +881,6 @@ impl<Event> Renderer<Event> {
         self.set_depth_texture();
     }
 
-    pub fn update(&mut self, updater: &mut dyn Updater<Event = Event>, ev: Event) {
-        updater.update(&mut self.dynamic_renderer, &mut self.scene.scene, ev);
-        self.update_scene();
-    }
-
     fn update_scene(&mut self) {
         // TODO: Invoke it only when camera is changed
         self.scene.update_scene(&self.dynamic_renderer.queue);
@@ -874,7 +888,9 @@ impl<Event> Renderer<Event> {
         self.scene.update_light(&self.dynamic_renderer.queue);
     }
 
-    pub fn draw(&self) {
+    pub fn draw(&mut self) {
+        self.update_scene();
+
         let rendered_entity = &self.dynamic_renderer.rendered_entity;
 
         let mut encoder = self

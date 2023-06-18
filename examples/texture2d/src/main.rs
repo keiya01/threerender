@@ -1,29 +1,22 @@
 use std::rc::Rc;
 
-use examples_common::CustomEvent;
+use examples_common::{CustomEvent, Updater};
 use threerender::color::rgb::RGBA;
 use threerender::math::trs::Rotation;
 use threerender::math::{Quat, Transform, Vec3};
 use threerender::mesh::{BuiltInEntityOption, Plane, Sphere, Square};
-use threerender::renderer::Updater;
+use threerender::renderer::Renderer;
 use threerender::traits::entity::{EntityDescriptor, EntityRendererState};
 use threerender::traits::image::DefaultImage;
-use threerender::{
-    CameraStyle, EntityList, LightBaseStyle, LightStyle, RendererBuilder, Scene, ShadowStyle,
-};
+use threerender::{CameraStyle, LightBaseStyle, LightStyle, RendererBuilder, ShadowStyle};
 
 struct App;
 
 impl Updater for App {
     type Event = CustomEvent;
 
-    fn update(
-        &mut self,
-        entity_list: &mut dyn EntityList,
-        _scene: &mut Scene,
-        _event: Self::Event,
-    ) {
-        for entity in entity_list.items_mut() {
+    fn update(&mut self, renderer: &mut Renderer, _event: Self::Event) {
+        for entity in renderer.entities_mut() {
             // Rotate square
             // Rotate square
             if entity.id == "square1" {

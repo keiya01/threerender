@@ -3,7 +3,7 @@ use threerender_math::{
     trs::{Rotation, Scale, Translation},
     Quat, Transform, Vec3,
 };
-use threerender_traits::entity::{EntityDescriptor, EntityRendererState, ReflectionStyle};
+use threerender_traits::entity::{EntityRendererState, ReflectionStyle};
 
 /// An entity to render actually.
 #[derive(Debug, Default, Clone)]
@@ -44,10 +44,4 @@ impl Scale for Entity {
     fn scale_mut(&mut self) -> &mut Vec3 {
         &mut self.transform.scale
     }
-}
-
-pub trait EntityList {
-    fn push(&mut self, descriptor: EntityDescriptor);
-    fn items(&self) -> &[Entity];
-    fn items_mut(&mut self) -> &mut [Entity];
 }

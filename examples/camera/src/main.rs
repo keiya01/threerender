@@ -1,15 +1,15 @@
 use std::rc::Rc;
 
-use examples_common::CustomEvent;
+use examples_common::{CustomEvent, Updater};
 use threerender::color::rgb::{RGB, RGBA};
 use threerender::math::trs::{Rotation, Scale, Translation};
 use threerender::math::{Quat, Transform, Vec3};
 use threerender::mesh::{Plane, Sphere, Square};
-use threerender::renderer::Updater;
+use threerender::renderer::Renderer;
 use threerender::traits::entity::{EntityDescriptor, ReflectionStyle};
 use threerender::{
-    CameraStyle, EntityList, HemisphereLightStyle, LightBaseStyle, LightStyle, RendererBuilder,
-    Scene, ShadowOptions, ShadowStyle, ShadowType,
+    CameraStyle, HemisphereLightStyle, LightBaseStyle, LightStyle, RendererBuilder, ShadowOptions,
+    ShadowStyle, ShadowType,
 };
 
 fn normalize(n: f32, v: f32) -> f32 {
@@ -44,13 +44,14 @@ impl App {
 impl Updater for App {
     type Event = CustomEvent;
 
-    fn update(&mut self, entity_list: &mut dyn EntityList, scene: &mut Scene, event: Self::Event) {
+    fn update(&mut self, renderer: &mut Renderer, event: Self::Event) {
         match event {
             CustomEvent::MouseDown => self.dragging = true,
             CustomEvent::MouseUp => self.dragging = false,
             CustomEvent::MouseMove(pos) => {
                 if self.dragging {
                     if self.prev_click_pos != (0., 0.) {
+                        let scene = renderer.scene_mut();
                         let distance_x = normalize((pos.x - self.prev_click_pos.0) as f32, -0.03);
                         let distance_y = normalize((pos.y - self.prev_click_pos.1) as f32, 0.3);
                         let prev_translate_y = scene.camera().position.translation_y();
@@ -64,6 +65,7 @@ impl Updater for App {
                 }
             }
             CustomEvent::MouseWheel(pos) => {
+                let scene = renderer.scene_mut();
                 let prev = scene.camera().position.scale_x();
                 let next = prev + if pos.y > 0. { 0.05 } else { -0.05 };
                 scene.camera_mut().position.scale_to_x(next);
@@ -77,7 +79,7 @@ impl Updater for App {
             _ => {}
         }
 
-        for entity in entity_list.items_mut() {
+        for entity in renderer.entities_mut() {
             // Rotate square
             if entity.id == "square1" {
                 entity.rotate_z(0.01);

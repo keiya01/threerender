@@ -5,10 +5,12 @@ use winit::{
     window::Window,
 };
 
-use threerender::{
-    renderer::{Renderer, Updater},
-    RendererBuilder,
-};
+use threerender::{renderer::Renderer, RendererBuilder};
+
+pub trait Updater {
+    type Event;
+    fn update(&mut self, renderer: &mut Renderer, event: Self::Event);
+}
 
 #[derive(Copy, Clone)]
 pub enum CustomEvent {
@@ -93,7 +95,7 @@ fn run(
                 ..
             } => *control_flow = ControlFlow::Exit,
             Event::RedrawRequested(_) => {
-                renderer.update(&mut *updater, cur_event);
+                updater.update(&mut renderer, cur_event);
 
                 // For macos
                 window.request_redraw();

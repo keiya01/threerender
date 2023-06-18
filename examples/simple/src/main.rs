@@ -1,13 +1,3 @@
-/*!
-
-threerender is a simple 3D rendering engine.
-It will target providing feature of fundamental for 3D development.
-
-It is similar to Three.js, but this will be more extensible and work on multiple platforms.
-
-## Usage
-
-```rust,no_run
 use std::rc::Rc;
 
 use threerender::color::rgb::RGBA;
@@ -88,41 +78,29 @@ fn main() {
         renderer_builder.height(),
     ));
 
-    let mut renderer = Renderer::new(&window, renderer_builder);
-    event_loop.run(move |event, _target, control_flow| {
-        match event {
-            winit::event::Event::WindowEvent {
-                event: winit::event::WindowEvent::Resized(size),
-                ..
-            } => {
-                renderer.resize(size.width, size.height);
-                // For macos
-                window.request_redraw();
+    // TODO: Support wasm
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let mut renderer = Renderer::new(&window, renderer_builder);
+        event_loop.run(move |event, _target, control_flow| {
+            match event {
+                winit::event::Event::WindowEvent {
+                    event: winit::event::WindowEvent::Resized(size),
+                    ..
+                } => {
+                    renderer.resize(size.width, size.height);
+                    // For macos
+                    window.request_redraw();
+                }
+                winit::event::Event::WindowEvent {
+                    event: winit::event::WindowEvent::CloseRequested,
+                    ..
+                } => *control_flow = winit::event_loop::ControlFlow::Exit,
+                winit::event::Event::RedrawRequested(_) => {
+                    renderer.draw();
+                }
+                _ => {}
             }
-            winit::event::Event::WindowEvent {
-                event: winit::event::WindowEvent::CloseRequested,
-                ..
-            } => *control_flow = winit::event_loop::ControlFlow::Exit,
-            winit::event::Event::RedrawRequested(_) => {    
-                renderer.draw();
-            }
-            _ => {},
-        }
-    });
+        });
+    }
 }
-```
-*/
-
-mod entity;
-pub mod math;
-pub mod mesh;
-pub mod renderer;
-mod renderer_builder;
-mod scene;
-mod utils;
-
-pub use entity::*;
-pub use renderer_builder::*;
-pub use scene::*;
-pub use threerender_color as color;
-pub use threerender_traits as traits;

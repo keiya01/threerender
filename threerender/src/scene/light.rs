@@ -63,7 +63,7 @@ impl Default for LightBaseStyle {
     fn default() -> Self {
         Self {
             color: RGB::new(255, 255, 255),
-            position: Vec3::new(0., 3., 2.),
+            position: Vec3::new(0., 100., 0.),
             rotation: Quat::default(),
             brightness: 1.,
         }
