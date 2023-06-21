@@ -1,5 +1,7 @@
 # glTF example
 
+![screenshot](./test.png)
+
 ## Usage
 
 ### Duck

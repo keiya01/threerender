@@ -92,8 +92,11 @@ impl Updater for App {
     }
 }
 
-fn main() {
-    let (width, height) = (2000, 1500);
+const WIDTH: u32 = 2000;
+const HEIGHT: u32 = 2000;
+
+fn build() -> RendererBuilder {
+    let (width, height) = (WIDTH, HEIGHT);
     let mut renderer_builder = RendererBuilder::new();
     renderer_builder.set_width(width);
     renderer_builder.set_height(height);
@@ -224,8 +227,25 @@ fn main() {
         ..Default::default()
     });
 
+    renderer_builder
+}
+
+fn main() {
+    let renderer_builder = build();    
     examples_common::start(
         renderer_builder,
-        Box::new(App::new(width as f64, height as f64)),
+        Box::new(App::new(WIDTH as f64, HEIGHT as f64)),
     );
 }
+
+#[test]
+fn test_image() {
+    let renderer_builder = build();
+    let mut renderer = threerender::renderer::Renderer::new::<winit::window::Window>(renderer_builder, None);
+    renderer.render();
+    let buf = renderer.load_as_image();
+    let mut file = std::fs::File::create("./test.png").unwrap();
+    let img = image::RgbaImage::from_raw(WIDTH, HEIGHT, buf).unwrap();
+    img.write_to(&mut file, image::ImageOutputFormat::Png).unwrap();
+}
+

@@ -13,3 +13,5 @@ default = ["wgpu"]
 threerender = { path = "../../threerender" }
 examples_common = { path = "../common" }
 wgpu = { git = "https://github.com/gfx-rs/wgpu", optional = true }
+winit = "0.27.5"
+image = "0.24.5"

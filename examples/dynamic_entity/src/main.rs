@@ -11,9 +11,23 @@ use threerender::renderer::Renderer;
 use threerender::traits::entity::EntityDescriptor;
 use threerender::{CameraStyle, LightBaseStyle, LightStyle, RendererBuilder};
 
+trait Random {
+    fn gen(&mut self) -> f32;
+}
+
+struct Rand {
+    rng: ThreadRng,
+}
+
+impl Random for Rand {
+    fn gen(&mut self) -> f32 {
+        self.rng.gen_range((-2.)..3.)
+    }
+}
+
 struct App {
     sphere: Rc<dyn Mesh>,
-    rng: ThreadRng,
+    rand: Box<dyn Random>,
 }
 
 impl Updater for App {
@@ -22,9 +36,9 @@ impl Updater for App {
     fn update(&mut self, renderer: &mut Renderer, event: Self::Event) {
         if let CustomEvent::MouseDown = event {
             let (x, y, z): (f32, f32, f32) = (
-                self.rng.gen_range((-2.)..3.),
-                self.rng.gen_range((-2.)..3.),
-                self.rng.gen_range((-2.)..3.),
+                self.rand.gen(),
+                self.rand.gen(),
+                self.rand.gen(),
             );
             let (r, g, b) = ((255. / x) as u8, (255. / y) as u8, (255. / z) as u8);
             renderer.push_entity(EntityDescriptor {
@@ -45,8 +59,11 @@ impl Updater for App {
     }
 }
 
-fn main() {
-    let (width, height) = (2000, 1500);
+const WIDTH: u32 = 2000;
+const HEIGHT: u32 = 1500;
+
+fn build() -> (RendererBuilder, Rc<Sphere>) {
+    let (width, height) = (WIDTH, HEIGHT);
     let mut renderer_builder = RendererBuilder::new();
     renderer_builder.set_width(width);
     renderer_builder.set_height(height);
@@ -78,8 +95,43 @@ fn main() {
         children: vec![],
         ..Default::default()
     });
+    (renderer_builder, sphere)
+}
 
-    let rng = thread_rng();
+fn main() {
+    let (renderer_builder, sphere) = build();
+    let rand =  Rand { rng: thread_rng() };
 
-    examples_common::start(renderer_builder, Box::new(App { sphere, rng }));
+    examples_common::start(renderer_builder, Box::new(App { sphere, rand: Box::new(rand) }));
+}
+
+#[test]
+fn test_image() {
+    struct Rand {
+        cnt: f32,
+    }
+    
+    impl Random for Rand {
+        fn gen(&mut self) -> f32 {
+            self.cnt += 1.;
+            if self.cnt > 1. {
+                self.cnt *= -1.;
+            }
+            self.cnt
+        }
+    }
+
+    let (renderer_builder, sphere) = build();
+    let mut app = App { sphere, rand: Box::new(Rand { cnt: 0. }) };
+    let mut renderer = threerender::renderer::Renderer::new::<winit::window::Window>(renderer_builder, None);
+
+    app.update(&mut renderer, CustomEvent::MouseDown);
+    app.update(&mut renderer, CustomEvent::MouseDown);
+    app.update(&mut renderer, CustomEvent::MouseDown);
+
+    renderer.render();
+    let buf = renderer.load_as_image();
+    let mut file = std::fs::File::create("./test.png").unwrap();
+    let img = image::RgbaImage::from_raw(WIDTH, HEIGHT, buf).unwrap();
+    img.write_to(&mut file, image::ImageOutputFormat::Png).unwrap();
 }

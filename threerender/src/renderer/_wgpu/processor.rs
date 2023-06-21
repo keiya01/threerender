@@ -1,3 +1,5 @@
+use std::{path::PathBuf, str::FromStr};
+
 use shader_processor::{EnvType, ShaderProcessor};
 
 #[derive(Default)]
@@ -59,8 +61,10 @@ impl<'a> Processor<'a> {
 }
 
 fn make_builtin_path(path: &str) -> String {
-    let common_path =
-        std::fs::canonicalize("./threerender/src/renderer/_wgpu/shaders/builtin/").unwrap();
-    let common_path = common_path.to_str().unwrap();
-    format!("{common_path}/{path}")
+    let manifest_path = env!("CARGO_MANIFEST_DIR");
+    let mut result = PathBuf::from_str(manifest_path).unwrap();
+    result.push("src/renderer/_wgpu/shaders/builtin");
+    result.push(path);
+    let res = result.to_str().unwrap().to_owned();
+    res
 }

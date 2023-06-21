@@ -116,7 +116,7 @@ fn main() {
                 ..
             } => *control_flow = winit::event_loop::ControlFlow::Exit,
             winit::event::Event::RedrawRequested(_) => {
-                renderer.draw();
+                renderer.render();
             }
             _ => {},
         }

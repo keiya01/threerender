@@ -103,8 +103,11 @@ impl GltfHandler for OwnGltfHandler {
     }
 }
 
-fn main() {
-    let (width, height) = (2000, 1500);
+const WIDTH: u32 = 2000;
+const HEIGHT: u32 = 1500;
+
+fn build() -> RendererBuilder {
+    let (width, height) = (WIDTH, HEIGHT);
     let mut renderer_builder = RendererBuilder::new();
     renderer_builder.set_width(width);
     renderer_builder.set_height(height);
@@ -180,6 +183,10 @@ fn main() {
         ..Default::default()
     });
 
+    let manifest_path = env!("CARGO_MANIFEST_DIR");
+
+    println!("{}", format!("{manifest_path}/examples/gltf/assets/duck"));
+
     let gltf_loader = GltfLoader::from_byte(
         "model",
         #[cfg(feature = "avocado")]
@@ -190,15 +197,15 @@ fn main() {
         include_bytes!("../assets/cylinderEngine/2CylinderEngine.gltf"),
         #[cfg(feature = "avocado")]
         DefaultFileSystemBasedFetcher::with_resolve_path(
-            canonicalize("./examples/gltf/assets/avocado").unwrap(),
+            canonicalize(format!("{manifest_path}/assets/avocado")).unwrap(),
         ),
         #[cfg(feature = "duck")]
         DefaultFileSystemBasedFetcher::with_resolve_path(
-            canonicalize("./examples/gltf/assets/duck").unwrap(),
+            canonicalize(format!("{manifest_path}/assets/duck")).unwrap(),
         ),
         #[cfg(feature = "cylinder_engine")]
         DefaultFileSystemBasedFetcher::with_resolve_path(
-            canonicalize("./examples/gltf/assets/cylinderEngine").unwrap(),
+            canonicalize(format!("{manifest_path}/assets/cylinderEngine")).unwrap(),
         ),
         OwnGltfHandler,
     )
@@ -228,8 +235,24 @@ fn main() {
         ..Default::default()
     });
 
+    renderer_builder
+}
+
+fn main() {
+    let renderer_builder = build();
     examples_common::start(
         renderer_builder,
-        Box::new(App::new(width as f64, height as f64)),
+        Box::new(App::new(WIDTH as f64, HEIGHT as f64)),
     );
+}
+
+#[test]
+fn test_image() {
+    let renderer_builder = build();
+    let mut renderer = threerender::renderer::Renderer::new::<winit::window::Window>(renderer_builder, None);
+    renderer.render();
+    let buf = renderer.load_as_image();
+    let mut file = std::fs::File::create("./test.png").unwrap();
+    let img = image::RgbaImage::from_raw(WIDTH, HEIGHT, buf).unwrap();
+    img.write_to(&mut file, image::ImageOutputFormat::Png).unwrap();
 }

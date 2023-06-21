@@ -1,4 +1,4 @@
-use std::{borrow::Cow, collections::HashMap, mem, num::NonZeroU32, rc::Rc};
+use std::{borrow::Cow, collections::HashMap, io::Write, mem, num::NonZeroU32, rc::Rc};
 
 use glam::Mat3;
 use threerender_math::Transform;
@@ -10,7 +10,7 @@ use wgpu::{
     util::{align_to, DeviceExt},
     vertex_attr_array, BindGroup, BindGroupLayout, Buffer, BufferAddress, Device, Features,
     PrimitiveTopology, Queue, RenderPipeline, Sampler, ShaderModule, Surface, SurfaceConfiguration,
-    TextureView, VertexBufferLayout,
+    Texture, TextureView, VertexBufferLayout,
 };
 
 use crate::{
@@ -567,14 +567,16 @@ impl DynamicRenderer {
 pub struct Renderer {
     pub(super) dynamic_renderer: DynamicRenderer,
     pub(super) config: SurfaceConfiguration,
-    pub(super) surface: Surface,
+    pub(super) surface: Option<Surface>,
     pub(super) scene: Scene,
     background: [f64; 4],
     render_pipelines: HashMap<EntityRendererState, RenderPipeline>,
     shadow_baker: ShadowBaker,
+
+    dst_texture: Option<Texture>,
 }
 
-// Public interfaces
+// Accessible properties
 impl Renderer {
     pub fn entities(&self) -> &[Entity] {
         &self.dynamic_renderer.rendered_entity.entities
@@ -632,14 +634,15 @@ impl Renderer {
     }
 }
 
+// Render processes
 impl Renderer {
     const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 
     pub fn new<
         W: raw_window_handle::HasRawWindowHandle + raw_window_handle::HasRawDisplayHandle,
     >(
-        window: &W,
         mut renderer_builder: RendererBuilder,
+        window: Option<&W>,
     ) -> Self {
         let backends = wgpu::util::backend_bits_from_env().unwrap_or_else(wgpu::Backends::all);
         let dx12_shader_compiler = wgpu::util::dx12_shader_compiler_from_env().unwrap_or_default();
@@ -649,12 +652,12 @@ impl Renderer {
             dx12_shader_compiler,
         });
 
-        let surface = unsafe { instance.create_surface(&window) }.unwrap();
+        let surface = window.map(|w| unsafe { instance.create_surface(w) }.unwrap());
         let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
             power_preference: wgpu::PowerPreference::default(),
             force_fallback_adapter: false,
             // Request an adapter which can render to our surface
-            compatible_surface: Some(&surface),
+            compatible_surface: surface.as_ref(),
         }))
         .expect("Failed to find an appropriate adapter");
 
@@ -682,11 +685,25 @@ impl Renderer {
         ))
         .expect("Failed to create device");
 
-        let config = surface
-            .get_default_config(&adapter, renderer_builder.width, renderer_builder.height)
-            .expect("Surface isn't supported by the adapter.");
+        let config = if let Some(surface) = &surface {
+            surface
+                .get_default_config(&adapter, renderer_builder.width, renderer_builder.height)
+                .expect("Surface isn't supported by the adapter.")
+        } else {
+            SurfaceConfiguration {
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+                format: wgpu::TextureFormat::Rgba8UnormSrgb,
+                width: renderer_builder.width,
+                height: renderer_builder.height,
+                present_mode: wgpu::PresentMode::Fifo,
+                alpha_mode: wgpu::CompositeAlphaMode::Auto,
+                view_formats: vec![wgpu::TextureFormat::Rgba8Unorm],
+            }
+        };
 
-        surface.configure(&device, &config);
+        if let Some(surface) = &surface {
+            surface.configure(&device, &config);
+        }
 
         let scene = Scene::new(
             &device,
@@ -831,6 +848,7 @@ impl Renderer {
             background: rgba_to_array_64(&renderer_builder.background),
             render_pipelines,
             shadow_baker,
+            dst_texture: None,
         };
 
         if renderer_builder.enable_forward_depth {
@@ -872,8 +890,9 @@ impl Renderer {
         // Reconfigure the surface with the new size
         self.config.width = width;
         self.config.height = height;
-        self.surface
-            .configure(&self.dynamic_renderer.device, &self.config);
+        if let Some(s) = self.surface.as_ref() {
+            s.configure(&self.dynamic_renderer.device, &self.config)
+        }
         self.scene.scene.camera.set_width(width as f32);
         self.scene.scene.camera.set_height(height as f32);
         self.scene.update_scene(&self.dynamic_renderer.queue);
@@ -888,7 +907,7 @@ impl Renderer {
         self.scene.update_light(&self.dynamic_renderer.queue);
     }
 
-    pub fn draw(&mut self) {
+    fn render_actual(&mut self, view: TextureView) {
         self.update_scene();
 
         let rendered_entity = &self.dynamic_renderer.rendered_entity;
@@ -995,43 +1014,34 @@ impl Renderer {
             encoder.pop_debug_group();
         }
 
-        let frame = self
-            .surface
-            .get_current_texture()
-            .expect("Failed to acquire next swap chain texture");
-
         let msaa_samples = self
             .scene
             .config
             .max_samples
             .min(self.scene.scene.msaa_samples);
-        let texture = self
-            .dynamic_renderer
-            .device
-            .create_texture(&wgpu::TextureDescriptor {
-                size: wgpu::Extent3d {
-                    width: self.config.width,
-                    height: self.config.height,
-                    depth_or_array_layers: 1,
-                },
-                mip_level_count: 1,
-                sample_count: msaa_samples,
-                dimension: wgpu::TextureDimension::D2,
-                format: self.config.format,
-                usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-                label: None,
-                view_formats: &[],
-            });
-        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-
-        let resolve_target = frame
-            .texture
-            .create_view(&wgpu::TextureViewDescriptor::default());
 
         let (view, resolve_target, store) = if msaa_samples <= 1 {
-            (resolve_target, None, true)
+            (view, None, true)
         } else {
-            (view, Some(&resolve_target), false)
+            let texture = self
+                .dynamic_renderer
+                .device
+                .create_texture(&wgpu::TextureDescriptor {
+                    size: wgpu::Extent3d {
+                        width: self.config.width,
+                        height: self.config.height,
+                        depth_or_array_layers: 1,
+                    },
+                    mip_level_count: 1,
+                    sample_count: msaa_samples,
+                    dimension: wgpu::TextureDimension::D2,
+                    format: self.config.format,
+                    usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+                    label: None,
+                    view_formats: &[],
+                });
+            let multi_sampled_view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+            (multi_sampled_view, Some(&view), false)
         };
 
         // forward pass
@@ -1117,7 +1127,118 @@ impl Renderer {
         encoder.pop_debug_group();
 
         self.dynamic_renderer.queue.submit(Some(encoder.finish()));
-        frame.present();
+    }
+
+    pub fn render(&mut self) {
+        let (view, frame) = if let Some(surface) = &self.surface {
+            let frame = surface.get_current_texture().unwrap();
+            (
+                frame
+                    .texture
+                    .create_view(&wgpu::TextureViewDescriptor::default()),
+                Some(frame),
+            )
+        } else {
+            let dst_texture =
+                self.dynamic_renderer
+                    .device
+                    .create_texture(&wgpu::TextureDescriptor {
+                        label: Some("destination"),
+                        size: wgpu::Extent3d {
+                            width: self.config.width,
+                            height: self.config.height,
+                            depth_or_array_layers: 1,
+                        },
+                        mip_level_count: 1,
+                        sample_count: 1,
+                        dimension: wgpu::TextureDimension::D2,
+                        format: wgpu::TextureFormat::Rgba8UnormSrgb,
+                        usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                            | wgpu::TextureUsages::COPY_SRC,
+                        view_formats: &[],
+                    });
+
+            self.dst_texture = Some(dst_texture);
+
+            (
+                self.dst_texture
+                    .as_ref()
+                    .unwrap()
+                    .create_view(&wgpu::TextureViewDescriptor::default()),
+                None,
+            )
+        };
+
+        self.render_actual(view);
+
+        if let Some(frame) = frame {
+            frame.present();
+        }
+    }
+
+    pub fn load_as_image(&mut self) -> Vec<u8> {
+        if self.surface.is_some() {
+            panic!("You already have a window as render target view.");
+        }
+
+        let dst_texture = match &self.dst_texture {
+            Some(txt) => txt,
+            None => return vec![],
+        };
+
+        // Need to handle bytes per row due to wgpu restriction
+        let bytes_per_pixel = std::mem::size_of::<u32>() as u32;
+        let unpadded_bytes_per_row = self.config.width * bytes_per_pixel;
+        let align = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
+        let padded_bytes_per_row_padding = (align - unpadded_bytes_per_row % align) % align;
+        let padded_bytes_per_row = unpadded_bytes_per_row + padded_bytes_per_row_padding;
+
+        let dst_buffer = self
+            .dynamic_renderer
+            .device
+            .create_buffer(&wgpu::BufferDescriptor {
+                label: Some("image map buffer"),
+                size: padded_bytes_per_row as u64 * self.config.height as u64,
+                usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+                mapped_at_creation: false,
+            });
+
+        let mut cmd_buf = self
+            .dynamic_renderer
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+
+        cmd_buf.copy_texture_to_buffer(
+            dst_texture.as_image_copy(),
+            wgpu::ImageCopyBuffer {
+                buffer: &dst_buffer,
+                layout: wgpu::ImageDataLayout {
+                    offset: 0,
+                    bytes_per_row: Some(padded_bytes_per_row),
+                    rows_per_image: None,
+                },
+            },
+            wgpu::Extent3d {
+                width: self.config.width,
+                height: self.config.height,
+                depth_or_array_layers: 1,
+            },
+        );
+
+        self.dynamic_renderer.queue.submit(Some(cmd_buf.finish()));
+
+        let dst_buffer_slice = dst_buffer.slice(..);
+        dst_buffer_slice.map_async(wgpu::MapMode::Read, |_| ());
+        self.dynamic_renderer.device.poll(wgpu::Maintain::Wait);
+        let buf = dst_buffer_slice.get_mapped_range().to_vec();
+
+        let mut result = vec![];
+        for chunk in buf.chunks(padded_bytes_per_row as usize) {
+            result
+                .write_all(&chunk[..(unpadded_bytes_per_row as usize)])
+                .unwrap();
+        }
+        result
     }
 
     // FIXME(@keiya01): Dirty check

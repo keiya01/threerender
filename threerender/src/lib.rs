@@ -88,7 +88,7 @@ fn main() {
         renderer_builder.height(),
     ));
 
-    let mut renderer = Renderer::new(&window, renderer_builder);
+    let mut renderer = Renderer::new(renderer_builder, Some(&window));
     event_loop.run(move |event, _target, control_flow| {
         match event {
             winit::event::Event::WindowEvent {
@@ -104,7 +104,7 @@ fn main() {
                 ..
             } => *control_flow = winit::event_loop::ControlFlow::Exit,
             winit::event::Event::RedrawRequested(_) => {
-                renderer.draw();
+                renderer.render();
             }
             _ => {},
         }

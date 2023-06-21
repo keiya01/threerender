@@ -30,7 +30,7 @@ fn run(
     renderer_builder: RendererBuilder,
     mut updater: StaticUpdater,
 ) {
-    let mut renderer = Renderer::new(&window, renderer_builder);
+    let mut renderer = Renderer::new(renderer_builder, Some(&window));
     let mut cur_event = CustomEvent::ReDraw;
 
     event_loop.run(move |event, _, control_flow| {
@@ -100,7 +100,7 @@ fn run(
                 // For macos
                 window.request_redraw();
 
-                renderer.draw();
+                renderer.render();
             }
             Event::RedrawEventsCleared => {
                 cur_event = CustomEvent::ReDraw;

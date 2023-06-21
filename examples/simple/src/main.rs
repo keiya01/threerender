@@ -1,4 +1,8 @@
+
+
 use std::rc::Rc;
+
+
 
 use threerender::color::rgb::RGBA;
 use threerender::math::{Quat, Transform, Vec3};
@@ -7,12 +11,15 @@ use threerender::renderer::Renderer;
 use threerender::traits::entity::EntityDescriptor;
 use threerender::{CameraStyle, LightBaseStyle, LightStyle, RendererBuilder};
 
-fn main() {
-    let (width, height) = (2000, 1500);
+const WIDTH: u32 = 2000;
+const HEIGHT: u32 = 1500;
+
+fn render() -> (Renderer, Option<winit::window::Window>, Option<winit::event_loop::EventLoop<()>>) {
+    let (width, height) = (WIDTH, HEIGHT);
     let mut renderer_builder = RendererBuilder::new();
     renderer_builder.set_width(width);
     renderer_builder.set_height(height);
-    renderer_builder.set_background(RGBA::new(0, 0, 0, 1));
+    renderer_builder.set_background(RGBA::new(0, 0, 0, 255));
 
     renderer_builder.set_camera(CameraStyle {
         width: width as f32,
@@ -71,18 +78,30 @@ fn main() {
         ..Default::default()
     });
 
-    let event_loop = winit::event_loop::EventLoop::new();
-    let window = winit::window::Window::new(&event_loop).unwrap();
-    window.set_inner_size(winit::dpi::PhysicalSize::new(
-        renderer_builder.width(),
-        renderer_builder.height(),
-    ));
+    let (window, event_loop) = if cfg!(test) {
+        (None, None)
+    } else {
+        let event_loop = winit::event_loop::EventLoop::new();
+        let window = winit::window::Window::new(&event_loop).unwrap();
+        window.set_inner_size(winit::dpi::PhysicalSize::new(
+            renderer_builder.width(),
+            renderer_builder.height(),
+        ));
+        (Some(window), Some(event_loop))
+    };
+
+    let renderer = Renderer::new(renderer_builder, window.as_ref());
+
+    (renderer, window, event_loop)
+}
+
+fn main() {
+    let (mut renderer, window, event_loop) = render();
 
     // TODO: Support wasm
     #[cfg(not(target_arch = "wasm32"))]
     {
-        let mut renderer = Renderer::new(&window, renderer_builder);
-        event_loop.run(move |event, _target, control_flow| {
+        event_loop.unwrap().run(move |event, _target, control_flow| {
             match event {
                 winit::event::Event::WindowEvent {
                     event: winit::event::WindowEvent::Resized(size),
@@ -90,17 +109,27 @@ fn main() {
                 } => {
                     renderer.resize(size.width, size.height);
                     // For macos
-                    window.request_redraw();
+                    window.as_ref().unwrap().request_redraw();
                 }
                 winit::event::Event::WindowEvent {
                     event: winit::event::WindowEvent::CloseRequested,
                     ..
                 } => *control_flow = winit::event_loop::ControlFlow::Exit,
                 winit::event::Event::RedrawRequested(_) => {
-                    renderer.draw();
+                    renderer.render();
                 }
                 _ => {}
             }
         });
     }
+}
+
+#[test]
+fn test_image() {
+    let (mut renderer, _, _) = render();
+    renderer.render();
+    let buf = renderer.load_as_image();
+    let mut file = std::fs::File::create("./test.png").unwrap();
+    let img = image::RgbaImage::from_raw(WIDTH, HEIGHT, buf).unwrap();
+    img.write_to(&mut file, image::ImageOutputFormat::Png).unwrap();
 }
