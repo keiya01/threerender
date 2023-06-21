@@ -35,11 +35,7 @@ impl Updater for App {
 
     fn update(&mut self, renderer: &mut Renderer, event: Self::Event) {
         if let CustomEvent::MouseDown = event {
-            let (x, y, z): (f32, f32, f32) = (
-                self.rand.gen(),
-                self.rand.gen(),
-                self.rand.gen(),
-            );
+            let (x, y, z): (f32, f32, f32) = (self.rand.gen(), self.rand.gen(), self.rand.gen());
             let (r, g, b) = ((255. / x) as u8, (255. / y) as u8, (255. / z) as u8);
             renderer.push_entity(EntityDescriptor {
                 id: format!("sphere{}", renderer.entities().len()),
@@ -100,9 +96,15 @@ fn build() -> (RendererBuilder, Rc<Sphere>) {
 
 fn main() {
     let (renderer_builder, sphere) = build();
-    let rand =  Rand { rng: thread_rng() };
+    let rand = Rand { rng: thread_rng() };
 
-    examples_common::start(renderer_builder, Box::new(App { sphere, rand: Box::new(rand) }));
+    examples_common::start(
+        renderer_builder,
+        Box::new(App {
+            sphere,
+            rand: Box::new(rand),
+        }),
+    );
 }
 
 #[test]
@@ -110,7 +112,7 @@ fn test_image() {
     struct Rand {
         cnt: f32,
     }
-    
+
     impl Random for Rand {
         fn gen(&mut self) -> f32 {
             self.cnt += 1.;
@@ -122,8 +124,12 @@ fn test_image() {
     }
 
     let (renderer_builder, sphere) = build();
-    let mut app = App { sphere, rand: Box::new(Rand { cnt: 0. }) };
-    let mut renderer = threerender::renderer::Renderer::new::<winit::window::Window>(renderer_builder, None);
+    let mut app = App {
+        sphere,
+        rand: Box::new(Rand { cnt: 0. }),
+    };
+    let mut renderer =
+        threerender::renderer::Renderer::new::<winit::window::Window>(renderer_builder, None);
 
     app.update(&mut renderer, CustomEvent::MouseDown);
     app.update(&mut renderer, CustomEvent::MouseDown);
@@ -133,5 +139,6 @@ fn test_image() {
     let buf = renderer.load_as_image();
     let mut file = std::fs::File::create("./test.png").unwrap();
     let img = image::RgbaImage::from_raw(WIDTH, HEIGHT, buf).unwrap();
-    img.write_to(&mut file, image::ImageOutputFormat::Png).unwrap();
+    img.write_to(&mut file, image::ImageOutputFormat::Png)
+        .unwrap();
 }

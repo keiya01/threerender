@@ -164,11 +164,12 @@ fn main() {
 #[test]
 fn test_image() {
     let renderer_builder = build();
-    let mut renderer = threerender::renderer::Renderer::new::<winit::window::Window>(renderer_builder, None);
+    let mut renderer =
+        threerender::renderer::Renderer::new::<winit::window::Window>(renderer_builder, None);
     renderer.render();
     let buf = renderer.load_as_image();
     let mut file = std::fs::File::create("./test.png").unwrap();
     let img = image::RgbaImage::from_raw(WIDTH, HEIGHT, buf).unwrap();
-    img.write_to(&mut file, image::ImageOutputFormat::Png).unwrap();
+    img.write_to(&mut file, image::ImageOutputFormat::Png)
+        .unwrap();
 }
-
