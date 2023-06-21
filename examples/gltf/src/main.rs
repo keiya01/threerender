@@ -185,8 +185,6 @@ fn build() -> RendererBuilder {
 
     let manifest_path = env!("CARGO_MANIFEST_DIR");
 
-    println!("{}", format!("{manifest_path}/examples/gltf/assets/duck"));
-
     let gltf_loader = GltfLoader::from_byte(
         "model",
         #[cfg(feature = "avocado")]
