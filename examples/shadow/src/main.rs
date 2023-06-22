@@ -7,7 +7,10 @@ use threerender::math::{Quat, Transform, Vec3};
 use threerender::mesh::{Plane, Sphere, Square};
 use threerender::renderer::Renderer;
 use threerender::traits::entity::EntityDescriptor;
-use threerender::{CameraStyle, LightBaseStyle, LightStyle, RendererBuilder, ShadowStyle};
+use threerender::{
+    CameraStyle, LightBaseStyle, LightStyle, RendererBuilder, ShadowOptions, ShadowStyle,
+    ShadowType,
+};
 
 #[derive(Default)]
 struct State {
@@ -83,6 +86,10 @@ fn build() -> RendererBuilder {
     renderer_builder.set_width(width);
     renderer_builder.set_height(height);
 
+    renderer_builder.set_shadow_options(ShadowOptions {
+        map_size: (4096, 4096),
+    });
+
     renderer_builder.set_camera(CameraStyle {
         width: width as f32,
         height: height as f32,
@@ -92,10 +99,16 @@ fn build() -> RendererBuilder {
     renderer_builder.add_light(LightStyle::with_directional(
         "directional".to_owned(),
         LightBaseStyle {
-            position: Vec3::new(0., 10.0, 5.0),
+            position: Vec3::new(0., 60.0, 10.0),
             ..Default::default()
         },
-        Some(ShadowStyle::default()),
+        Some(ShadowStyle {
+            far: 1000.,
+            fov: 65.,
+            shadow_type: ShadowType::PCSS,
+            opacity: 0.8,
+            ..Default::default()
+        }),
     ));
 
     let plane = Rc::new(Plane::new([0, 1, 0], None));
