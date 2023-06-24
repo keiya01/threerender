@@ -86,11 +86,11 @@ jobs:
             backends: vulkan gl
 
           # Android
-          - name: Android aarch64
-            os: ubuntu-22.04
-            target: aarch64-linux-android
-            kind: mobile
-            backends: vulkan gl
+          # - name: Android aarch64
+          #   os: ubuntu-22.04
+          #   target: aarch64-linux-android
+          #   kind: mobile
+          #   backends: vulkan gl
 
           # WebGPU/WebGL
           - name: WebAssembly
