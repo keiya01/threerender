@@ -89,12 +89,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      - name: install aarch64-linux-gnu g++
+      - name: install aarch64-linux-gnu
         if: matrix.target == 'aarch64-unknown-linux-gnu'
         run: |
           set -e
           sudo apt-get update -y -qq
           sudo apt-get install g++-aarch64-linux-gnu
+          rustup target add aarch64-unknown-linux-gnu
 
       - name: caching
         uses: Swatinem/rust-cache@v2
@@ -115,36 +116,18 @@ jobs:
             backends: dx12
 
           # MacOS
-          # - name: MacOS x86_64
-          #   os: macos-12
-          #   target: x86_64-apple-darwin
-
           # - name: MacOS aarch64
           #   os: macos-12
           #   target: aarch64-apple-darwin
+          #   backends: metal
 
           # Linux
           - name: Linux x86_64
             os: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
-            backends: dx12
+            backends: vulkan gl
 
-          - name: Linux aarch64
-            os: ubuntu-22.04
-            target: aarch64-unknown-linux-gnu
-            backends: dx12
-
-          # Android
-          # - name: Android aarch64
-          #   os: ubuntu-22.04
-          #   target: aarch64-linux-android
-
-          # WebGPU/WebGL
-          # - name: WebAssembly
-          #   os: ubuntu-22.04
-          #   target: wasm32-unknown-unknown
-
-    name: Build ${{ matrix.name }}
+    name: Test ${{ matrix.name }}
 
     runs-on: ${{ matrix.os }}
 
@@ -191,7 +174,6 @@ jobs:
           key: build-${{ matrix.target }}-${{ env.CACHE_SUFFIX }}
 
       - name: run tests
-        if: matrix.kind == 'desktop'
         shell: bash
         run: |
           set -e
