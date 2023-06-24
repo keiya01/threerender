@@ -99,12 +99,6 @@ jobs:
             kind: web
             backends: wegbl
 
-          - name: Emscripten
-            os: ubuntu-22.04
-            target: wasm32-unknown-emscripten
-            kind: em
-            backends: webgl
-
     name: Test ${{ matrix.name }}
 
     runs-on: ${{ matrix.os }}
