@@ -638,7 +638,7 @@ impl Renderer {
 impl Renderer {
     const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 
-    pub fn new<
+    pub async fn new<
         W: raw_window_handle::HasRawWindowHandle + raw_window_handle::HasRawDisplayHandle,
     >(
         mut renderer_builder: RendererBuilder,
@@ -653,13 +653,15 @@ impl Renderer {
         });
 
         let surface = window.map(|w| unsafe { instance.create_surface(w) }.unwrap());
-        let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-            power_preference: wgpu::PowerPreference::default(),
-            force_fallback_adapter: false,
-            // Request an adapter which can render to our surface
-            compatible_surface: surface.as_ref(),
-        }))
-        .expect("Failed to find an appropriate adapter");
+        let adapter = instance
+            .request_adapter(&wgpu::RequestAdapterOptions {
+                power_preference: wgpu::PowerPreference::default(),
+                force_fallback_adapter: false,
+                // Request an adapter which can render to our surface
+                compatible_surface: surface.as_ref(),
+            })
+            .await
+            .expect("Failed to find an appropriate adapter");
 
         let adapter_features = if renderer_builder
             .renderer_specific_attributes
@@ -674,16 +676,19 @@ impl Renderer {
         // TODO: Use constant variable to reduce group.
         limits.max_bind_groups = 5;
         // Create the logical device and command queue
-        let (device, queue) = pollster::block_on(adapter.request_device(
-            &wgpu::DeviceDescriptor {
-                label: None,
-                features: adapter_features | renderer_builder.renderer_specific_attributes.features,
-                // Make sure we use the texture resolution limits from the adapter, so we can support images the size of the swapchain.
-                limits,
-            },
-            None,
-        ))
-        .expect("Failed to create device");
+        let (device, queue) = adapter
+            .request_device(
+                &wgpu::DeviceDescriptor {
+                    label: None,
+                    features: adapter_features
+                        | renderer_builder.renderer_specific_attributes.features,
+                    // Make sure we use the texture resolution limits from the adapter, so we can support images the size of the swapchain.
+                    limits,
+                },
+                None,
+            )
+            .await
+            .expect("Failed to create device");
 
         let config = if let Some(surface) = &surface {
             surface

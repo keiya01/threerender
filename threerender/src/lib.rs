@@ -87,7 +87,7 @@ window.set_inner_size(winit::dpi::PhysicalSize::new(
     renderer_builder.height(),
 ));
 
-let mut renderer = Renderer::new(renderer_builder, Some(&window));
+let mut renderer = pollster::block_on(Renderer::new(renderer_builder, Some(&window)));
 event_loop.run(move |event, _target, control_flow| {
     match event {
         winit::event::Event::WindowEvent {
