@@ -120,7 +120,7 @@ jobs:
           sudo apt-get update -y -qq
           sudo apt-get install g++-aarch64-linux-gnu
       - name: install gcc
-        if: matrix.target == 'ubuntu-22.04'
+        if: matrix.os == 'ubuntu-22.04'
         run: |
           set -e
           sudo apt-get update -y -qq
