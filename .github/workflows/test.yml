@@ -25,7 +25,7 @@ jobs:
       - uses: actions/checkout@v2
       - name: Install MSRV toolchain
         run: |
-          rustup toolchain install ${{ env.MSRV }} --no-self-update --profile=minimal --component=clippy,rustfmt --target ${{ matrix.target }}
+          rustup toolchain install ${{ env.MSRV }} --no-self-update --profile=minimal --component=clippy,rustfmt
           rustup default ${{ env.MSRV }}
       - name: caching
         uses: Swatinem/rust-cache@v2
