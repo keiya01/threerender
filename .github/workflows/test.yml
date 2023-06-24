@@ -20,6 +20,7 @@ env:
 
 jobs:
   check:
+    steps:
       - uses: actions/checkout@v2
       - run: rustup update stable && rustup default stable
       - name: Setup rustfmt
