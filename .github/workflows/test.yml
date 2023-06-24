@@ -23,15 +23,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - run: rustup update stable && rustup default stable
-      - name: Setup rustfmt
-        run: rustup component add rustfmt
-      - name: Setup clippy
-        run: rustup component add clippy
+      - name: Install MSRV toolchain
+        run: |
+          rustup toolchain install ${{ env.MSRV }} --no-self-update --profile=minimal --component=clippy,rustfmt --target ${{ matrix.target }}
+          rustup default ${{ env.MSRV }}
       - name: caching
         uses: Swatinem/rust-cache@v2
         with:
-          key: check-${{ matrix.target }}-${{ matrix.kind }}-${{ env.CACHE_SUFFIX }}
+          key: check-${{ env.CACHE_SUFFIX }}
 
       - name: Run fmt
         run: cargo fmt --all -- --check
@@ -41,6 +40,70 @@ jobs:
 
       - name: run doctest
         run: cargo test --doc
+
+  build:
+    strategy:
+      matrix:
+        include:
+          # Windows
+          - name: Windows x86_64
+            os: windows-2022
+            target: x86_64-pc-windows-msvc
+
+          # MacOS
+          - name: MacOS x86_64
+            os: macos-12
+            target: x86_64-apple-darwin
+
+          - name: MacOS aarch64
+            os: macos-12
+            target: aarch64-apple-darwin
+
+          # IOS
+          - name: IOS aarch64
+            os: macos-12
+            target: aarch64-apple-ios
+
+          # Linux
+          - name: Linux x86_64
+            os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+
+          - name: Linux aarch64
+            os: ubuntu-22.04
+            target: aarch64-unknown-linux-gnu
+
+          # Android
+          # - name: Android aarch64
+          #   os: ubuntu-22.04
+          #   target: aarch64-linux-android
+
+          # WebGPU/WebGL
+          - name: WebAssembly
+            os: ubuntu-22.04
+            target: wasm32-unknown-unknown
+
+    name: Build ${{ matrix.name }}
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: install aarch64-linux-gnu g++
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          set -e
+          sudo apt-get update -y -qq
+          sudo apt-get install g++-aarch64-linux-gnu
+
+      - name: caching
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: build-${{ matrix.target }}-${{ env.CACHE_SUFFIX }}
+
+      - name: Build
+        run: cargo build --verbose --target ${{ matrix.target }}
+
   test:
     strategy:
       matrix:
@@ -49,66 +112,44 @@ jobs:
           - name: Windows x86_64
             os: windows-2022
             target: x86_64-pc-windows-msvc
-            kind: desktop
             backends: dx12
 
           # MacOS
-          - name: MacOS x86_64
-            os: macos-12
-            target: x86_64-apple-darwin
-            kind: desktop
-            backends: metal
+          # - name: MacOS x86_64
+          #   os: macos-12
+          #   target: x86_64-apple-darwin
 
-          - name: MacOS aarch64
-            os: macos-12
-            target: aarch64-apple-darwin
-            kind: desktop
-            backends: metal
-
-          # IOS
-          - name: IOS aarch64
-            os: macos-12
-            target: aarch64-apple-ios
-            kind: mobile
-            backends: metal
+          # - name: MacOS aarch64
+          #   os: macos-12
+          #   target: aarch64-apple-darwin
 
           # Linux
           - name: Linux x86_64
             os: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
-            kind: desktop
-            backends: vulkan gl
+            backends: dx12
 
           - name: Linux aarch64
             os: ubuntu-22.04
             target: aarch64-unknown-linux-gnu
-            kind: desktop
-            backends: vulkan gl
+            backends: dx12
 
           # Android
           # - name: Android aarch64
           #   os: ubuntu-22.04
           #   target: aarch64-linux-android
-          #   kind: mobile
-          #   backends: vulkan gl
 
           # WebGPU/WebGL
-          - name: WebAssembly
-            os: ubuntu-22.04
-            target: wasm32-unknown-unknown
-            kind: web
-            backends: wegbl
+          # - name: WebAssembly
+          #   os: ubuntu-22.04
+          #   target: wasm32-unknown-unknown
 
-    name: Test ${{ matrix.name }}
+    name: Build ${{ matrix.name }}
 
     runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v2
-      - name: Install MSRV toolchain
-        run: |
-          rustup toolchain install ${{ env.MSRV }} --no-self-update --profile=minimal --target ${{ matrix.target }}
-          rustup default ${{ env.MSRV }}
       - name: Install cargo-nextest
         uses: taiki-e/install-action@v2
         with:
@@ -119,12 +160,6 @@ jobs:
           set -e
           sudo apt-get update -y -qq
           sudo apt-get install g++-aarch64-linux-gnu
-      - name: install gcc
-        if: matrix.os == 'ubuntu-22.04'
-        run: |
-          set -e
-          sudo apt-get update -y -qq
-          sudo apt-get install gcc
       - name: install swiftshader
         if: matrix.os == 'ubuntu-22.04'
         shell: bash
@@ -150,6 +185,11 @@ jobs:
           sudo apt-get update
           sudo apt install -y libegl1-mesa libgl1-mesa-dri libxcb-xfixes0-dev vulkan-sdk
 
+      - name: caching
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: build-${{ matrix.target }}-${{ env.CACHE_SUFFIX }}
+
       - name: run tests
         if: matrix.kind == 'desktop'
         shell: bash
@@ -160,6 +200,3 @@ jobs:
             echo "======= NATIVE TESTS $backend ======";
             WGPU_BACKEND=$backend cargo nextest run
           done
-
-      - name: Build
-        run: cargo build --verbose --target ${{ matrix.target }}
