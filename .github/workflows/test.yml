@@ -89,13 +89,16 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+      - name: Install MSRV toolchain
+        run: |
+          rustup toolchain install ${{ env.MSRV }} --no-self-update --profile=minimal --component=clippy,rustfmt
+          rustup default ${{ env.MSRV }}
       - name: install aarch64-linux-gnu
         if: matrix.target == 'aarch64-unknown-linux-gnu'
         run: |
           set -e
           sudo apt-get update -y -qq
           sudo apt-get install g++-aarch64-linux-gnu
-          rustup target add aarch64-unknown-linux-gnu
 
       - name: caching
         uses: Swatinem/rust-cache@v2
