@@ -10,7 +10,7 @@ on:
 env:
   CARGO_INCREMENTAL: false
   CARGO_TERM_COLOR: always
-  RUST_LOG: error
+  RUST_LOG: info
   RUST_BACKTRACE: full
   MSRV: 1.70
   PKG_CONFIG_ALLOW_CROSS: 1 # allow android to work
@@ -25,10 +25,10 @@ jobs:
       - uses: actions/checkout@v2
       - name: Install MSRV toolchain
         run: |
-          rustup toolchain install ${{ env.MSRV }} --no-self-update --profile=minimal
+          rustup update stable
+          rustup default stable
           rustup component add clippy
           rustup component add rustfmt
-          rustup default ${{ env.MSRV }}
       - name: caching
         uses: Swatinem/rust-cache@v2
         with:
