@@ -95,7 +95,7 @@ jobs:
         run: |
           rustup update stable
           rustup default stable
-          rustup add target ${{ matrix.target }}
+          rustup target add ${{ matrix.target }}
           rustc --version
       - name: install aarch64-linux-gnu
         if: matrix.target == 'aarch64-unknown-linux-gnu'
