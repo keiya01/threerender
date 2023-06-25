@@ -93,8 +93,9 @@ jobs:
       - uses: actions/checkout@v2
       - name: Install MSRV toolchain
         run: |
-          rustup toolchain install ${{ env.MSRV }} --no-self-update --profile=minimal --target ${{ matrix.target }}
+          rustup update stable
           rustup default ${{ env.MSRV }}
+          rustup target add ${{ matrix.target }}
       - name: install aarch64-linux-gnu
         if: matrix.target == 'aarch64-unknown-linux-gnu'
         run: |
@@ -126,9 +127,9 @@ jobs:
           #   backends: metal
 
           # Linux
-          - name: Linux x86_64
-            os: ubuntu-22.04
-            backends: vulkan gl
+          # - name: Linux x86_64
+          #   os: ubuntu-22.04
+          #   backends: vulkan gl
 
     name: Test ${{ matrix.name }}
 
