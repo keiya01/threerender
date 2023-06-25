@@ -16,7 +16,7 @@ env:
   PKG_CONFIG_ALLOW_CROSS: 1 # allow android to work
   RUSTFLAGS: --cfg=web_sys_unstable_apis -D warnings
   RUSTDOCFLAGS: -Dwarnings
-  CACHE_SUFFIX: c # cache busting
+  CACHE_SUFFIX: a # cache busting
 
 jobs:
   check:
@@ -91,7 +91,7 @@ jobs:
       - uses: actions/checkout@v2
       - name: Install MSRV toolchain
         run: |
-          rustup toolchain install ${{ env.MSRV }} --no-self-update --profile=minimal --component=clippy,rustfmt
+          rustup toolchain install ${{ env.MSRV }} --no-self-update --profile=minimal --target=${{ matrix.target }}
           rustup default ${{ env.MSRV }}
       - name: install aarch64-linux-gnu
         if: matrix.target == 'aarch64-unknown-linux-gnu'
@@ -115,7 +115,6 @@ jobs:
           # Windows
           - name: Windows x86_64
             os: windows-2022
-            target: x86_64-pc-windows-msvc
             backends: dx12
 
           # MacOS
@@ -127,7 +126,6 @@ jobs:
           # Linux
           - name: Linux x86_64
             os: ubuntu-22.04
-            target: x86_64-unknown-linux-gnu
             backends: vulkan gl
 
     name: Test ${{ matrix.name }}
@@ -140,12 +138,6 @@ jobs:
         uses: taiki-e/install-action@v2
         with:
           tool: cargo-nextest
-      - name: install aarch64-linux-gnu g++
-        if: matrix.target == 'aarch64-unknown-linux-gnu'
-        run: |
-          set -e
-          sudo apt-get update -y -qq
-          sudo apt-get install g++-aarch64-linux-gnu
       - name: install swiftshader
         if: matrix.os == 'ubuntu-22.04'
         shell: bash
@@ -174,7 +166,7 @@ jobs:
       - name: caching
         uses: Swatinem/rust-cache@v2
         with:
-          key: build-${{ matrix.target }}-${{ env.CACHE_SUFFIX }}
+          key: build-${{ matrix.os }}-${{ env.CACHE_SUFFIX }}
 
       - name: run tests
         shell: bash
