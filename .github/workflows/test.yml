@@ -10,9 +10,9 @@ on:
 env:
   CARGO_INCREMENTAL: false
   CARGO_TERM_COLOR: always
-  RUST_LOG: info
+  RUST_LOG: error
   RUST_BACKTRACE: full
-  MSRV: 1.65
+  MSRV: 1.70
   PKG_CONFIG_ALLOW_CROSS: 1 # allow android to work
   RUSTFLAGS: --cfg=web_sys_unstable_apis -D warnings
   RUSTDOCFLAGS: -Dwarnings
