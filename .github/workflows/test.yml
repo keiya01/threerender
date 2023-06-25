@@ -16,7 +16,7 @@ env:
   PKG_CONFIG_ALLOW_CROSS: 1 # allow android to work
   RUSTFLAGS: --cfg=web_sys_unstable_apis -D warnings
   RUSTDOCFLAGS: -Dwarnings
-  CACHE_SUFFIX: a # cache busting
+  CACHE_SUFFIX: b # cache busting
 
 jobs:
   check:
@@ -25,7 +25,7 @@ jobs:
       - uses: actions/checkout@v2
       - name: Install MSRV toolchain
         run: |
-          rustup toolchain install ${{ env.MSRV }} --no-self-update --profile=minimal --component clippy,rustfmt
+          rustup toolchain install ${{ env.MSRV }} --no-self-update --profile=minimal --component clippy --component rustfmt
           rustup default ${{ env.MSRV }}
       - name: caching
         uses: Swatinem/rust-cache@v2
