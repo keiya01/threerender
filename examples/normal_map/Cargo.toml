@@ -6,6 +6,10 @@ publish = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[[bin]]
+name="normal_map"
+path="src/main.rs"
+
 [features]
 default = ["wgpu"]
 
@@ -15,3 +19,4 @@ examples_common = { path = "../common" }
 wgpu = { git = "https://github.com/gfx-rs/wgpu", optional = true }
 winit = "0.27.5"
 image = "0.24.5"
+pollster = "0.2.5"

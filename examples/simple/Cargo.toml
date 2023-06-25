@@ -6,6 +6,10 @@ publish = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[[bin]]
+name="simple"
+path="src/main.rs"
+
 [features]
 default = ["wgpu"]
 
@@ -16,3 +20,8 @@ glam = "0.22.0"
 env_logger = "0.10.0"
 winit = "0.27.5"
 image = "0.24.5"
+pollster = "0.2.5"
+wasm-bindgen-futures = "0.4.34"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+web-sys = "0.3.61"

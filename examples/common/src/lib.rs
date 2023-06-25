@@ -24,13 +24,13 @@ pub enum CustomEvent {
 
 type StaticUpdater = Box<dyn Updater<Event = CustomEvent>>;
 
-fn run(
+async fn run(
     event_loop: EventLoop<()>,
     window: Window,
     renderer_builder: RendererBuilder,
     mut updater: StaticUpdater,
 ) {
-    let mut renderer = Renderer::new(renderer_builder, Some(&window));
+    let mut renderer = Renderer::new(renderer_builder, Some(&window)).await;
     let mut cur_event = CustomEvent::ReDraw;
 
     event_loop.run(move |event, _, control_flow| {
@@ -122,7 +122,7 @@ pub fn start(renderer_builder: RendererBuilder, updater: StaticUpdater) {
     {
         env_logger::init();
         // Temporarily avoid srgb formats for the swapchain on the web
-        run(event_loop, window, renderer_builder, updater);
+        pollster::block_on(run(event_loop, window, renderer_builder, updater));
     }
     #[cfg(target_arch = "wasm32")]
     {

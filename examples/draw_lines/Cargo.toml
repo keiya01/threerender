@@ -6,8 +6,13 @@ publish = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[[bin]]
+name="draw_lines"
+path="src/main.rs"
+
 [dependencies]
 threerender = { path = "../../threerender" }
 examples_common = { path = "../common" }
 winit = "0.27.5"
 image = "0.24.5"
+pollster = "0.2.5"

@@ -11,7 +11,7 @@ impl Default for RendererSpecificAttributes {
     fn default() -> Self {
         Self {
             features: Features::TEXTURE_BINDING_ARRAY,
-            adapter_features: false,
+            adapter_features: true,
         }
     }
 }

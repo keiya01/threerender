@@ -1,0 +1,183 @@
+# Refer https://github.com/gfx-rs/wgpu/blob/757245cdfc97e4d4dce110ef1bb333787a6c25bd/.github/workflows/ci.yml
+name: Test
+
+on:
+  push:
+    paths:
+      - "**/*.rs"
+      - ".github/**"
+
+env:
+  CARGO_INCREMENTAL: false
+  CARGO_TERM_COLOR: always
+  RUST_LOG: info
+  RUST_BACKTRACE: full
+  MSRV: 1.70
+  PKG_CONFIG_ALLOW_CROSS: 1 # allow android to work
+  RUSTFLAGS: --cfg=web_sys_unstable_apis -D warnings
+  RUSTDOCFLAGS: -Dwarnings
+  CACHE_SUFFIX: b # cache busting
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install MSRV toolchain
+        run: |
+          rustup update stable
+          rustup default stable
+          rustup component add clippy
+          rustup component add rustfmt
+      - name: caching
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: check-${{ env.CACHE_SUFFIX }}
+
+      - name: Run fmt
+        run: cargo fmt --all -- --check
+
+      - name: Run clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: run doctest
+        run: cargo test --doc
+
+  build:
+    strategy:
+      matrix:
+        include:
+          # Windows
+          - name: Windows x86_64
+            os: windows-2022
+            target: x86_64-pc-windows-msvc
+
+          # MacOS
+          - name: MacOS x86_64
+            os: macos-12
+            target: x86_64-apple-darwin
+
+          - name: MacOS aarch64
+            os: macos-12
+            target: aarch64-apple-darwin
+
+          # IOS
+          - name: IOS aarch64
+            os: macos-12
+            target: aarch64-apple-ios
+
+          # Linux
+          - name: Linux x86_64
+            os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+
+          - name: Linux aarch64
+            os: ubuntu-22.04
+            target: aarch64-unknown-linux-gnu
+
+          # Android
+          # - name: Android aarch64
+          #   os: ubuntu-22.04
+          #   target: aarch64-linux-android
+
+          # WebGPU/WebGL
+          - name: WebAssembly
+            os: ubuntu-22.04
+            target: wasm32-unknown-unknown
+
+    name: Build ${{ matrix.name }}
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install MSRV toolchain
+        run: |
+          rustup update stable
+          rustup default stable
+          rustup target add ${{ matrix.target }}
+          rustc --version
+      - name: install aarch64-linux-gnu
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          set -e
+          sudo apt-get update -y -qq
+          sudo apt-get install g++-aarch64-linux-gnu
+
+      - name: caching
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: build-${{ matrix.target }}-${{ env.CACHE_SUFFIX }}
+
+      - name: Build
+        run: cargo build --verbose --target ${{ matrix.target }}
+
+  test:
+    strategy:
+      matrix:
+        include:
+          # Windows
+          - name: Windows x86_64
+            os: windows-2022
+            backends: dx12
+
+          # MacOS
+          # - name: MacOS aarch64
+          #   os: macos-12
+          #   target: aarch64-apple-darwin
+          #   backends: metal
+
+          # Linux
+          # - name: Linux x86_64
+          #   os: ubuntu-22.04
+          #   backends: vulkan gl
+
+    name: Test ${{ matrix.name }}
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+      - name: install swiftshader
+        if: matrix.os == 'ubuntu-22.04'
+        shell: bash
+        run: |
+          set -e
+
+          mkdir -p swiftshader
+          curl -LsSf https://github.com/gfx-rs/ci-build/releases/latest/download/swiftshader-linux-x86_64.tar.xz | tar -xf - -C swiftshader
+
+          echo "VK_ICD_FILENAMES=$PWD/swiftshader/vk_swiftshader_icd.json" >> $GITHUB_ENV
+      - name: install llvmpipe, vulkan sdk
+        if: matrix.os == 'ubuntu-22.04'
+        shell: bash
+        run: |
+          set -e
+
+          sudo apt-get update -y -qq
+
+          # vulkan sdk
+          wget -qO - https://packages.lunarg.com/lunarg-signing-key-pub.asc | sudo apt-key add -
+          sudo wget -qO /etc/apt/sources.list.d/lunarg-vulkan-jammy.list https://packages.lunarg.com/vulkan/lunarg-vulkan-jammy.list
+
+          sudo apt-get update
+          sudo apt install -y libegl1-mesa libgl1-mesa-dri libxcb-xfixes0-dev vulkan-sdk
+
+      - name: caching
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: build-${{ matrix.os }}-${{ env.CACHE_SUFFIX }}
+
+      - name: run tests
+        shell: bash
+        run: |
+          set -e
+
+          for backend in ${{ matrix.backends }}; do
+            echo "======= NATIVE TESTS $backend ======";
+            WGPU_BACKEND=$backend cargo nextest run
+          done

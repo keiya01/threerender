@@ -26,7 +26,7 @@ use threerender::{CameraStyle, LightBaseStyle, LightStyle, RendererBuilder, Hemi
 
 fn main() {
     let (width, height) = (2000, 1500);
-    let mut renderer_builder = RendererBuilder::new();
+    let mut renderer_builder = pollster::block_on(RendererBuilder::new());
     renderer_builder.set_width(width);
     renderer_builder.set_height(height);
     renderer_builder.set_background(RGBA::new(0, 0, 0, 1));

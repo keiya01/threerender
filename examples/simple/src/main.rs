@@ -10,7 +10,7 @@ use threerender::{CameraStyle, LightBaseStyle, LightStyle, RendererBuilder};
 const WIDTH: u32 = 2000;
 const HEIGHT: u32 = 1500;
 
-fn render() -> (
+async fn render() -> (
     Renderer,
     Option<winit::window::Window>,
     Option<winit::event_loop::EventLoop<()>>,
@@ -90,16 +90,28 @@ fn render() -> (
         (Some(window), Some(event_loop))
     };
 
-    let renderer = Renderer::new(renderer_builder, window.as_ref());
+    let renderer = Renderer::new(renderer_builder, window.as_ref()).await;
 
     (renderer, window, event_loop)
 }
 
-fn main() {
-    let (mut renderer, window, event_loop) = render();
+async fn run() {
+    let (mut renderer, window, event_loop) = render().await;
 
-    // TODO: Support wasm
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(target_arch = "wasm32")]
+    {
+        use winit::platform::web::WindowExtWebSys;
+        // On wasm, append the canvas to the document body
+        web_sys::window()
+            .and_then(|win| win.document())
+            .and_then(|doc| doc.body())
+            .and_then(|body| {
+                body.append_child(&web_sys::Element::from(window.as_ref().unwrap().canvas()))
+                    .ok()
+            })
+            .expect("couldn't append canvas to document body");
+    }
+
     {
         event_loop
             .unwrap()
@@ -126,9 +138,16 @@ fn main() {
     }
 }
 
+fn main() {
+    #[cfg(not(target_arch = "wasm32"))]
+    pollster::block_on(run());
+    #[cfg(target_arch = "wasm32")]
+    wasm_bindgen_futures::spawn_local(run());
+}
+
 #[test]
 fn test_image() {
-    let (mut renderer, _, _) = render();
+    let (mut renderer, _, _) = pollster::block_on(render());
     renderer.render();
     let buf = renderer.load_as_image();
     let mut file = std::fs::File::create("./test.png").unwrap();

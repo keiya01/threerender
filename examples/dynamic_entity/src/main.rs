@@ -128,8 +128,9 @@ fn test_image() {
         sphere,
         rand: Box::new(Rand { cnt: 0. }),
     };
-    let mut renderer =
-        threerender::renderer::Renderer::new::<winit::window::Window>(renderer_builder, None);
+    let mut renderer = pollster::block_on(threerender::renderer::Renderer::new::<
+        winit::window::Window,
+    >(renderer_builder, None));
 
     app.update(&mut renderer, CustomEvent::MouseDown);
     app.update(&mut renderer, CustomEvent::MouseDown);
